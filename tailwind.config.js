@@ -5,28 +5,33 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        'space-bg': '#0b0e14', // Void
+        'space-card': '#1e1b4b', // Indigo Deep (darker/different from void)
+        'nebula': '#6366f1', // Indigo 500 (Vibrant)
+
+        // Keeping previous aliases for backward compatibility or gradients
         background: {
-          DEFAULT: '#0b0e14', // Void
-          deep: '#1e1b4b', // Indigo Deep
+          DEFAULT: '#0b0e14',
+          deep: '#1e1b4b',
         },
         primary: {
-          DEFAULT: '#6366f1', // Indigo 500
+          DEFAULT: '#6366f1',
           foreground: '#ffffff',
         },
         secondary: {
-          DEFAULT: '#d946ef', // Fuchsia 500 (Magenta-ish)
+          DEFAULT: '#d946ef',
           foreground: '#ffffff',
         },
         accent: {
-          cyan: '#06b6d4', // Cyan 500
-          purple: '#8b5cf6', // Violet 500 (Electric Purple)
+          cyan: '#06b6d4',
+          purple: '#8b5cf6',
         },
         text: {
           DEFAULT: '#ffffff',
-          muted: '#94a3b8', // Slate 400 (Stellar Gray)
+          muted: '#94a3b8',
         },
         card: {
-          DEFAULT: 'rgba(15, 23, 42, 0.9)', // Slate 900 / 90%
+          DEFAULT: 'rgba(30, 27, 75, 0.9)', // Matching space-card approx
         },
       },
     },

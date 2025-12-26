@@ -19,11 +19,11 @@ function StudyCard({ item }: { item: Workspace }) {
 
   return (
     <TouchableOpacity
-      className="flex-1 bg-card border border-white/10 p-4 rounded-xl shadow-sm m-2 h-40 justify-between"
+      className="flex-1 bg-space-card border border-white/10 p-4 rounded-xl shadow-sm m-2 h-40 justify-between"
       onPress={() => router.push(`/study/${item.id}`)}
     >
       <View>
-        <View className="bg-primary/20 w-10 h-10 rounded-full items-center justify-center mb-3">
+        <View className="bg-nebula/20 w-10 h-10 rounded-full items-center justify-center mb-3">
           <IconComponent size={20} color="#6366f1" />
         </View>
         <Text className="font-bold text-white text-lg" numberOfLines={2}>
@@ -52,10 +52,9 @@ export default function LibraryScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-background px-2" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-space-bg px-2" edges={['top']}>
       <View className="flex-row justify-between items-center px-2 py-4">
         <Text className="text-2xl font-bold text-white">Meus Estudos</Text>
-        {/* Potentially add a settings or profile icon here */}
       </View>
 
       {error && (
@@ -66,7 +65,7 @@ export default function LibraryScreen() {
 
       {isLoading && workspaces.length === 0 ? (
          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#06b6d4" />
+            <ActivityIndicator size="large" color="#6366f1" />
          </View>
       ) : (
         <FlatList
@@ -74,10 +73,10 @@ export default function LibraryScreen() {
           renderItem={({ item }) => <StudyCard item={item} />}
           keyExtractor={(item) => item.id}
           numColumns={2}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={loadWorkspaces} tintColor="#06b6d4" />
+            <RefreshControl refreshing={isLoading} onRefresh={loadWorkspaces} tintColor="#6366f1" />
           }
           ListEmptyComponent={
             <View className="items-center justify-center py-20">
@@ -88,7 +87,7 @@ export default function LibraryScreen() {
       )}
 
       <TouchableOpacity
-        className="absolute bottom-28 right-6 bg-accent-cyan w-16 h-16 rounded-full justify-center items-center shadow-lg shadow-cyan-500/50"
+        className="absolute bottom-32 right-6 bg-accent-cyan w-16 h-16 rounded-full justify-center items-center shadow-lg shadow-cyan-500/50"
         onPress={() => router.push('/create')}
       >
         <Plus color="white" size={32} />

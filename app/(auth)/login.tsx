@@ -29,9 +29,9 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background p-6 justify-center">
+    <SafeAreaView className="flex-1 bg-space-bg p-6 justify-center">
       <View className="mb-10 items-center">
-        <View className="bg-primary/20 p-4 rounded-full mb-4">
+        <View className="bg-nebula/20 p-4 rounded-full mb-4">
            <Rocket size={48} color="#6366f1" />
         </View>
         <Text className="text-3xl font-bold text-white mb-2">Welcome Back</Text>

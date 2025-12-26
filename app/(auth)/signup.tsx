@@ -32,7 +32,7 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background p-6 justify-center">
+    <SafeAreaView className="flex-1 bg-space-bg p-6 justify-center">
       <View className="mb-8 items-center">
         <View className="bg-secondary/20 p-4 rounded-full mb-4">
            <Star size={48} color="#d946ef" />

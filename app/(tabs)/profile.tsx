@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Settings, LogOut, HelpCircle, ChevronRight, UserCircle } from 'lucide-react-native';
+import { User, Settings, LogOut, HelpCircle, ChevronRight } from 'lucide-react-native';
+import { UserAvatar } from '../../src/components/UserAvatar';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -34,21 +35,15 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-space-bg" edges={['top']}>
       <View className="items-center pb-8 pt-4">
-        <View className="w-24 h-24 bg-primary/20 rounded-full items-center justify-center mb-4 overflow-hidden border border-primary/50 shadow-lg shadow-primary/30">
-          {user?.avatar_url ? (
-            <Image source={{ uri: user.avatar_url }} className="w-full h-full" />
-          ) : (
-            <UserCircle size={60} color="#6366f1" />
-          )}
-        </View>
+        <UserAvatar uri={user?.avatar_url} size={96} className="mb-4 shadow-lg shadow-nebula/30 border-nebula/50" />
         <Text className="text-xl font-bold text-white">{user?.username || 'Astronaut'}</Text>
         <Text className="text-gray-400">{user?.email || 'explorer@stelarys.com'}</Text>
       </View>
 
-      <ScrollView className="mt-2 px-4">
-        <View className="bg-card rounded-xl overflow-hidden border border-white/10">
+      <ScrollView className="mt-2 px-4" contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="bg-space-card rounded-xl overflow-hidden border border-white/10">
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -70,7 +65,7 @@ export default function ProfileScreen() {
           <Text className="ml-2 text-red-400 font-semibold">Log Out</Text>
         </TouchableOpacity>
 
-        <Text className="text-center text-gray-600 text-xs mt-8 pb-24">Version 1.0.0</Text>
+        <Text className="text-center text-gray-600 text-xs mt-8">Version 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
