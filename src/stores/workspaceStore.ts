@@ -33,21 +33,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // 1. Create Workspace (Bot)
       const bot = await workspaceService.createWorkspace({
         name,
-        category_id: category,
+        category: category, // Fix: usage of 'category' property name to match service definition
         prompt: "Você é um assistente especialista neste tema. Responda com base nos arquivos.",
       });
 
       // 2. If files, Bootstrap Chat and Upload
       if (files.length > 0) {
         const chat = await workspaceService.bootstrapChat(bot.id);
-
-        // Upload files sequentially or in parallel
-        // The backend `ChatMessageAttachmentView` handles list `attachments` or single `attachment`.
-        // Our service sends one by one for simplicity and progress tracking if needed,
-        // or we could update service to send all at once if backend supports list.
-        // The backend view supports `request.FILES.getlist('attachments')`.
-        // Let's stick to the service we wrote which sends one `attachment`.
-        // We can loop.
 
         for (const file of files) {
            await workspaceService.uploadFile(chat.id, file);

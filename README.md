@@ -1,50 +1,65 @@
-# Welcome to your Expo app 👋
+# Stelarys Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile frontend for StelarysLM, a "Second Brain" application for document management and study, built with React Native (Expo).
 
-## Get started
+## Architecture
 
-1. Install dependencies
+- **Framework:** React Native + Expo (SDK 52+)
+- **Routing:** Expo Router (`/app`)
+- **Styling:** NativeWind v4 (TailwindCSS)
+- **State Management:** Zustand
+- **Networking:** Axios (REST) + Fetch (Streaming)
+- **Storage:** Expo Secure Store (Tokens), Async Storage (Preferences)
 
-   ```bash
-   npm install
-   ```
+## Project Structure
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+/app
+  /_layout.tsx      # Root layout (Auth Guard, Providers)
+  /(auth)           # Login/Signup screens
+  /(tabs)           # Main tabs (Library, Profile)
+  /study
+    /[id].tsx       # Chat Interface (Streaming, Attachments)
+    /details.tsx    # Study Settings & File Management
+  /create           # Create New Study Modal
+/src
+  /api              # Axios client configuration
+  /services         # API service layers (auth, workspace, chat)
+  /stores           # Zustand global stores
+  /components       # Reusable UI components
+  /types            # TypeScript interfaces
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Setup & Running
 
-## Learn more
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-To learn more about developing your project with Expo, look at the following resources:
+2.  **Environment:**
+    - The app connects to the backend URL defined in `src/api/client.ts`.
+    - Default Dev URL: `http://127.0.0.1:8000` (adjust if running on physical device).
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+3.  **Run:**
+    ```bash
+    npx expo start
+    ```
 
-## Join the community
+## Key Features
 
-Join our community of developers creating universal apps.
+- **Authentication:** Login/Signup with JWT storage.
+- **Library:** View subscribed study workspaces.
+- **Create Study:** Create new workspace with Category and initial Knowledge Base (File Upload).
+- **Study Chat:**
+  - Real-time streaming AI responses.
+  - Markdown rendering.
+  - File attachments (PDF/DOCX/TXT) for RAG.
+- **File Management:** View and delete files associated with a study.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Backend Integration Notes
+
+- **Authentication:** Uses `/auth/login/` and `/auth/register/`.
+- **Workspaces (Bots):** Uses `/api/v1/bots/` for creation and subscription.
+- **Chat:** Uses `/api/v1/chats/` for message history and `/api/v1/chats/{id}/stream/` for SSE streaming.
+- **RAG:** Uploads files to `/api/v1/chats/{id}/messages/attach/` which triggers backend vector processing.
