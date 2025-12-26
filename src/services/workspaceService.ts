@@ -1,5 +1,5 @@
 import client from '../api/client';
-import { Workspace } from '../types';
+import { Workspace, StudyFile } from '../types';
 
 export const workspaceService = {
   getSubscribedWorkspaces: async (): Promise<Workspace[]> => {
@@ -10,6 +10,10 @@ export const workspaceService = {
   createWorkspace: async (data: { name: string; category_id: string; prompt: string }): Promise<Workspace> => {
     const response = await client.post<Workspace>('/api/v1/bots/', data);
     return response.data;
+  },
+
+  deleteWorkspace: async (botId: string): Promise<void> => {
+    await client.delete(`/api/v1/bots/${botId}/`);
   },
 
   bootstrapChat: async (botId: string): Promise<{ id: number }> => {
@@ -27,10 +31,6 @@ export const workspaceService = {
       type: file.mimeType || 'application/octet-stream',
     } as any);
 
-    // Based on backend: 'content' field is required by serializer if not optional,
-    // but ChatMessageAttachmentSerializer usually handles it.
-    // The view sets content to empty string if missing.
-    // Let's add it just in case.
     formData.append('content', '');
 
     const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
@@ -39,5 +39,14 @@ export const workspaceService = {
       },
     });
     return response.data;
+  },
+
+  getWorkspaceFiles: async (botId: string): Promise<StudyFile[]> => {
+    const response = await client.get<StudyFile[]>(`/api/v1/bots/${botId}/files/`);
+    return response.data;
+  },
+
+  deleteWorkspaceFile: async (botId: string, fileId: number): Promise<void> => {
+    await client.delete(`/api/v1/bots/${botId}/files/${fileId}/`);
   },
 };

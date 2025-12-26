@@ -25,3 +25,11 @@ export interface Message {
   attachment_type?: 'image' | 'file' | 'audio';
   duration?: number; // Se for áudio
 }
+
+export interface StudyFile {
+  id: number;
+  file_name: string;      // Nome exibido (ex: "Lecture_01.pdf")
+  file_url: string;       // Link direto para download/visualização
+  file_type: 'pdf' | 'docx' | 'txt';
+  created_at: string;
+}
