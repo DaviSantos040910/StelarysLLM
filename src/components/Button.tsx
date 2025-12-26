@@ -11,11 +11,11 @@ export function Button({ title, variant = 'primary', className, ...props }: Butt
 
   switch (variant) {
     case 'primary':
-      variantStyle = "bg-primary shadow-lg shadow-primary/30";
+      variantStyle = "bg-cosmic-purple shadow-lg shadow-cosmic-purple/30";
       textStyle = "text-white font-bold text-center text-lg";
       break;
     case 'secondary':
-      variantStyle = "bg-secondary shadow-lg shadow-secondary/30";
+      variantStyle = "bg-nebula-pink shadow-lg shadow-nebula-pink/30";
       textStyle = "text-white font-bold text-center text-lg";
       break;
     case 'outline':
@@ -23,7 +23,7 @@ export function Button({ title, variant = 'primary', className, ...props }: Butt
       textStyle = "text-white font-semibold text-center text-lg";
       break;
     default:
-      variantStyle = "bg-primary";
+      variantStyle = "bg-cosmic-purple";
       textStyle = "text-white font-bold text-center";
   }
 

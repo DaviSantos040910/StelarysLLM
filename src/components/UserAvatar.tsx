@@ -1,27 +1,28 @@
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { User } from 'lucide-react-native';
 
 interface UserAvatarProps {
-  uri?: string | null;
+  imageUri?: string | null;
   size?: number;
   className?: string;
 }
 
-export function UserAvatar({ uri, size = 48, className }: UserAvatarProps) {
+export function UserAvatar({ imageUri, size = 48, className }: UserAvatarProps) {
   return (
     <View
-      className={`rounded-full overflow-hidden bg-space-card border border-white/10 items-center justify-center ${className}`}
+      className={`rounded-full overflow-hidden bg-space-light border border-cosmic-purple items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >
-      {uri ? (
+      {imageUri ? (
         <Image
-          source={{ uri }}
+          source={{ uri: imageUri }}
           style={{ width: size, height: size }}
-          resizeMode="cover"
+          contentFit="cover"
         />
       ) : (
-        <User size={size * 0.5} color="#94a3b8" />
+        <User size={size * 0.5} color="#ffffff" />
       )}
     </View>
   );
