@@ -1,5 +1,5 @@
 import '../global.css';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router'; // Adicionado useRootNavigationState
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
@@ -9,26 +9,31 @@ export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+  
+  // 1. Hook para verificar se a navegação está pronta
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
     loadUser();
   }, []);
 
   useEffect(() => {
+    // 2. GUARD: Se a navegação não estiver pronta, não faz nada.
+    // Isso evita o erro "Attempted to navigate before mounting"
+    if (!navigationState?.key) return;
+
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
     if (isAuthenticated && inAuthGroup) {
-      router.replace('/(tabs)');
-    } else if (!isAuthenticated && !inAuthGroup && segments[0] !== 'create' && segments[0] !== 'study') {
-       // Ideally we protect routes here.
-       // For now, if not authenticated, redirect to login if trying to access tabs?
-       // But wait, the app structure has (auth) and (tabs).
-       // If user is not authenticated, they should be in (auth).
-       // If they are at root, redirect to login.
+      // Usuário logado tentando acessar login -> manda para Home (Tabs)
+      router.replace('/(tabs)'); 
+    } else if (!isAuthenticated && !inAuthGroup) {
+      // Usuário não logado fora da área de login -> manda para Login
+      router.replace('/(auth)/login');
     }
-  }, [isAuthenticated, segments, isLoading]);
+  }, [isAuthenticated, segments, isLoading, navigationState?.key]); // Adicione navigationState?.key nas dependências
 
   if (isLoading) {
     return (

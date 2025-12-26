@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     // We also clear state here just in case
     set({ user: null, token: null, isAuthenticated: false, isLoading: false });
-    router.replace('/(auth)/login');
+    router.replace('/login');
   },
 
   loadUser: async () => {
