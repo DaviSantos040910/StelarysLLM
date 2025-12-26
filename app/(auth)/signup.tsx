@@ -5,6 +5,7 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Star } from 'lucide-react-native';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -31,15 +32,18 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white p-6 justify-center">
-      <View className="mb-8">
-        <Text className="text-3xl font-bold text-gray-900 mb-2">Create Account</Text>
-        <Text className="text-gray-500 text-base">Join StelarysLM to start learning</Text>
+    <SafeAreaView className="flex-1 bg-background p-6 justify-center">
+      <View className="mb-8 items-center">
+        <View className="bg-secondary/20 p-4 rounded-full mb-4">
+           <Star size={48} color="#d946ef" />
+        </View>
+        <Text className="text-3xl font-bold text-white mb-2">Create Account</Text>
+        <Text className="text-gray-400 text-base">Join StelarysLM to start learning</Text>
       </View>
 
       {error && (
-        <View className="bg-red-50 p-3 rounded-lg mb-4">
-          <Text className="text-red-500">{error}</Text>
+        <View className="bg-red-900/50 border border-red-500/50 p-3 rounded-lg mb-4">
+          <Text className="text-red-200">{error}</Text>
         </View>
       )}
 
@@ -49,6 +53,7 @@ export default function SignupScreen() {
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
+        containerStyle="mb-4"
       />
 
       <Input
@@ -58,6 +63,7 @@ export default function SignupScreen() {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        containerStyle="mb-4"
       />
 
       <Input
@@ -66,6 +72,7 @@ export default function SignupScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        containerStyle="mb-6"
       />
 
       <Button
@@ -73,15 +80,15 @@ export default function SignupScreen() {
         onPress={handleSignup}
         disabled={isLoading}
         className="mt-4"
-        variant="primary" // Explicitly primary, though default
+        variant="secondary"
       />
 
-      {isLoading && <ActivityIndicator className="mt-4" color="#3b82f6" />}
+      {isLoading && <ActivityIndicator className="mt-4" color="#d946ef" />}
 
       <View className="flex-row justify-center mt-6">
-        <Text className="text-gray-500">Already have an account? </Text>
+        <Text className="text-gray-400">Already have an account? </Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-blue-500 font-semibold">Log In</Text>
+          <Text className="text-accent-purple font-semibold">Log In</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

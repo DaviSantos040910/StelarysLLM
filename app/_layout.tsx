@@ -1,5 +1,5 @@
 import '../global.css';
-import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router'; // Adicionado useRootNavigationState
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
@@ -10,7 +10,6 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
   
-  // 1. Hook para verificar se a navegação está pronta
   const navigationState = useRootNavigationState();
 
   useEffect(() => {
@@ -18,8 +17,6 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    // 2. GUARD: Se a navegação não estiver pronta, não faz nada.
-    // Isso evita o erro "Attempted to navigate before mounting"
     if (!navigationState?.key) return;
 
     if (isLoading) return;
@@ -27,32 +24,34 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (isAuthenticated && inAuthGroup) {
-      // Usuário logado tentando acessar login -> manda para Home (Tabs)
       router.replace('/(tabs)'); 
     } else if (!isAuthenticated && !inAuthGroup) {
-      // Usuário não logado fora da área de login -> manda para Login
       router.replace('/(auth)/login');
     }
-  }, [isAuthenticated, segments, isLoading, navigationState?.key]); // Adicione navigationState?.key nas dependências
+  }, [isAuthenticated, segments, isLoading, navigationState?.key]);
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View className="flex-1 justify-center items-center bg-background">
+        <ActivityIndicator size="large" color="#06b6d4" />
       </View>
     );
   }
 
   return (
-    <>
-      <Stack>
+    <View className="flex-1 bg-background">
+      <Stack screenOptions={{
+        headerStyle: { backgroundColor: '#0b0e14' },
+        headerTintColor: '#fff',
+        contentStyle: { backgroundColor: '#0b0e14' },
+      }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="study/[id]" options={{ title: 'Study Session' }} />
-        <Stack.Screen name="study/details" options={{ title: 'Settings' }} />
-        <Stack.Screen name="create/index" options={{ presentation: 'modal', title: 'New Study' }} />
+        <Stack.Screen name="study/[id]" options={{ title: 'Study Session', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="study/details" options={{ title: 'Settings', headerBackTitle: 'Back' }} />
+        <Stack.Screen name="create/index" options={{ presentation: 'modal', title: 'New Study', headerBackTitle: 'Back' }} />
       </Stack>
-      <StatusBar style="auto" />
-    </>
+      <StatusBar style="light" backgroundColor="#0b0e14" />
+    </View>
   );
 }

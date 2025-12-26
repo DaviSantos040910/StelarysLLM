@@ -5,6 +5,7 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Rocket } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,20 +25,22 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (e) {
       // Error is handled in store and displayed via Alert or UI
-      // Alert.alert('Login Failed', error || 'Something went wrong');
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white p-6 justify-center">
-      <View className="mb-8">
-        <Text className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</Text>
-        <Text className="text-gray-500 text-base">Sign in to continue to StelarysLM</Text>
+    <SafeAreaView className="flex-1 bg-background p-6 justify-center">
+      <View className="mb-10 items-center">
+        <View className="bg-primary/20 p-4 rounded-full mb-4">
+           <Rocket size={48} color="#6366f1" />
+        </View>
+        <Text className="text-3xl font-bold text-white mb-2">Welcome Back</Text>
+        <Text className="text-gray-400 text-base">Sign in to continue to StelarysLM</Text>
       </View>
 
       {error && (
-        <View className="bg-red-50 p-3 rounded-lg mb-4">
-          <Text className="text-red-500">{error}</Text>
+        <View className="bg-red-900/50 border border-red-500/50 p-3 rounded-lg mb-4">
+          <Text className="text-red-200">{error}</Text>
         </View>
       )}
 
@@ -48,6 +51,7 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        containerStyle="mb-4"
       />
 
       <Input
@@ -56,6 +60,7 @@ export default function LoginScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        containerStyle="mb-6"
       />
 
       <Button
@@ -65,12 +70,12 @@ export default function LoginScreen() {
         className="mt-4"
       />
 
-      {isLoading && <ActivityIndicator className="mt-4" color="#3b82f6" />}
+      {isLoading && <ActivityIndicator className="mt-4" color="#06b6d4" />}
 
       <View className="flex-row justify-center mt-6">
-        <Text className="text-gray-500">Don't have an account? </Text>
+        <Text className="text-gray-400">Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-          <Text className="text-blue-500 font-semibold">Sign Up</Text>
+          <Text className="text-accent-cyan font-semibold">Sign Up</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
