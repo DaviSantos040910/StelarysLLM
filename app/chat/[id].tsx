@@ -1,25 +1,31 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
+import { View, Text, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Paperclip, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useChatStore } from '../../src/stores/chatStore';
 import { UserAvatar } from '../../src/components/UserAvatar';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
+import { ChatInput } from '../../src/components/chat/ChatInput';
+import { AttachmentMenu } from '../../src/components/chat/AttachmentMenu';
 import { Message } from '../../src/types/chat';
+import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const chatId = id as string;
 
-  const { messages, loadMessages, sendMessage, isLoading, isStreaming, loadChatDetails, currentChat, loadMoreMessages } = useChatStore();
+  const { messages, loadMessages, sendMessage, isLoading, isStreaming, loadChatDetails, currentChat, loadMoreMessages, uploadFile } = useChatStore();
   const [inputText, setInputText] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
+
   const flatListRef = useRef<FlatList>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
 
   useEffect(() => {
     if (chatId) {
@@ -28,24 +34,51 @@ export default function ChatScreen() {
     }
   }, [chatId]);
 
-  const handleSend = async (text: string = inputText) => {
-    if (!text.trim()) return;
-    if (text === inputText) setInputText('');
+  const handleSend = async () => {
+    if (!inputText.trim()) return;
+    const text = inputText;
+    setInputText('');
     await sendMessage(chatId, text);
-    // Scroll to bottom is handled automatically by inverted list when new item is added to top (data[0])
-    // But we might want to ensure it snaps.
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleAudioRecorded = async (uri: string, duration: number) => {
+     // Send audio
+     const file = {
+         uri,
+         name: `audio_${Date.now()}.m4a`,
+         mimeType: 'audio/m4a',
+         duration // pass duration if needed by store logic
+     };
+     await uploadFile(chatId, file);
+     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleAttachmentSelect = async (type: 'image' | 'document' | 'camera') => {
+      let results;
+      if (type === 'image') results = await pickImage();
+      else if (type === 'document') results = await pickDocument();
+      else if (type === 'camera') results = await takePhoto();
+
+      if (results) {
+          // Upload each selected file
+          for (const file of results) {
+              await uploadFile(chatId, {
+                  uri: file.uri,
+                  name: file.name,
+                  mimeType: file.type || 'application/octet-stream' // fallback
+              });
+          }
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }
   };
 
   const handleCopy = async (text: string) => {
       await Clipboard.setStringAsync(text);
-      // Optional: Show toast
   };
 
   const handleScroll = (event: any) => {
       const offsetY = event.nativeEvent.contentOffset.y;
-      // Inverted list: offsetY increases as we scroll UP (back in time).
-      // 0 is the bottom (most recent).
       if (offsetY > 200) {
           setShowScrollDown(true);
       } else {
@@ -63,7 +96,6 @@ export default function ChatScreen() {
             message={item}
             isLastMessage={index === 0}
             onCopy={handleCopy}
-            // onLike, onRetry, onTTS can be implemented later or connected to store actions
         />
     );
   };
@@ -89,7 +121,6 @@ export default function ChatScreen() {
              <Text className="text-starlight text-lg font-bold">
                 {currentChat?.bot?.name || 'Chat'}
             </Text>
-            {/* Online/Status indicator if needed */}
         </View>
       </View>
 
@@ -104,7 +135,7 @@ export default function ChatScreen() {
              botName={currentChat.bot.name}
              description={currentChat.bot.description}
              suggestions={getSuggestions()}
-             onSuggestionPress={handleSend}
+             onSuggestionPress={(text) => { setInputText(text); handleSend(); }} // Fix direct send
           />
       ) : (
           <View className="flex-1">
@@ -137,27 +168,31 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View className="flex-row items-center p-3 bg-space-light border-t border-white/10">
-           <Pressable className="p-2">
-               <Paperclip color="#94a3b8" size={24} />
-           </Pressable>
-           <TextInput
-             className="flex-1 bg-space-dark text-starlight rounded-full px-4 py-3 mx-2 border border-white/10"
-             placeholder="Type a message..."
-             placeholderTextColor="#64748b"
-             value={inputText}
-             onChangeText={setInputText}
-             multiline
-           />
-           <Pressable
-                onPress={() => handleSend()}
-                disabled={!inputText.trim() || isStreaming}
-                className={`p-3 rounded-full ${inputText.trim() ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
-           >
-               <Send color="white" size={20} />
-           </Pressable>
-        </View>
+        <ChatInput
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={handleSend}
+            onPlusPress={() => setIsAttachmentMenuVisible(true)}
+            onAudioRecorded={handleAudioRecorded}
+            disabled={isStreaming || isPickerLoading}
+        />
       </KeyboardAvoidingView>
+
+      <AttachmentMenu
+          visible={isAttachmentMenuVisible}
+          onClose={() => setIsAttachmentMenuVisible(false)}
+          onSelectImage={() => handleAttachmentSelect('image')}
+          onSelectDocument={() => handleAttachmentSelect('document')}
+          onTakePhoto={() => handleAttachmentSelect('camera')}
+      />
+
+      {/* Loading Overlay for Uploads */}
+      {isPickerLoading && (
+          <View className="absolute inset-0 bg-black/50 justify-center items-center">
+              <ActivityIndicator size="large" color="#818cf8" />
+          </View>
+      )}
+
     </SafeAreaView>
   );
 }
