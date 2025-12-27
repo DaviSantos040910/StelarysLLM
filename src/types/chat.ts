@@ -1,7 +1,7 @@
 // src/types/chat.ts
 
 // Represents a single message in a conversation.
-export type ChatMessage = {
+export type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -26,13 +26,16 @@ export type Bot = {
   description: string;
   avatar_url?: string | null;
   is_official?: boolean;
+  suggestion1?: string;
+  suggestion2?: string;
+  suggestion3?: string;
 };
 
 // Represents an item in the main chat list screen.
 export type ChatListItem = {
   id: string; // This is the Chat ID
   bot: Bot;
-  last_message: ChatMessage | null;
+  last_message: Message | null;
   last_message_at: string;
   status: 'active' | 'archived';
 };
@@ -50,11 +53,11 @@ export type PaginatedMessages = {
   count: number;
   next: string | null;
   previous: string | null;
-  results: ChatMessage[];
+  results: Message[];
 };
 
 export interface ChatCacheData {
-  messages: ChatMessage[];
+  messages: Message[];
   nextPage: number | null;
   timestamp: number; // Unix timestamp (ms) de quando o cache foi salvo
 }

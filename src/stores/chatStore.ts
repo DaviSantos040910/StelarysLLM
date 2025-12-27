@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { Message } from '../types';
+import { Message, ChatListItem } from '../types/chat'; // Assuming ChatListItem is here or in types/chat
 import { chatService } from '../services/chatService';
 
 interface ChatState {
   messages: Message[];
+  currentChat: ChatListItem | null; // For header/welcome details
   isLoading: boolean;
   isStreaming: boolean;
   error: string | null;
@@ -12,10 +13,12 @@ interface ChatState {
   sendMessage: (chatId: string | number, text: string) => Promise<void>;
   addMessage: (message: Message) => void;
   uploadFile: (chatId: string | number, file: any) => Promise<void>;
+  loadChatDetails: (chatId: string | number) => Promise<void>; // New action
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
+  currentChat: null,
   isLoading: false,
   isStreaming: false,
   error: null,
@@ -24,15 +27,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const messages = await chatService.getMessages(chatId);
-      // Reverse to show latest at bottom if using inverted FlatList,
-      // OR keep as is if using standard.
-      // Usually backend returns ordered by -created_at (newest first).
-      // We often want newest at bottom, so we might reverse them for display
-      // if using flex-col-reverse or inverted list.
-      // Let's store them as received (newest first) and handle display in UI.
       set({ messages, isLoading: false });
     } catch (error) {
       set({ error: 'Failed to load messages', isLoading: false });
+    }
+  },
+
+  loadChatDetails: async (chatId) => {
+    try {
+      const chat = await chatService.getChatDetails(chatId);
+      set({ currentChat: chat });
+    } catch (error) {
+       console.error("Failed to load chat details", error);
+       // Optional: set error state
     }
   },
 
@@ -78,12 +85,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
       (error) => {
         set({ error: 'Failed to send message', isStreaming: false });
-        // Remove placeholder? Or show error state on message?
       },
       () => {
         set({ isStreaming: false });
-        // Optionally reload messages to get real IDs and full state
-        // get().loadMessages(chatId);
       }
     );
   },
@@ -92,13 +96,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
      set({ isStreaming: true });
      try {
        const response = await chatService.uploadFile(chatId, file);
-       // response is array of created messages (User msg with attachment)
        if (Array.isArray(response)) {
           set((state) => ({ messages: [...response.reverse(), ...state.messages] }));
-       } else {
-          // single object?
-          // The backend returns a list of created messages.
-          // Let's assume list.
        }
      } catch (e) {
        console.error(e);

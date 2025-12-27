@@ -5,27 +5,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Send, Paperclip } from 'lucide-react-native';
 import { useChatStore } from '../../src/stores/chatStore';
 import { UserAvatar } from '../../src/components/UserAvatar';
-import { Message } from '../../src/types';
+import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
+import { Message } from '../../src/types/chat';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const chatId = id as string;
 
-  const { messages, loadMessages, sendMessage, isLoading, isStreaming } = useChatStore();
+  const { messages, loadMessages, sendMessage, isLoading, isStreaming, loadChatDetails, currentChat } = useChatStore();
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (chatId) {
       loadMessages(chatId);
+      loadChatDetails(chatId);
     }
   }, [chatId]);
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
-    const text = inputText;
-    setInputText(''); // Clear immediately
+  const handleSend = async (text: string = inputText) => {
+    if (!text.trim()) return;
+    if (text === inputText) setInputText('');
     await sendMessage(chatId, text);
   };
 
@@ -35,8 +36,7 @@ export default function ChatScreen() {
       <View className={`flex-row my-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
         {!isUser && (
              <View className="mr-2">
-                 {/* Bot Avatar - hardcoded or from store/params */}
-                 <UserAvatar size={32} />
+                 <UserAvatar imageUri={currentChat?.bot?.avatar_url} size={32} />
              </View>
         )}
         <View
@@ -50,6 +50,26 @@ export default function ChatScreen() {
     );
   };
 
+  const getSuggestions = () => {
+    // Ideally these come from the bot object, assuming backend sends them in `bot` details
+    // If backend uses specific fields like suggestion1, suggestion2, we need to map them.
+    // Let's assume currentChat.bot has them or we map them in service.
+    // Since ChatListItem doesn't explicitly have suggestions array, we might need to check how backend returns it.
+    // The Bot model has suggestion1, suggestion2, etc.
+    // Let's check the Bot type in frontend.
+    // We might need to cast or updated types if 'suggestions' isn't in Bot type.
+    // For now, let's try to access them dynamically if needed or update type.
+
+    // Quick fix: Map from bot properties if they exist
+    const bot = currentChat?.bot;
+    const suggestions = [];
+    if (bot?.suggestion1) suggestions.push(bot.suggestion1);
+    if (bot?.suggestion2) suggestions.push(bot.suggestion2);
+    if (bot?.suggestion3) suggestions.push(bot.suggestion3);
+
+    return suggestions;
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-space-dark" edges={['top', 'bottom']}>
       {/* Header */}
@@ -57,18 +77,28 @@ export default function ChatScreen() {
         <Pressable onPress={() => router.back()} className="mr-3 p-1">
            <ArrowLeft color="#fff" size={24} />
         </Pressable>
-        <Text className="text-starlight text-lg font-bold flex-1">Chat</Text>
+        <Text className="text-starlight text-lg font-bold flex-1">
+            {currentChat?.bot?.name || 'Chat'}
+        </Text>
       </View>
 
-      {/* Messages */}
-      {isLoading ? (
+      {/* Messages or Welcome */}
+      {isLoading && messages.length === 0 ? (
           <View className="flex-1 justify-center items-center">
               <ActivityIndicator color="#818cf8" size="large" />
           </View>
+      ) : messages.length === 0 && currentChat ? (
+          <ChatWelcome
+             botAvatar={currentChat.bot.avatar_url}
+             botName={currentChat.bot.name}
+             description={currentChat.bot.description}
+             suggestions={getSuggestions()}
+             onSuggestionPress={handleSend}
+          />
       ) : (
           <FlatList
             ref={flatListRef}
-            data={messages} // Check order. If store has newest first, use inverted.
+            data={messages}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderItem}
             inverted
@@ -94,7 +124,7 @@ export default function ChatScreen() {
              multiline
            />
            <Pressable
-                onPress={handleSend}
+                onPress={() => handleSend()}
                 disabled={!inputText.trim() || isStreaming}
                 className={`p-3 rounded-full ${inputText.trim() ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
            >

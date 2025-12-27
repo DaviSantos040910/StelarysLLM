@@ -1,10 +1,15 @@
 import client, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
-import { Message } from '../types';
+import { Message, ChatListItem } from '../types/chat';
 
 export const chatService = {
   getMessages: async (chatId: string | number): Promise<Message[]> => {
     const response = await client.get<Message[]>(`/api/v1/chats/${chatId}/messages/`);
+    return response.data;
+  },
+
+  getChatDetails: async (chatId: string | number): Promise<ChatListItem> => {
+    const response = await client.get<ChatListItem>(`/api/v1/chats/${chatId}/`);
     return response.data;
   },
 
@@ -36,14 +41,6 @@ export const chatService = {
     const token = useAuthStore.getState().token;
 
     try {
-      // Use native fetch for streaming
-      // Note: React Native fetch does not support streaming response body out of the box very well in all engines.
-      // However, typical implementations use specific libraries like 'react-native-sse' or similar.
-      // Or we can try standard fetch if the engine supports it (Hermes might).
-      // Given the constraints, we will attempt a standard fetch and reading the response.
-      // If true streaming isn't supported by the RN bridge for this, it might buffer.
-      // But let's write the code for streaming.
-
       const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream/`, {
         method: 'POST',
         headers: {
@@ -79,14 +76,6 @@ export const chatService = {
                  break;
                }
                try {
-                 // Try parsing as JSON if it's a JSON chunk or just raw text?
-                 // The backend typically sends raw text chunks or JSONs.
-                 // Looking at typical SSE, it might be JSON wrapped.
-                 // Let's assume the backend sends JSON with a 'content' field or similar,
-                 // OR just raw text.
-                 // Wait, backend `StreamingHttpResponse` yields `process_message_stream`.
-                 // We need to know what `process_message_stream` yields.
-                 // Assuming it yields "data: { ... }\n\n"
                  const parsed = JSON.parse(data);
                  if (parsed.content) {
                     onChunk(parsed.content);
