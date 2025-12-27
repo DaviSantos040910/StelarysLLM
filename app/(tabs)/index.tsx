@@ -3,8 +3,10 @@ import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicat
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkspaceStore } from '../../src/stores/workspaceStore';
+import { useAuthStore } from '../../src/stores/authStore';
 import { Workspace } from '../../src/types';
 import { BookOpen, Briefcase, Code, Folder, Plus } from 'lucide-react-native';
+import { UserAvatar } from '../../src/components/UserAvatar';
 
 const ICON_MAP: Record<string, any> = {
   'productivity': Briefcase,
@@ -19,14 +21,14 @@ function StudyCard({ item }: { item: Workspace }) {
 
   return (
     <TouchableOpacity
-      className="flex-1 bg-space-card border border-white/10 p-4 rounded-xl shadow-sm m-2 h-40 justify-between"
+      className="flex-1 bg-space-light border border-white/10 p-4 rounded-xl shadow-sm m-2 h-40 justify-between"
       onPress={() => router.push(`/study/${item.id}`)}
     >
       <View>
-        <View className="bg-nebula/20 w-10 h-10 rounded-full items-center justify-center mb-3">
-          <IconComponent size={20} color="#6366f1" />
+        <View className="bg-cosmic-purple/20 w-10 h-10 rounded-full items-center justify-center mb-3">
+          <IconComponent size={20} color="#818cf8" />
         </View>
-        <Text className="font-bold text-white text-lg" numberOfLines={2}>
+        <Text className="font-bold text-starlight text-lg" numberOfLines={2}>
           {item.name}
         </Text>
       </View>
@@ -44,6 +46,7 @@ function StudyCard({ item }: { item: Workspace }) {
 export default function LibraryScreen() {
   const router = useRouter();
   const { workspaces, loadWorkspaces, isLoading, error } = useWorkspaceStore();
+  const { user } = useAuthStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -52,9 +55,15 @@ export default function LibraryScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-space-bg px-2" edges={['top']}>
-      <View className="flex-row justify-between items-center px-2 py-4">
-        <Text className="text-2xl font-bold text-white">Meus Estudos</Text>
+    <SafeAreaView className="flex-1 bg-space-dark px-2" edges={['top']}>
+      <View className="flex-row justify-between items-center px-4 py-4 mb-2">
+        <View>
+             <Text className="text-starlight text-lg font-medium">Olá,</Text>
+             <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
+            <UserAvatar imageUri={user?.avatar_url} size={48} />
+        </TouchableOpacity>
       </View>
 
       {error && (
@@ -65,7 +74,7 @@ export default function LibraryScreen() {
 
       {isLoading && workspaces.length === 0 ? (
          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#6366f1" />
+            <ActivityIndicator size="large" color="#818cf8" />
          </View>
       ) : (
         <FlatList
@@ -73,11 +82,12 @@ export default function LibraryScreen() {
           renderItem={({ item }) => <StudyCard item={item} />}
           keyExtractor={(item) => item.id}
           numColumns={2}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={loadWorkspaces} tintColor="#6366f1" />
+            <RefreshControl refreshing={isLoading} onRefresh={loadWorkspaces} tintColor="#818cf8" />
           }
+          ListFooterComponent={<View className="h-24" />}
           ListEmptyComponent={
             <View className="items-center justify-center py-20">
                <Text className="text-gray-500 text-center">No studies found.{'\n'}Create your first one!</Text>
