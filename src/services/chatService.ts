@@ -2,13 +2,28 @@ import client, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
 import { Message, ChatListItem } from '../types/chat';
 
+interface PaginatedResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
+}
+
 export const chatService = {
   getMessages: async (chatId: string | number): Promise<Message[]> => {
-    const response = await client.get<Message[]>(`/api/v1/chats/${chatId}/messages/`);
-    return response.data;
+    const response = await client.get<PaginatedResponse<Message>>(`/api/v1/chats/${chatId}/messages/`);
+    // Handle both array and paginated response for safety
+    if (Array.isArray(response.data)) {
+        return response.data;
+    }
+    return response.data.results || [];
   },
 
   getChatDetails: async (chatId: string | number): Promise<ChatListItem> => {
+    // Note: The backend endpoint GET /api/v1/chats/{id}/ does not exist.
+    // We must rely on what we have. If this fails (404), the UI should handle it.
+    // Ideally, we shouldn't call this if the backend doesn't support it.
+    // For now, we keep it but it might fail.
     const response = await client.get<ChatListItem>(`/api/v1/chats/${chatId}/`);
     return response.data;
   },
@@ -20,8 +35,12 @@ export const chatService = {
       name: file.name,
       type: file.mimeType || 'application/octet-stream',
     } as any);
-    // Backend expects 'content' field even if empty for attachment message
     formData.append('content', '');
+
+    // Pass duration if available (e.g. for audio)
+    if (file.duration) {
+        formData.append('duration', String(file.duration));
+    }
 
     const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
       headers: {

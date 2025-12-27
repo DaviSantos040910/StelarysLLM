@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { PlusCircle, CheckCircle } from 'lucide-react-native';
 import { ExploreBotItem, exploreService } from '../../services/exploreService';
 import { UserAvatar } from '../UserAvatar';
-import client from '../../api/client';
+import { botService } from '../../services/botService';
 
 interface Props {
   item: ExploreBotItem;
@@ -29,19 +29,20 @@ export const ExploreBotRow: React.FC<Props> = ({ item }) => {
   };
 
   const handleRowPress = async () => {
-    // When clicking a bot in Explore, we want to start a chat.
-    // We need to get or create a conversation.
     try {
-        // Assuming there is an endpoint to get/create chat for a bot
-        // If not, we might need to add logic here.
-        // For now, let's assume we navigate to a new chat with the bot ID as param
-        // or check if a chat exists.
-        // The old code used `botService.getChatBootstrap`.
-        // Let's implement a simple direct call to create/get chat.
+        const bootstrap = await botService.getChatBootstrap(item.id);
+        const chatId = bootstrap.conversationId;
 
-        const response = await client.post<{ id: string }>(`/api/v1/chats/start/${item.id}/`);
-        const chatId = response.data.id;
-        router.push(`/chat/${chatId}`);
+        // Navigate with params to help ChatScreen initialize faster
+        router.push({
+            pathname: `/chat/${chatId}`,
+            params: {
+                botId: item.id,
+                botName: item.name,
+                botAvatar: item.avatar_url,
+                // suggestions: JSON.stringify(bootstrap.suggestions) // Optional
+            }
+        });
     } catch (error) {
         console.error("Failed to start chat:", error);
     }

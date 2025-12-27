@@ -10,15 +10,16 @@ import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatInput } from '../../src/components/chat/ChatInput';
 import { AttachmentMenu } from '../../src/components/chat/AttachmentMenu';
-import { Message } from '../../src/types/chat';
+import { Message, ChatListItem, Bot } from '../../src/types/chat';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
+import { botService } from '../../src/services/botService';
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, botId, botName, botAvatar, suggestion1, suggestion2, suggestion3 } = useLocalSearchParams();
   const router = useRouter();
   const chatId = id as string;
 
-  const { messages, loadMessages, sendMessage, isLoading, isStreaming, loadChatDetails, currentChat, loadMoreMessages, uploadFile } = useChatStore();
+  const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat } = useChatStore();
   const [inputText, setInputText] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
@@ -27,12 +28,46 @@ export default function ChatScreen() {
 
   const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
 
+  // Initialize Chat Metadata from Params
   useEffect(() => {
-    if (chatId) {
+      // If we have bot details in params, set them immediately to show header/welcome
+      if (botId && botName) {
+          const minimalChat: ChatListItem = {
+              id: chatId,
+              status: 'active',
+              last_message_at: '',
+              last_message: null,
+              bot: {
+                  id: botId as string,
+                  name: botName as string,
+                  avatar_url: botAvatar as string,
+                  description: '', // Can't get from list params usually
+                  suggestion1: suggestion1 as string,
+                  suggestion2: suggestion2 as string,
+                  suggestion3: suggestion3 as string,
+              }
+          };
+          // We need a store action to set currentChat without fetching
+          // Assuming I added setCurrentChat to store, if not I will add it in next step.
+          // For now let's assume I can or rely on store logic.
+          if (setCurrentChat) {
+              setCurrentChat(minimalChat);
+          }
+      }
+
+      // If we don't have messages, fetch them
       loadMessages(chatId);
-      loadChatDetails(chatId);
-    }
-  }, [chatId]);
+
+      // If we have a botId, we can also try to fetch full bootstrap details to get description/welcome message
+      // specially if we came from a deep link or partial data
+      if (botId) {
+          botService.getChatBootstrap(botId as string).then(data => {
+              // Update store with full details if needed
+              // This is optional but good for "Welcome" description
+          }).catch(console.error);
+      }
+
+  }, [chatId, botId]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -43,12 +78,11 @@ export default function ChatScreen() {
   };
 
   const handleAudioRecorded = async (uri: string, duration: number) => {
-     // Send audio
      const file = {
          uri,
          name: `audio_${Date.now()}.m4a`,
          mimeType: 'audio/m4a',
-         duration // pass duration if needed by store logic
+         duration
      };
      await uploadFile(chatId, file);
      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -61,12 +95,11 @@ export default function ChatScreen() {
       else if (type === 'camera') results = await takePhoto();
 
       if (results) {
-          // Upload each selected file
           for (const file of results) {
               await uploadFile(chatId, {
                   uri: file.uri,
                   name: file.name,
-                  mimeType: file.type || 'application/octet-stream' // fallback
+                  mimeType: file.type || 'application/octet-stream'
               });
           }
           flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -116,10 +149,10 @@ export default function ChatScreen() {
         <Pressable onPress={() => router.back()} className="mr-3 p-1">
            <ArrowLeft color="#fff" size={24} />
         </Pressable>
-        <UserAvatar imageUri={currentChat?.bot?.avatar_url} size={32} className="mr-3" />
+        <UserAvatar imageUri={currentChat?.bot?.avatar_url || (botAvatar as string)} size={32} className="mr-3" />
         <View className="flex-1">
              <Text className="text-starlight text-lg font-bold">
-                {currentChat?.bot?.name || 'Chat'}
+                {currentChat?.bot?.name || (botName as string) || 'Chat'}
             </Text>
         </View>
       </View>
@@ -129,13 +162,13 @@ export default function ChatScreen() {
           <View className="flex-1 justify-center items-center">
               <ActivityIndicator color="#818cf8" size="large" />
           </View>
-      ) : messages.length === 0 && currentChat ? (
+      ) : messages.length === 0 ? (
           <ChatWelcome
-             botAvatar={currentChat.bot.avatar_url}
-             botName={currentChat.bot.name}
-             description={currentChat.bot.description}
+             botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
+             botName={currentChat?.bot?.name || (botName as string) || ''}
+             description={currentChat?.bot?.description || ''}
              suggestions={getSuggestions()}
-             onSuggestionPress={(text) => { setInputText(text); handleSend(); }} // Fix direct send
+             onSuggestionPress={(text) => { setInputText(text); handleSend(); }}
           />
       ) : (
           <View className="flex-1">
@@ -151,7 +184,6 @@ export default function ChatScreen() {
                 onEndReached={() => loadMoreMessages(chatId)}
                 onEndReachedThreshold={0.5}
             />
-            {/* Scroll Down FAB */}
             {showScrollDown && (
                 <Pressable
                     onPress={scrollToBottom}
@@ -186,7 +218,6 @@ export default function ChatScreen() {
           onTakePhoto={() => handleAttachmentSelect('camera')}
       />
 
-      {/* Loading Overlay for Uploads */}
       {isPickerLoading && (
           <View className="absolute inset-0 bg-black/50 justify-center items-center">
               <ActivityIndicator size="large" color="#818cf8" />

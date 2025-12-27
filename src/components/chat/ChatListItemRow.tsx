@@ -13,7 +13,6 @@ type Props = {
 
 // Simple helper to detect locale (mocking i18n for now if not fully integrated)
 const getLocale = () => {
-  // TODO: Use real i18n.language
   return enUS;
 };
 
@@ -48,7 +47,17 @@ export const ChatListItemRow: React.FC<Props> = ({ item }) => {
   const router = useRouter();
 
   const handlePress = () => {
-    router.push(`/chat/${item.id}`);
+    router.push({
+        pathname: `/chat/${item.id}`,
+        params: {
+            botId: item.bot.id,
+            botName: item.bot.name,
+            botAvatar: item.bot.avatar_url,
+            suggestion1: item.bot.suggestion1,
+            suggestion2: item.bot.suggestion2,
+            suggestion3: item.bot.suggestion3,
+        }
+    });
   };
 
   const lastMessageContent = stripMarkdown(item.last_message?.content);

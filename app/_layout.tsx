@@ -32,16 +32,9 @@ export default function RootLayout() {
 
   if (isLoading) {
     return (
-       <View style={{ flex: 1 }}>
-        {/* O Stack precisa existir para o router funcionar, mesmo que escondido */}
-        <View style={{ display: 'none' }}>
-           <Stack />
-        </View>
       <View className="flex-1 justify-center items-center bg-background">
         <ActivityIndicator size="large" color="#06b6d4" />
       </View>
-     </View> 
-
     );
   }
 

@@ -17,7 +17,7 @@ interface ChatState {
   sendMessage: (chatId: string | number, text: string) => Promise<void>;
   addMessage: (message: Message) => void;
   uploadFile: (chatId: string | number, file: any) => Promise<void>;
-  loadChatDetails: (chatId: string | number) => Promise<void>;
+  setCurrentChat: (chat: ChatListItem) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -29,16 +29,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   hasMore: true,
   page: 1,
 
+  setCurrentChat: (chat) => set({ currentChat: chat }),
+
   loadMessages: async (chatId) => {
     set({ isLoading: true, error: null, page: 1, hasMore: true });
     try {
-      // Assuming getMessages supports pagination or we fetch initial batch
-      // For now, let's assume it returns the latest messages.
-      // Ideally backend returns { results: [], next: ... }
-      // We need to adjust chatService.getMessages to return full paginated response to handle hasMore properly.
-      // But for now, let's keep it simple as per previous step, but we might need to refactor chatService slightly.
       const messages = await chatService.getMessages(chatId);
-      set({ messages, isLoading: false });
+      set({ messages: Array.isArray(messages) ? messages : [], isLoading: false });
     } catch (error) {
       set({ error: 'Failed to load messages', isLoading: false });
     }
@@ -50,33 +47,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       set({ isLoading: true });
       try {
-          // We need a paginated endpoint.
-          // Since chatService.getMessages currently returns Message[], we need to enhance it.
-          // Let's assume for now we don't implement pagination fully until chatService is updated.
-          // Just a placeholder.
-          // const newMessages = await chatService.getMessages(chatId, page + 1);
-          // set({ messages: [...get().messages, ...newMessages], page: page + 1, isLoading: false });
+          // Pagination implementation deferred
           set({ isLoading: false });
       } catch (e) {
           set({ isLoading: false });
       }
   },
 
-  loadChatDetails: async (chatId) => {
-    try {
-      const chat = await chatService.getChatDetails(chatId);
-      set({ currentChat: chat });
-    } catch (error) {
-       console.error("Failed to load chat details", error);
-    }
-  },
-
   addMessage: (message) => {
-    set((state) => ({ messages: [message, ...state.messages] }));
+    const currentMessages = get().messages || [];
+    set({ messages: [message, ...currentMessages] });
   },
 
   sendMessage: async (chatId, text) => {
-    // 1. Optimistic update: Add User Message
     const userMsg: Message = {
       id: `temp-${Date.now()}`,
       role: 'user',
@@ -85,12 +68,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       status: 'sending'
     };
 
-    set((state) => ({
-      messages: [userMsg, ...state.messages],
-      isStreaming: true
-    }));
+    const currentMessages = get().messages || [];
 
-    // 2. Placeholder for AI Message
+    set({
+      messages: [userMsg, ...currentMessages],
+      isStreaming: true
+    });
+
     const aiMsgId = `temp-stream-${Date.now()}`;
     const aiMsg: Message = {
       id: aiMsgId,
@@ -102,13 +86,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set((state) => ({ messages: [aiMsg, ...state.messages] }));
 
-    // 3. Call Stream
     await streamMessage(
       chatId,
       text,
       {
           onStart: (meta) => {
-              // Optionally update temp IDs with real IDs if provided
           },
           onChunk: (chunk) => {
             set((state) => ({
@@ -140,8 +122,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
      set({ isStreaming: true });
      try {
        const response = await chatService.uploadFile(chatId, file);
+       const currentMessages = get().messages || [];
+
        if (Array.isArray(response)) {
-          set((state) => ({ messages: [...response.reverse(), ...state.messages] }));
+          set({ messages: [...response.reverse(), ...currentMessages] });
        }
      } catch (e) {
        console.error(e);
