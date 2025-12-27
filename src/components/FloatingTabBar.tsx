@@ -2,15 +2,15 @@ import React from 'react';
 import { View, Pressable, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, User, MessageCircle, LayoutDashboard } from 'lucide-react-native';
+import { Home, User, MessageCircle, Compass, LayoutDashboard } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const ICON_MAP: Record<string, any> = {
-  'index': Home,
+  'index': MessageCircle, // Home is now ChatList
   'profile': User,
-  'chat': MessageCircle,
+  'explore': Compass, // New icon for Explore
 };
 
 function TabBarItem({

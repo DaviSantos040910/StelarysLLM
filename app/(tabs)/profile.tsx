@@ -37,7 +37,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-space-bg" edges={['top']}>
       <View className="items-center pb-8 pt-4">
-        <UserAvatar uri={user?.avatar_url} size={96} className="mb-4 shadow-lg shadow-nebula/30 border-nebula/50" />
+        <UserAvatar imageUri={user?.avatar_url} size={96} className="mb-4 shadow-lg shadow-nebula/30 border-nebula/50" />
         <Text className="text-xl font-bold text-white">{user?.username || 'Astronaut'}</Text>
         <Text className="text-gray-400">{user?.email || 'explorer@stelarys.com'}</Text>
       </View>

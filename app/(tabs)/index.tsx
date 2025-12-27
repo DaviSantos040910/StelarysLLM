@@ -1,62 +1,42 @@
-import React, { useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useWorkspaceStore } from '../../src/stores/workspaceStore';
 import { useAuthStore } from '../../src/stores/authStore';
-import { Workspace } from '../../src/types';
-import { BookOpen, Briefcase, Code, Folder, Plus } from 'lucide-react-native';
 import { UserAvatar } from '../../src/components/UserAvatar';
+import { ChatListItem } from '../../src/types/chat';
+import { chatListService } from '../../src/services/chatListService';
+import { ChatListItemRow } from '../../src/components/chat/ChatListItemRow';
+import { Plus } from 'lucide-react-native';
 
-const ICON_MAP: Record<string, any> = {
-  'productivity': Briefcase,
-  'coding': Code,
-  'education': BookOpen,
-  'default': Folder
-};
-
-function StudyCard({ item }: { item: Workspace }) {
+export default function ChatListScreen() {
   const router = useRouter();
-  const IconComponent = ICON_MAP[item.category_id || 'default'] || ICON_MAP['default'];
-
-  return (
-    <TouchableOpacity
-      className="flex-1 bg-space-light border border-white/10 p-4 rounded-xl shadow-sm m-2 h-40 justify-between"
-      onPress={() => router.push(`/study/${item.id}`)}
-    >
-      <View>
-        <View className="bg-cosmic-purple/20 w-10 h-10 rounded-full items-center justify-center mb-3">
-          <IconComponent size={20} color="#818cf8" />
-        </View>
-        <Text className="font-bold text-starlight text-lg" numberOfLines={2}>
-          {item.name}
-        </Text>
-      </View>
-
-      <View className="flex-row justify-between items-center">
-        <View className="bg-white/5 px-2 py-1 rounded text-xs">
-           <Text className="text-gray-400 text-xs font-medium uppercase">{item.category_id || 'General'}</Text>
-        </View>
-        <Text className="text-gray-500 text-xs">{item.files_count} files</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-export default function LibraryScreen() {
-  const router = useRouter();
-  const { workspaces, loadWorkspaces, isLoading, error } = useWorkspaceStore();
   const { user } = useAuthStore();
+  const [chats, setChats] = useState<ChatListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadChats = async () => {
+    setIsLoading(true);
+    try {
+      const data = await chatListService.getActiveChats();
+      setChats(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      loadWorkspaces();
+      loadChats();
     }, [])
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-space-dark px-2" edges={['top']}>
-      <View className="flex-row justify-between items-center px-4 py-4 mb-2">
+    <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-4 py-4 mb-2 border-b border-white/5">
         <View>
              <Text className="text-starlight text-lg font-medium">Olá,</Text>
              <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
@@ -66,41 +46,41 @@ export default function LibraryScreen() {
         </TouchableOpacity>
       </View>
 
-      {error && (
-        <View className="bg-red-900/50 p-4 m-2 rounded-lg border border-red-500/50">
-          <Text className="text-red-200">{error}</Text>
-        </View>
-      )}
-
-      {isLoading && workspaces.length === 0 ? (
+      {/* Chat List */}
+      {isLoading ? (
          <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" color="#818cf8" />
          </View>
       ) : (
         <FlatList
-          data={workspaces}
-          renderItem={({ item }) => <StudyCard item={item} />}
+          data={chats}
+          renderItem={({ item }) => <ChatListItemRow item={item} />}
           keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={loadWorkspaces} tintColor="#818cf8" />
+            <RefreshControl refreshing={isLoading} onRefresh={loadChats} tintColor="#818cf8" />
           }
-          ListFooterComponent={<View className="h-24" />}
           ListEmptyComponent={
-            <View className="items-center justify-center py-20">
-               <Text className="text-gray-500 text-center">No studies found.{'\n'}Create your first one!</Text>
+            <View className="items-center justify-center py-20 px-6">
+               <Text className="text-starlight text-lg font-bold mb-2">No conversations yet</Text>
+               <Text className="text-gray-400 text-center">
+                   Visit the Explore tab to find a Tutor and start learning!
+               </Text>
             </View>
           }
         />
       )}
 
+      {/* Floating Action Button - maybe to start new chat or just go to Explore? */}
+      {/* The prompt says 'Conversations are study sessions'. Explore is for finding bots.
+          Maybe this button should go to Explore?
+      */}
       <TouchableOpacity
-        className="absolute bottom-32 right-6 bg-accent-cyan w-16 h-16 rounded-full justify-center items-center shadow-lg shadow-cyan-500/50"
-        onPress={() => router.push('/create')}
+        className="absolute bottom-24 right-6 bg-cosmic-purple w-14 h-14 rounded-full justify-center items-center shadow-lg shadow-indigo-500/50"
+        onPress={() => router.push('/(tabs)/explore')}
       >
-        <Plus color="white" size={32} />
+        <Plus color="white" size={28} />
       </TouchableOpacity>
     </SafeAreaView>
   );
