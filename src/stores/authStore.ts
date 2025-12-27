@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,
   error: null,
 
   login: async (email, pass) => {
@@ -90,10 +90,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loadUser: async () => {
-    set({ isLoading: true });
     try {
       const token = await SecureStore.getItemAsync('token');
-      const refresh = await SecureStore.getItemAsync('refresh');
 
       if (token) {
         // Here we might want to fetch the user profile if we don't have it stored.
