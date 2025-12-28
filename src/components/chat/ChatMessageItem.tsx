@@ -139,7 +139,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   </View>
 
                   {/* Suggestions Chips (Mini) */}
-                  {message.suggestions && message.suggestions.length > 0 && (
+                  {isLastMessage && message.suggestions && message.suggestions.length > 0 && (
                       <View className="flex-row flex-wrap">
                           {message.suggestions.map((suggestion, idx) => (
                               <Pressable

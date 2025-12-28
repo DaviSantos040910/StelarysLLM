@@ -47,7 +47,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       set({ isLoading: true });
       try {
-          // Pagination implementation deferred
           set({ isLoading: false });
       } catch (e) {
           set({ isLoading: false });
@@ -126,10 +125,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
   uploadFile: async (chatId, file) => {
      set({ isStreaming: true });
      try {
-       const response = await chatService.uploadFile(chatId, file);
+       let response;
+       const isAudio = file.type?.startsWith('audio/') || file.mimeType?.startsWith('audio/');
+
+       if (isAudio) {
+           response = await chatService.sendVoiceMessage(chatId, file);
+       } else {
+           response = await chatService.uploadFile(chatId, file);
+       }
+
        const currentMessages = get().messages || [];
 
        if (Array.isArray(response)) {
+          // If response is array (like from voice-message), it contains [userMsg, aiMsg]
+          // We need to merge them correctly.
+          // Usually responses are sorted by created_at.
+          // Assuming response has newest first? Or list?
+          // If we receive a list of new messages, we prepend them.
           set({ messages: [...response.reverse(), ...currentMessages] });
        }
      } catch (e) {

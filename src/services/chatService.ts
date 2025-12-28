@@ -20,11 +20,30 @@ export const chatService = {
   },
 
   getChatDetails: async (chatId: string | number): Promise<ChatListItem> => {
-    // Note: The backend endpoint GET /api/v1/chats/{id}/ does not exist.
-    // We must rely on what we have. If this fails (404), the UI should handle it.
-    // Ideally, we shouldn't call this if the backend doesn't support it.
-    // For now, we keep it but it might fail.
+    // Endpoint might not exist, handled by caller or store
     const response = await client.get<ChatListItem>(`/api/v1/chats/${chatId}/`);
+    return response.data;
+  },
+
+  sendVoiceMessage: async (chatId: string | number, file: any): Promise<Message[]> => {
+    const formData = new FormData();
+    formData.append('audio', {
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType || 'audio/m4a',
+    } as any);
+
+    if (file.duration) {
+        formData.append('duration', String(file.duration));
+    }
+    formData.append('reply_with_audio', 'false'); // Or true if TTS enabled in future
+
+    // This endpoint returns [UserMessage, AiMessage]
+    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -36,11 +55,6 @@ export const chatService = {
       type: file.mimeType || 'application/octet-stream',
     } as any);
     formData.append('content', '');
-
-    // Pass duration if available (e.g. for audio)
-    if (file.duration) {
-        formData.append('duration', String(file.duration));
-    }
 
     const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
       headers: {
@@ -75,7 +89,6 @@ export const chatService = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Check if we can read the stream
       if (response.body) {
         // @ts-ignore
         const reader = response.body.getReader();
@@ -85,32 +98,20 @@ export const chatService = {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
-          // SSE format usually is "data: ...\n\n"
-          // We need to parse this.
           const lines = chunk.split('\n');
           for (const line of lines) {
              if (line.startsWith('data: ')) {
                const data = line.slice(6);
-               if (data === '[DONE]') {
-                 break;
-               }
+               if (data === '[DONE]') break;
                try {
                  const parsed = JSON.parse(data);
-                 if (parsed.content) {
-                    onChunk(parsed.content);
-                 }
-               } catch (e) {
-                 // If not JSON, maybe just text?
-                 // or partial JSON.
-               }
+                 if (parsed.content) onChunk(parsed.content);
+               } catch (e) {}
              }
           }
         }
       } else {
-        // Fallback for non-streaming environments or if fetch doesn't expose body reader (like legacy JSC)
-        // We might just wait for full response.
         const text = await response.text();
-        // Parse SSE manually from full text
          const lines = text.split('\n');
           for (const line of lines) {
              if (line.startsWith('data: ')) {
