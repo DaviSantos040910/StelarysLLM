@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Pressable, Text } from 'react-native';
-import { Mic, Send, Plus, Trash2 } from 'lucide-react-native';
+import { Mic, Send, Paperclip, Image as ImageIcon, Camera, Trash2 } from 'lucide-react-native';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -9,6 +9,8 @@ interface ChatInputProps {
   onChangeText: (text: string) => void;
   onSend: () => void;
   onPlusPress: () => void;
+  onGalleryPress: () => void;
+  onCameraPress: () => void;
   onAudioRecorded: (uri: string, duration: number) => void;
   disabled?: boolean;
 }
@@ -18,6 +20,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onChangeText,
   onSend,
   onPlusPress,
+  onGalleryPress,
+  onCameraPress,
   onAudioRecorded,
   disabled
 }) => {
@@ -60,17 +64,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
   };
 
-  const handleSendPress = () => {
-    if (value.trim()) {
-      onSend();
-    } else {
-      handleMicPress();
-    }
-  };
-
   // Card container styles
   const cardContainerClass = "bg-space-light rounded-[28px] p-4";
   const wrapperClass = "px-4 pb-2 pt-2"; // wrapper to float the card
+  const iconColor = "#94a3b8";
 
   if (isRecording) {
     return (
@@ -79,6 +76,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Pressable
                 onPress={cancelRecording}
                 className="p-3 bg-red-500/10 rounded-full"
+                accessibilityLabel="Cancelar gravação"
             >
                 <Trash2 color="#ef4444" size={24} />
             </Pressable>
@@ -94,6 +92,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Pressable
                 onPress={handleStopRecording}
                 className="p-3 bg-cosmic-purple rounded-full"
+                accessibilityLabel="Enviar áudio"
             >
                 <Send color="white" size={24} />
             </Pressable>
@@ -119,20 +118,42 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
             {/* Bottom: Icons Row */}
             <View className="flex-row justify-between items-center">
-                {/* Left: Attachment */}
-                <Pressable
-                    onPress={onPlusPress}
-                    disabled={disabled}
-                    className="p-2 bg-white/5 rounded-full"
-                >
-                    <Plus color="#94a3b8" size={24} />
-                </Pressable>
+                {/* Left: Attachment Actions */}
+                <View className="flex-row items-center gap-5">
+                    <Pressable
+                        onPress={onPlusPress}
+                        disabled={disabled}
+                        className="p-2 -ml-2"
+                        accessibilityLabel="Abrir menu de anexos"
+                    >
+                        <Paperclip color={iconColor} size={24} />
+                    </Pressable>
+
+                    <Pressable
+                        onPress={onGalleryPress}
+                        disabled={disabled}
+                        className="p-2"
+                        accessibilityLabel="Escolher da galeria"
+                    >
+                        <ImageIcon color={iconColor} size={24} />
+                    </Pressable>
+
+                    <Pressable
+                        onPress={onCameraPress}
+                        disabled={disabled}
+                        className="p-2"
+                        accessibilityLabel="Tirar foto"
+                    >
+                        <Camera color={iconColor} size={24} />
+                    </Pressable>
+                </View>
 
                 {/* Right: Mic or Send */}
                 <Pressable
                     onPress={value.trim() ? onSend : handleMicPress}
                     disabled={disabled}
                     className={`p-3 rounded-full ${value.trim() ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                    accessibilityLabel={value.trim() ? "Enviar mensagem" : "Gravar áudio"}
                 >
                     {value.trim() ? (
                         <Send color="white" size={20} />

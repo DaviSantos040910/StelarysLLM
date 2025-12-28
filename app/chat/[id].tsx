@@ -215,6 +215,8 @@ export default function ChatScreen() {
             onChangeText={setInputText}
             onSend={() => handleSend()}
             onPlusPress={() => setIsAttachmentMenuVisible(true)}
+            onGalleryPress={() => handleAttachmentSelect('image')}
+            onCameraPress={() => handleAttachmentSelect('camera')}
             onAudioRecorded={handleAudioRecorded}
             disabled={isStreaming || isPickerLoading}
         />
