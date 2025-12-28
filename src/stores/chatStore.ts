@@ -103,7 +103,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
              set((state) => ({
                 isStreaming: false,
                 messages: state.messages.map((m) =>
-                    m.id === aiMsgId ? { ...m, status: 'sent', id: meta.message_id || m.id } :
+                    m.id === aiMsgId ? {
+                        ...m,
+                        status: 'sent',
+                        id: meta.message_id || m.id,
+                        suggestions: meta.suggestions || m.suggestions
+                    } :
                     m.id === userMsg.id ? { ...m, status: 'sent', id: meta.user_message_id || m.id } : m
                 )
              }));

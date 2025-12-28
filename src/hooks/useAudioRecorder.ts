@@ -82,7 +82,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
 
       timerRef.current = setInterval(() => {
         setDuration((prev) => prev + 500);
-      }, 500);
+      }, 500) as unknown as NodeJS.Timeout;
 
       return true;
     } catch (err) {
@@ -119,7 +119,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
       setRecordingState('recording');
       timerRef.current = setInterval(() => {
         setDuration((prev) => prev + 500);
-      }, 500);
+      }, 500) as unknown as NodeJS.Timeout;
     } catch (err) {
       console.error('[AudioRecorder] Resume error:', err);
     }
