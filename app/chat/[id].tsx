@@ -47,32 +47,41 @@ export default function ChatScreen() {
                   suggestion3: suggestion3 as string,
               }
           };
-          // We need a store action to set currentChat without fetching
-          // Assuming I added setCurrentChat to store, if not I will add it in next step.
-          // For now let's assume I can or rely on store logic.
           if (setCurrentChat) {
               setCurrentChat(minimalChat);
           }
       }
 
-      // If we don't have messages, fetch them
       loadMessages(chatId);
 
-      // If we have a botId, we can also try to fetch full bootstrap details to get description/welcome message
-      // specially if we came from a deep link or partial data
+      // If we have a botId, fetch full details for Description/Welcome
       if (botId) {
           botService.getChatBootstrap(botId as string).then(data => {
-              // Update store with full details if needed
-              // This is optional but good for "Welcome" description
+              if (setCurrentChat) {
+                  setCurrentChat({
+                      id: chatId,
+                      status: 'active',
+                      last_message_at: '',
+                      last_message: null,
+                      bot: {
+                          id: botId as string,
+                          name: data.bot.name,
+                          avatar_url: data.bot.avatarUrl,
+                          description: data.welcome || '',
+                          suggestion1: data.suggestions?.[0],
+                          suggestion2: data.suggestions?.[1],
+                          suggestion3: data.suggestions?.[2],
+                      }
+                  });
+              }
           }).catch(console.error);
       }
 
   }, [chatId, botId]);
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
-    const text = inputText;
-    setInputText('');
+  const handleSend = async (text: string = inputText) => {
+    if (!text.trim()) return;
+    if (text === inputText) setInputText('');
     await sendMessage(chatId, text);
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
@@ -129,6 +138,7 @@ export default function ChatScreen() {
             message={item}
             isLastMessage={index === 0}
             onCopy={handleCopy}
+            onSuggestionPress={handleSend}
         />
     );
   };
@@ -168,7 +178,7 @@ export default function ChatScreen() {
              botName={currentChat?.bot?.name || (botName as string) || ''}
              description={currentChat?.bot?.description || ''}
              suggestions={getSuggestions()}
-             onSuggestionPress={(text) => { setInputText(text); handleSend(); }}
+             onSuggestionPress={(text) => { setInputText(text); handleSend(text); }}
           />
       ) : (
           <View className="flex-1">
@@ -203,7 +213,7 @@ export default function ChatScreen() {
         <ChatInput
             value={inputText}
             onChangeText={setInputText}
-            onSend={handleSend}
+            onSend={() => handleSend()}
             onPlusPress={() => setIsAttachmentMenuVisible(true)}
             onAudioRecorded={handleAudioRecorded}
             disabled={isStreaming || isPickerLoading}

@@ -4,6 +4,7 @@ import { Copy, ThumbsUp, Volume2, RefreshCw, FileText } from 'lucide-react-nativ
 import { Image } from 'expo-image';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
+import { SuggestionChip } from './SuggestionChip';
 import * as Linking from 'expo-linking';
 
 interface ChatMessageItemProps {
@@ -13,6 +14,7 @@ interface ChatMessageItemProps {
   onLike?: (id: string) => void;
   onRetry?: (id: string) => void;
   onTTS?: (id: string, text: string) => void;
+  onSuggestionPress?: (text: string) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -21,16 +23,26 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     onCopy,
     onLike,
     onRetry,
-    onTTS
+    onTTS,
+    onSuggestionPress
 }) => {
   const isUser = message.role === 'user';
   const isStreaming = message.status === 'sending' && !isUser;
 
+  // Audio detection logic: Extension or MimeType
+  const isAudio = (message.attachment_type?.startsWith('audio') ||
+                   message.attachment_url?.endsWith('.m4a') ||
+                   message.attachment_url?.endsWith('.mp3') ||
+                   message.attachment_url?.endsWith('.wav') ||
+                   message.attachment_url?.endsWith('.aac')) && !!message.attachment_url;
+
+  const isImage = (message.attachment_type?.startsWith('image') ||
+                   message.attachment_url?.match(/\.(jpeg|jpg|gif|png)$/) != null) && !!message.attachment_url;
+
   // Content rendering logic
   const renderContent = () => {
      // Audio
-     // Note: `attachment_type` might be 'audio' or 'audio/m4a' etc.
-     if (message.attachment_type?.startsWith('audio') && message.attachment_url) {
+     if (isAudio && message.attachment_url) {
          return (
              <AudioMessagePlayer
                  uri={message.attachment_url}
@@ -41,7 +53,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
      }
 
      // Image
-     if (message.attachment_type?.startsWith('image') && message.attachment_url) {
+     if (isImage && message.attachment_url) {
          return (
              <Pressable onPress={() => {/* TODO: Open Image Viewer */}}>
                 <Image
@@ -54,7 +66,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
      }
 
      // File/Document
-     if (message.attachment_url && !message.attachment_type?.startsWith('image') && !message.attachment_type?.startsWith('audio')) {
+     if (message.attachment_url && !isImage && !isAudio) {
          return (
              <Pressable
                 onPress={() => Linking.openURL(message.attachment_url!)}
@@ -106,23 +118,40 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
           {/* Actions */}
           {!isStreaming && (message.content?.length > 0 || message.attachment_url) && (
-              <View className="flex-row items-center mt-2 space-x-4 pl-1">
-                  {message.content?.length > 0 && (
-                    <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
-                        <Copy size={16} color="#94a3b8" />
-                    </Pressable>
+              <View className="flex-col pl-1 mt-2">
+                  <View className="flex-row items-center space-x-4 mb-3">
+                      {message.content?.length > 0 && (
+                        <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
+                            <Copy size={16} color="#94a3b8" />
+                        </Pressable>
+                      )}
+                      <Pressable onPress={() => onLike?.(message.id as string)} className="p-2">
+                          <ThumbsUp size={16} color="#94a3b8" />
+                      </Pressable>
+                      {message.content?.length > 0 && (
+                        <Pressable onPress={() => onTTS?.(message.id as string, message.content)} className="p-2">
+                            <Volume2 size={16} color="#94a3b8" />
+                        </Pressable>
+                      )}
+                      <Pressable onPress={() => onRetry?.(message.id as string)} className="p-2">
+                          <RefreshCw size={16} color="#94a3b8" />
+                      </Pressable>
+                  </View>
+
+                  {/* Suggestions Chips (Mini) */}
+                  {message.suggestions && message.suggestions.length > 0 && (
+                      <View className="flex-row flex-wrap">
+                          {message.suggestions.map((suggestion, idx) => (
+                              <Pressable
+                                key={idx}
+                                onPress={() => onSuggestionPress?.(suggestion)}
+                                className="mr-2 mb-2 px-3 py-1 rounded-full border border-white/10 bg-space-light/50 active:bg-space-light"
+                              >
+                                  <Text className="text-gray-300 text-xs">{suggestion}</Text>
+                              </Pressable>
+                          ))}
+                      </View>
                   )}
-                  <Pressable onPress={() => onLike?.(message.id)} className="p-2">
-                      <ThumbsUp size={16} color="#94a3b8" />
-                  </Pressable>
-                  {message.content?.length > 0 && (
-                    <Pressable onPress={() => onTTS?.(message.id, message.content)} className="p-2">
-                        <Volume2 size={16} color="#94a3b8" />
-                    </Pressable>
-                  )}
-                  <Pressable onPress={() => onRetry?.(message.id)} className="p-2">
-                      <RefreshCw size={16} color="#94a3b8" />
-                  </Pressable>
               </View>
           )}
       </View>

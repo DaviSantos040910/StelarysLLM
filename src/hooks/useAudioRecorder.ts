@@ -21,7 +21,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
 
   const cleanUp = useCallback(() => {
     if (timerRef.current) {
-      clearInterval(timerRef.current);
+      clearInterval(timerRef.current as unknown as number);
       timerRef.current = null;
     }
 
@@ -104,7 +104,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
       await recordingRef.current.pauseAsync();
       setRecordingState('paused');
       if (timerRef.current) {
-        clearInterval(timerRef.current);
+        clearInterval(timerRef.current as unknown as number);
         timerRef.current = null;
       }
     } catch (err) {
@@ -131,7 +131,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
     }
 
     if (timerRef.current) {
-      clearInterval(timerRef.current);
+      clearInterval(timerRef.current as unknown as number);
       timerRef.current = null;
     }
 
@@ -191,7 +191,7 @@ export const useAudioRecorder = (meteringSharedValue?: SharedValue<number>) => {
 
     try {
       if (timerRef.current) {
-        clearInterval(timerRef.current);
+        clearInterval(timerRef.current as unknown as number);
         timerRef.current = null;
       }
 
