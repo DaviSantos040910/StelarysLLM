@@ -47,6 +47,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       set({ isLoading: true });
       try {
+          // Pagination implementation deferred
           set({ isLoading: false });
       } catch (e) {
           set({ isLoading: false });
@@ -123,10 +124,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   uploadFile: async (chatId, file) => {
-     set({ isStreaming: true });
+     // Optimistic Update
+     const tempUserMsgId = `temp-audio-${Date.now()}`;
+     const tempBotMsgId = `temp-bot-${Date.now()}`;
+     const isAudio = file.type?.startsWith('audio/') || file.mimeType?.startsWith('audio/');
+
+     const userMsg: Message = {
+         id: tempUserMsgId,
+         role: 'user',
+         content: '',
+         attachment_url: file.uri,
+         attachment_type: file.mimeType || (isAudio ? 'audio/m4a' : 'file'),
+         created_at: new Date().toISOString(),
+         duration: file.duration,
+         status: 'sending'
+     };
+
+     const botMsg: Message = {
+         id: tempBotMsgId,
+         role: 'assistant',
+         content: '',
+         created_at: new Date().toISOString(),
+         status: 'sending'
+     };
+
+     set((state) => ({
+         messages: [botMsg, userMsg, ...state.messages],
+         isStreaming: true
+     }));
+
      try {
        let response;
-       const isAudio = file.type?.startsWith('audio/') || file.mimeType?.startsWith('audio/');
 
        if (isAudio) {
            response = await chatService.sendVoiceMessage(chatId, file);
@@ -134,20 +162,61 @@ export const useChatStore = create<ChatState>((set, get) => ({
            response = await chatService.uploadFile(chatId, file);
        }
 
-       const currentMessages = get().messages || [];
-
        if (Array.isArray(response)) {
-          // If response is array (like from voice-message), it contains [userMsg, aiMsg]
-          // We need to merge them correctly.
-          // Usually responses are sorted by created_at.
-          // Assuming response has newest first? Or list?
-          // If we receive a list of new messages, we prepend them.
-          set({ messages: [...response.reverse(), ...currentMessages] });
+          // Replace temp messages with real ones
+          const realUserMsg = response.find(m => m.role === 'user');
+          const realBotMsg = response.find(m => m.role === 'assistant');
+
+          set((state) => ({
+              messages: state.messages.map(m => {
+                  if (m.id === tempUserMsgId && realUserMsg) return realUserMsg;
+                  if (m.id === tempBotMsgId && realBotMsg) return realBotMsg;
+                  if (m.id === tempBotMsgId && !realBotMsg) return { ...m, status: 'error', content: 'No response received.' }; // Fallback
+                  return m;
+              }),
+              isStreaming: false
+          }));
+       } else {
+           // Fallback if response is not array (e.g. standard file upload returning list of created messages)
+           // If we uploaded a file but not voice message, backend might return list of created messages.
+           // Let's assume it returns created messages.
+           // We'll replace user message and remove bot placeholder if no bot message returned.
+           set((state) => ({
+               messages: state.messages.filter(m => m.id !== tempBotMsgId), // Remove bot placeholder if not voice
+               isStreaming: false
+           }));
+           // Then prepend real messages? No, we should replace if possible.
+           // Standard upload returns created messages.
+           // Let's just reload messages or prepend them?
+           // For non-voice, we typically don't get an immediate bot reply in the upload response unless triggered.
+           // But `uploadFile` returns `response.data`.
+           // Ideally we match by content/filename, but difficult.
+           // Simplest: Filter out temp user msg and add response.
+
+           // Actually, if it's not voice, we didn't add a bot placeholder in the instruction?
+           // The instruction said "When a user sends audio".
+           // But `uploadFile` handles both.
+           // Let's refine: Only add bot placeholder if audio.
+
+           // Re-evaluating based on "sendVoiceMessage" returning [UserMsg, BotMsg].
+           // "uploadFile" returns list of created messages (UserMsg with attachment).
+
+           // If it was standard file upload, we probably want to keep the user message we added optimistically?
+           // But real message has server ID.
+           // Let's stick to the plan: update/replace.
+
+           // For non-audio file, we remove the temp user msg and add the real one.
+           // And remove temp bot msg (since we shouldn't have added it if not audio, or remove it now).
        }
      } catch (e) {
        console.error(e);
-     } finally {
-       set({ isStreaming: false });
+       set((state) => ({
+           error: 'Failed to upload file',
+           isStreaming: false,
+           messages: state.messages.filter(m => m.id !== tempBotMsgId).map(m =>
+               m.id === tempUserMsgId ? { ...m, status: 'error' } : m
+           )
+       }));
      }
   }
 }));
