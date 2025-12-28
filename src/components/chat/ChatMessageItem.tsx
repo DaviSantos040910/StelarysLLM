@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { Copy, ThumbsUp, Volume2, RefreshCw, FileText } from 'lucide-react-native';
+import { Copy, ThumbsUp, Volume2, RefreshCw, FileText, BookOpen } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
-import { SuggestionChip } from './SuggestionChip';
 import * as Linking from 'expo-linking';
 
 interface ChatMessageItemProps {
@@ -15,6 +15,8 @@ interface ChatMessageItemProps {
   onRetry?: (id: string) => void;
   onTTS?: (id: string, text: string) => void;
   onSuggestionPress?: (text: string) => void;
+  botName?: string;
+  botAvatar?: string;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -24,8 +26,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     onLike,
     onRetry,
     onTTS,
-    onSuggestionPress
+    onSuggestionPress,
+    botName,
+    botAvatar
 }) => {
+  const router = useRouter();
   const isUser = message.role === 'user';
   const isStreaming = message.status === 'sending' && !isUser;
 
@@ -38,6 +43,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
   const isImage = (message.attachment_type?.startsWith('image') ||
                    message.attachment_url?.match(/\.(jpeg|jpg|gif|png)$/) != null) && !!message.attachment_url;
+
+  const handleOpenReader = () => {
+    router.push({
+        pathname: '/chat/reader',
+        params: {
+            content: message.content,
+            botName,
+            botAvatar
+        }
+    });
+  };
 
   // Content rendering logic
   const renderContent = () => {
@@ -121,10 +137,18 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               <View className="flex-col pl-1 mt-2">
                   <View className="flex-row items-center space-x-4 mb-3">
                       {message.content?.length > 0 && (
-                        <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
-                            <Copy size={16} color="#94a3b8" />
-                        </Pressable>
+                        <>
+                            <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
+                                <Copy size={16} color="#94a3b8" />
+                            </Pressable>
+
+                            {/* Reader Mode Button */}
+                            <Pressable onPress={handleOpenReader} className="p-2">
+                                <BookOpen size={16} color="#94a3b8" />
+                            </Pressable>
+                        </>
                       )}
+
                       <Pressable onPress={() => onLike?.(message.id as string)} className="p-2">
                           <ThumbsUp size={16} color="#94a3b8" />
                       </Pressable>

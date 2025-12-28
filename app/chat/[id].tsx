@@ -1,18 +1,23 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, Animated } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable } from 'react-native';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
+
 import { useChatStore } from '../../src/stores/chatStore';
 import { UserAvatar } from '../../src/components/UserAvatar';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatInput } from '../../src/components/chat/ChatInput';
 import { AttachmentMenu } from '../../src/components/chat/AttachmentMenu';
+import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { Message, ChatListItem, Bot } from '../../src/types/chat';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { botService } from '../../src/services/botService';
+
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 export default function ChatScreen() {
   const { id, botId, botName, botAvatar, suggestion1, suggestion2, suggestion3 } = useLocalSearchParams();
@@ -25,12 +30,53 @@ export default function ChatScreen() {
   const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
-
   const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
 
-  // Initialize Chat Metadata from Params
+  // Header Animation State
+  const translateY = useSharedValue(0);
+  const lastContentOffset = useSharedValue(0);
+  const isHeaderVisible = useSharedValue(1); // 1 = visible, 0 = hidden
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentOffset = event.contentOffset.y;
+      const diff = currentOffset - lastContentOffset.value;
+
+      // If scrolling down (diff > 0) and deeper than 50px, hide header
+      // Note: FlatList inverted, so "down" visually is actually "up" in scroll offset if content grows?
+      // Actually, inverted FlatList behaves: offset 0 is bottom. Increasing offset is scrolling up (into history).
+      // So scrolling UP (to see history) increases offset.
+      // Scrolling DOWN (to see recent) decreases offset.
+
+      // Let's adhere to "Hide on scroll DOWN (visually moving content up), Show on scroll UP (visually moving content down)"
+      // In Inverted list:
+      // Dragging finger DOWN (scrolling UP visually to top of content) -> contentOffset decreases.
+      // Dragging finger UP (scrolling DOWN visually to old history) -> contentOffset increases.
+
+      // We want header to hide when we scroll DOWN into history (drag finger UP, offset increases).
+      // We want header to show when we scroll UP to most recent (drag finger DOWN, offset decreases).
+
+      if (diff > 10 && currentOffset > 50) {
+        // Scrolling "down" into history (visually content moves up)
+        isHeaderVisible.value = withTiming(0, { duration: 300 });
+      } else if (diff < -10) {
+        // Scrolling "up" (visually content moves down)
+        isHeaderVisible.value = withTiming(1, { duration: 300 });
+      }
+
+      lastContentOffset.value = currentOffset;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: withTiming(isHeaderVisible.value === 1 ? 0 : -100) }],
+      opacity: withTiming(isHeaderVisible.value === 1 ? 1 : 0),
+    };
+  });
+
+  // Initialize Chat Metadata
   useEffect(() => {
-      // If we have bot details in params, set them immediately to show header/welcome
       if (botId && botName) {
           const minimalChat: ChatListItem = {
               id: chatId,
@@ -41,20 +87,15 @@ export default function ChatScreen() {
                   id: botId as string,
                   name: botName as string,
                   avatar_url: botAvatar as string,
-                  description: '', // Can't get from list params usually
+                  description: '',
                   suggestion1: suggestion1 as string,
                   suggestion2: suggestion2 as string,
                   suggestion3: suggestion3 as string,
               }
           };
-          if (setCurrentChat) {
-              setCurrentChat(minimalChat);
-          }
+          if (setCurrentChat) setCurrentChat(minimalChat);
       }
-
       loadMessages(chatId);
-
-      // If we have a botId, fetch full details for Description/Welcome
       if (botId) {
           botService.getChatBootstrap(botId as string).then(data => {
               if (setCurrentChat) {
@@ -76,7 +117,6 @@ export default function ChatScreen() {
               }
           }).catch(console.error);
       }
-
   }, [chatId, botId]);
 
   const handleSend = async (text: string = inputText) => {
@@ -87,12 +127,7 @@ export default function ChatScreen() {
   };
 
   const handleAudioRecorded = async (uri: string, duration: number) => {
-     const file = {
-         uri,
-         name: `audio_${Date.now()}.m4a`,
-         mimeType: 'audio/m4a',
-         duration
-     };
+     const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
      await uploadFile(chatId, file);
      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
@@ -102,35 +137,22 @@ export default function ChatScreen() {
       if (type === 'image') results = await pickImage();
       else if (type === 'document') results = await pickDocument();
       else if (type === 'camera') results = await takePhoto();
-
       if (results) {
           for (const file of results) {
-              await uploadFile(chatId, {
-                  uri: file.uri,
-                  name: file.name,
-                  mimeType: file.type || 'application/octet-stream'
-              });
+              await uploadFile(chatId, { uri: file.uri, name: file.name, mimeType: file.type || 'application/octet-stream' });
           }
           flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }
   };
 
-  const handleCopy = async (text: string) => {
-      await Clipboard.setStringAsync(text);
-  };
+  const handleCopy = async (text: string) => { await Clipboard.setStringAsync(text); };
 
   const handleScroll = (event: any) => {
       const offsetY = event.nativeEvent.contentOffset.y;
-      if (offsetY > 200) {
-          setShowScrollDown(true);
-      } else {
-          setShowScrollDown(false);
-      }
+      setShowScrollDown(offsetY > 200);
   };
 
-  const scrollToBottom = () => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
+  const scrollToBottom = () => { flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); };
 
   const renderItem = ({ item, index }: { item: Message, index: number }) => {
     return (
@@ -154,18 +176,16 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-space-dark" edges={['top', 'bottom']}>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-white/5 bg-space-dark/80 blur-md">
-        <Pressable onPress={() => router.back()} className="mr-3 p-1">
-           <ArrowLeft color="#fff" size={24} />
-        </Pressable>
-        <UserAvatar imageUri={currentChat?.bot?.avatar_url || (botAvatar as string)} size={32} className="mr-3" />
-        <View className="flex-1">
-             <Text className="text-starlight text-lg font-bold">
-                {currentChat?.bot?.name || (botName as string) || 'Chat'}
-            </Text>
-        </View>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Floating Header */}
+      <FloatingTutorCard
+         botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
+         botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
+         animatedStyle={headerAnimatedStyle}
+         onNewChat={() => {}} // TODO: Implement New Chat action
+         onMenu={() => {}} // TODO: Implement Menu action
+      />
 
       {/* Messages Area */}
       {isLoading && messages.length === 0 ? (
@@ -173,23 +193,25 @@ export default function ChatScreen() {
               <ActivityIndicator color="#818cf8" size="large" />
           </View>
       ) : messages.length === 0 ? (
-          <ChatWelcome
-             botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
-             botName={currentChat?.bot?.name || (botName as string) || ''}
-             description={currentChat?.bot?.description || ''}
-             suggestions={getSuggestions()}
-             onSuggestionPress={(text) => { setInputText(text); handleSend(text); }}
-          />
+          <View className="flex-1 pt-24">
+             <ChatWelcome
+                botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
+                botName={currentChat?.bot?.name || (botName as string) || ''}
+                description={currentChat?.bot?.description || ''}
+                suggestions={getSuggestions()}
+                onSuggestionPress={(text) => { setInputText(text); handleSend(text); }}
+             />
+          </View>
       ) : (
           <View className="flex-1">
-            <FlatList
+            <AnimatedFlatList
                 ref={flatListRef}
                 data={messages}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item: any) => item.id.toString()}
                 renderItem={renderItem}
                 inverted
-                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20 }}
-                onScroll={handleScroll}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20, paddingTop: 100 }} // Extra padding for header
+                onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 onEndReached={() => loadMoreMessages(chatId)}
                 onEndReachedThreshold={0.5}
