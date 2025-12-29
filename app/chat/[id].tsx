@@ -203,7 +203,7 @@ export default function ChatScreen() {
                 keyExtractor={(item: any) => item.id.toString()}
                 renderItem={renderItem}
                 inverted
-                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20, paddingTop: 100 }} // Extra padding for header
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }} // Fixed padding for inverted list
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 onEndReached={() => loadMoreMessages(chatId)}
