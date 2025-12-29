@@ -1,7 +1,7 @@
 import '../global.css';
-import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState, Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
 
@@ -11,14 +11,22 @@ export default function RootLayout() {
   const router = useRouter();
   
   const navigationState = useRootNavigationState();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
 
   useEffect(() => {
     loadUser();
   }, []);
 
+  // Wait for navigation state to be ready
   useEffect(() => {
-    if (!navigationState?.key) return;
+    if (!isNavigationReady && navigationState?.key) {
+      setIsNavigationReady(true);
+    }
+  }, [navigationState?.key]);
 
+  useEffect(() => {
+    // Only run navigation logic if the root navigator is ready
+    if (!isNavigationReady) return;
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -28,7 +36,7 @@ export default function RootLayout() {
     } else if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     }
-  }, [isAuthenticated, segments, isLoading, navigationState?.key]);
+  }, [isAuthenticated, segments, isLoading, isNavigationReady]);
 
   if (isLoading) {
     return (

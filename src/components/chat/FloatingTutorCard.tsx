@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, MoreVertical, MessageSquarePlus } from 'lucide-react-native';
-import Animated, { ViewStyle } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { UserAvatar } from '../UserAvatar';
 
 interface FloatingTutorCardProps {

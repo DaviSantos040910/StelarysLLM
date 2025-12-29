@@ -48,7 +48,7 @@ export const ChatListItemRow: React.FC<Props> = ({ item }) => {
 
   const handlePress = () => {
     router.push({
-        pathname: `/chat/${item.id}`,
+        pathname: `/chat/${item.id}` as any,
         params: {
             botId: item.bot.id,
             botName: item.bot.name,

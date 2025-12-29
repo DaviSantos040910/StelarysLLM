@@ -35,7 +35,7 @@ export const ExploreBotRow: React.FC<Props> = ({ item }) => {
 
         // Navigate with params to help ChatScreen initialize faster
         router.push({
-            pathname: `/chat/${chatId}`,
+            pathname: `/chat/${chatId}` as any,
             params: {
                 botId: item.id,
                 botName: item.name,
