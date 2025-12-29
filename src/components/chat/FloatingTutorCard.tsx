@@ -34,7 +34,7 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
 
   return (
     <Animated.View
-      className="absolute top-0 left-0 right-0 z-50 px-4 pt-[60px] pb-2 items-center"
+      className="absolute top-0 left-0 right-0 z-50 px-4 pt-[40px] pb-2 items-center"
       style={animatedStyle}
       pointerEvents="box-none"
     >

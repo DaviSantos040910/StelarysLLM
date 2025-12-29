@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
-import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 
 import { useChatStore } from '../../src/stores/chatStore';
 import { UserAvatar } from '../../src/components/UserAvatar';
@@ -37,25 +37,23 @@ export default function ChatScreen() {
   const lastContentOffset = useSharedValue(0);
   const isHeaderVisible = useSharedValue(1); // 1 = visible, 0 = hidden
 
+  const handleScrollState = (offset: number) => {
+    if (offset > 200) {
+      setShowScrollDown(true);
+    } else {
+      setShowScrollDown(false);
+    }
+  };
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       const currentOffset = event.contentOffset.y;
       const diff = currentOffset - lastContentOffset.value;
 
+      // Update ScrollDown button visibility via JS callback
+      runOnJS(handleScrollState)(currentOffset);
+
       // If scrolling down (diff > 0) and deeper than 50px, hide header
-      // Note: FlatList inverted, so "down" visually is actually "up" in scroll offset if content grows?
-      // Actually, inverted FlatList behaves: offset 0 is bottom. Increasing offset is scrolling up (into history).
-      // So scrolling UP (to see history) increases offset.
-      // Scrolling DOWN (to see recent) decreases offset.
-
-      // Let's adhere to "Hide on scroll DOWN (visually moving content up), Show on scroll UP (visually moving content down)"
-      // In Inverted list:
-      // Dragging finger DOWN (scrolling UP visually to top of content) -> contentOffset decreases.
-      // Dragging finger UP (scrolling DOWN visually to old history) -> contentOffset increases.
-
-      // We want header to hide when we scroll DOWN into history (drag finger UP, offset increases).
-      // We want header to show when we scroll UP to most recent (drag finger DOWN, offset decreases).
-
       if (diff > 10 && currentOffset > 50) {
         // Scrolling "down" into history (visually content moves up)
         isHeaderVisible.value = withTiming(0, { duration: 300 });
@@ -146,11 +144,6 @@ export default function ChatScreen() {
   };
 
   const handleCopy = async (text: string) => { await Clipboard.setStringAsync(text); };
-
-  const handleScroll = (event: any) => {
-      const offsetY = event.nativeEvent.contentOffset.y;
-      setShowScrollDown(offsetY > 200);
-  };
 
   const scrollToBottom = () => { flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); };
 
