@@ -46,7 +46,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
   const handleOpenReader = () => {
     router.push({
-        pathname: '/chat/reader',
+        pathname: '/chat/reader' as any,
         params: {
             content: message.content,
             botName,
