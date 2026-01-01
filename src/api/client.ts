@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/authStore';
 
-const DEV_URL = 'http://192.168.1.88:8000'; // Or your machine's local IP like 192.168.1.X for physical device
-const PROD_URL = 'https://api.stelarys.com'; // Placeholder
+const DEV_URL = 'http://192.168.1.88:8000';
+const PROD_URL = 'https://api.stelarys.com';
 
 export const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
 
@@ -16,6 +15,8 @@ const client = axios.create({
 // Request Interceptor: Inject Token
 client.interceptors.request.use(
   (config) => {
+    // Dynamic require to avoid circular dependency
+    const { useAuthStore } = require('../stores/authStore');
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -26,11 +27,25 @@ client.interceptors.request.use(
 );
 
 // Response Interceptor: Handle 401
+let isRefreshing = false;
+
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const { useAuthStore } = require('../stores/authStore');
+
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
+      // Prevent infinite loops if logout itself fails or if multiple requests fail at once
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          await useAuthStore.getState().logout();
+        } catch (logoutError) {
+          console.error("Logout failed during 401 handling:", logoutError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
     }
     return Promise.reject(error);
   }

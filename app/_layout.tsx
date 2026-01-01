@@ -1,5 +1,5 @@
 import '../global.css';
-import { Stack, useRouter, useSegments, useRootNavigationState, Slot } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
@@ -38,14 +38,6 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, segments, isLoading, isNavigationReady]);
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <ActivityIndicator size="large" color="#06b6d4" />
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1 bg-background">
       <Stack screenOptions={{
@@ -60,6 +52,13 @@ export default function RootLayout() {
         <Stack.Screen name="create/index" options={{ presentation: 'modal', title: 'New Study', headerBackTitle: 'Back' }} />
       </Stack>
       <StatusBar style="light" backgroundColor="#0b0e14" />
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <View className="absolute inset-0 z-50 justify-center items-center bg-[#0b0e14]">
+          <ActivityIndicator size="large" color="#06b6d4" />
+        </View>
+      )}
     </View>
   );
 }
