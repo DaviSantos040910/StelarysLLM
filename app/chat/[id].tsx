@@ -11,7 +11,7 @@ import { UserAvatar } from '../../src/components/UserAvatar';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatInput } from '../../src/components/chat/ChatInput';
-import { AttachmentMenu } from '../../src/components/chat/AttachmentMenu';
+import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { Message, ChatListItem, Bot } from '../../src/types/chat';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
@@ -27,7 +27,7 @@ export default function ChatScreen() {
   const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat } = useChatStore();
   const [inputText, setInputText] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
-  const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
+  const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
@@ -130,11 +130,34 @@ export default function ChatScreen() {
      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const handleAttachmentSelect = async (type: 'image' | 'document' | 'camera') => {
+  const handleAttachmentOption = async (option: string) => {
+      setIsAttachmentSheetVisible(false);
+
+      let results;
+      if (option === 'files') {
+          results = await pickDocument();
+      } else if (option === 'audio') {
+          console.log("Audio option selected (Use mic input directly usually, but this is sheet)");
+      } else if (option === 'website') {
+          console.log("Website option selected");
+      } else if (option === 'youtube') {
+          console.log("YouTube option selected");
+      }
+
+      if (results) {
+          for (const file of results) {
+              await uploadFile(chatId, { uri: file.uri, name: file.name, mimeType: file.type || 'application/octet-stream' });
+          }
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }
+  };
+
+  // Wire handleAttachmentSelect for Gallery/Camera specifically from ChatInput icons (not sheet)
+  const handleDirectAttachment = async (type: 'image' | 'camera') => {
       let results;
       if (type === 'image') results = await pickImage();
-      else if (type === 'document') results = await pickDocument();
       else if (type === 'camera') results = await takePhoto();
+
       if (results) {
           for (const file of results) {
               await uploadFile(chatId, { uri: file.uri, name: file.name, mimeType: file.type || 'application/octet-stream' });
@@ -176,8 +199,8 @@ export default function ChatScreen() {
          botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
          botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
          animatedStyle={headerAnimatedStyle}
-         onNewChat={() => {}} // TODO: Implement New Chat action
-         onMenu={() => {}} // TODO: Implement Menu action
+         onNewChat={() => {}}
+         onMenu={() => {}}
       />
 
       {/* Messages Area */}
@@ -229,20 +252,18 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             onSend={() => handleSend()}
-            onPlusPress={() => setIsAttachmentMenuVisible(true)}
-            onGalleryPress={() => handleAttachmentSelect('image')}
-            onCameraPress={() => handleAttachmentSelect('camera')}
+            onPlusPress={() => setIsAttachmentSheetVisible(true)}
+            onGalleryPress={() => handleDirectAttachment('image')}
+            onCameraPress={() => handleDirectAttachment('camera')}
             onAudioRecorded={handleAudioRecorded}
             disabled={isStreaming || isPickerLoading}
         />
       </KeyboardAvoidingView>
 
-      <AttachmentMenu
-          visible={isAttachmentMenuVisible}
-          onClose={() => setIsAttachmentMenuVisible(false)}
-          onSelectImage={() => handleAttachmentSelect('image')}
-          onSelectDocument={() => handleAttachmentSelect('document')}
-          onTakePhoto={() => handleAttachmentSelect('camera')}
+      <AttachmentSheet
+          visible={isAttachmentSheetVisible}
+          onClose={() => setIsAttachmentSheetVisible(false)}
+          onSelectOption={handleAttachmentOption}
       />
 
       {isPickerLoading && (
