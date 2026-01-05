@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, Pressable, LayoutAnimation, Platform, UIManager, Modal } from 'react-native';
 import { FileText, Music, Globe, Youtube, ChevronUp, ChevronDown, X } from 'lucide-react-native';
 import Animated, { SlideInDown, SlideOutDown, FadeIn, FadeOut } from 'react-native-reanimated';
 
@@ -23,30 +23,16 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
   const [selectedModel, setSelectedModel] = useState(MODELS[0]);
   const [isModelListOpen, setIsModelListOpen] = useState(false);
 
-  if (!visible) return null;
-
-  const toggleModelList = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setIsModelListOpen(!isModelListOpen);
-  };
-
-  const selectModel = (model: typeof MODELS[0]) => {
-    setSelectedModel(model);
-    toggleModelList();
-  };
-
-  const handleBackdropPress = () => {
-    if (isModelListOpen) {
-      toggleModelList();
-    } else {
-      onClose();
-    }
-  };
-
+  // We use a transparent Modal to ensure this sheet appears above everything else (including other Modals like expanded Input)
   return (
-    <>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+    >
       {/* Backdrop */}
-      <Pressable onPress={handleBackdropPress} className="absolute inset-0 bg-black/60 z-40" />
+      <Pressable onPress={onClose} className="absolute inset-0 bg-black/60 z-40" />
 
       {/* Sheet Container */}
       <Animated.View
@@ -99,7 +85,10 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                 <Text className="text-gray-400 font-medium">Modelo</Text>
 
                 <Pressable
-                    onPress={toggleModelList}
+                    onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setIsModelListOpen(!isModelListOpen);
+                    }}
                     className="flex-row items-center bg-white/5 px-4 py-2 rounded-full border border-white/10 active:bg-white/10"
                 >
                     <Text className="text-starlight font-bold mr-2">{selectedModel.name}</Text>
@@ -113,7 +102,10 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                     {MODELS.map((model, index) => (
                         <Pressable
                             key={model.id}
-                            onPress={() => selectModel(model)}
+                            onPress={() => {
+                                setSelectedModel(model);
+                                setIsModelListOpen(false);
+                            }}
                             className={`p-4 flex-row items-center justify-between ${index !== MODELS.length - 1 ? 'border-b border-white/5' : ''} active:bg-white/5`}
                         >
                             <Text className={`text-base ${selectedModel.id === model.id ? 'text-cosmic-purple font-bold' : 'text-starlight'}`}>
@@ -127,7 +119,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
         </View>
 
       </Animated.View>
-    </>
+    </Modal>
   );
 };
 

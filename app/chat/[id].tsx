@@ -12,6 +12,7 @@ import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatInput } from '../../src/components/chat/ChatInput';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
+import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionSheet'; // Import KnowledgeActionSheet
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { Message, ChatListItem, Bot } from '../../src/types/chat';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
@@ -27,7 +28,10 @@ export default function ChatScreen() {
   const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat } = useChatStore();
   const [inputText, setInputText] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
+
+  // Sheet Visibility States
   const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
+  const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false); // State for Studio/Knowledge sheet
 
   const flatListRef = useRef<FlatList>(null);
   const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
@@ -199,7 +203,7 @@ export default function ChatScreen() {
          botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
          botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
          animatedStyle={headerAnimatedStyle}
-         onNewChat={() => {}}
+         onNewChat={() => setIsKnowledgeSheetVisible(true)} // Open Knowledge Sheet
          onMenu={() => {}}
       />
 
@@ -265,6 +269,19 @@ export default function ChatScreen() {
           onClose={() => setIsAttachmentSheetVisible(false)}
           onSelectOption={handleAttachmentOption}
       />
+
+      {/* Render KnowledgeActionSheet when visible */}
+      {isKnowledgeSheetVisible && (
+          <View className="absolute inset-0 z-50">
+             {/* Using absolute View here, but KnowledgeActionSheet ideally handles its own animation or acts like a sheet.
+                 Looking at KnowledgeActionSheet source, it doesn't seem to have a modal wrapper or full screen backdrop logic built-in for the sheet itself?
+                 Let's check previous implementation. Ah, KnowledgeActionSheet renders "absolute bottom-0".
+                 So we need a backdrop here or wrap it.
+             */}
+             <Pressable className="absolute inset-0 bg-black/60" onPress={() => setIsKnowledgeSheetVisible(false)} />
+             <KnowledgeActionSheet onClose={() => setIsKnowledgeSheetVisible(false)} />
+          </View>
+      )}
 
       {isPickerLoading && (
           <View className="absolute inset-0 bg-black/50 justify-center items-center">
