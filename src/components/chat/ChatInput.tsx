@@ -13,6 +13,7 @@ interface ChatInputProps {
   onCameraPress: () => void;
   onAudioRecorded: (uri: string, duration: number) => void;
   disabled?: boolean;
+  allowAttachments?: boolean; // New Prop
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -23,7 +24,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onGalleryPress,
   onCameraPress,
   onAudioRecorded,
-  disabled
+  disabled,
+  allowAttachments = true // Default true
 }) => {
   const {
     recordingState,
@@ -164,14 +166,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         <View className="flex-row justify-between items-center">
                             {/* Left: Attachment Actions */}
                             <View className="flex-row items-center gap-5">
-                                <Pressable
-                                    onPress={onPlusPress}
-                                    disabled={disabled}
-                                    className="p-2 -ml-2"
-                                    accessibilityLabel="Abrir menu de anexos"
-                                >
-                                    <Paperclip color={iconColor} size={24} />
-                                </Pressable>
+                                {/* Only show Paperclip if allowAttachments is true */}
+                                {allowAttachments && (
+                                    <Pressable
+                                        onPress={onPlusPress}
+                                        disabled={disabled}
+                                        className="p-2 -ml-2"
+                                        accessibilityLabel="Abrir menu de anexos"
+                                    >
+                                        <Paperclip color={iconColor} size={24} />
+                                    </Pressable>
+                                )}
 
                                 <Pressable
                                     onPress={onGalleryPress}
@@ -246,9 +251,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
                     {/* Footer: Actions */}
                     <View className="h-[80px] flex-row items-center justify-between border-t border-white/10 mt-4">
-                         {/* Optional: Attachment buttons could go here if desired, keeping minimal for focus */}
+                         {/* Attachment buttons hidden in Expanded Mode per UX requirement */}
                          <View className="flex-row gap-4">
-                            <Pressable onPress={onPlusPress} className="p-2"><Paperclip color={iconColor} size={24} /></Pressable>
+                            {/* Empty View to maintain flex-between structure if needed, or just nothing */}
                          </View>
 
                          <Pressable
