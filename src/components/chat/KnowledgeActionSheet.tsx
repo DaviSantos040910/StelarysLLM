@@ -1,233 +1,159 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   Pressable,
   ScrollView,
-  TextInput,
   ActivityIndicator,
   LayoutAnimation,
   Platform,
-  UIManager,
-  Keyboard
+  UIManager
 } from 'react-native';
 import {
-  Link,
-  FileText,
-  File,
-  Mic,
   Headphones,
-  X,
-  Check,
-  Plus,
-  Image as ImageIcon
+  BookOpen,
+  FileQuestion,
+  FileText,
+  Lightbulb,
+  Maximize2
 } from 'lucide-react-native';
-import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
+import Animated, { FadeIn, Layout } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Types for our artifacts
 type ArtifactStatus = 'loading' | 'ready';
+type ArtifactType = 'podcast' | 'guide' | 'quiz' | 'summary' | 'briefing';
+
 interface Artifact {
   id: string;
-  type: 'podcast' | 'file' | 'link' | 'text';
+  type: ArtifactType;
   title: string;
   status: ArtifactStatus;
 }
 
 interface KnowledgeActionSheetProps {
   onClose?: () => void;
+  chatId?: string;
 }
 
-export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose }) => {
-  const [mode, setMode] = useState<'menu' | 'text-editor' | 'link-editor'>('menu');
-  const [inputText, setInputText] = useState('');
-  const [artifacts, setArtifacts] = useState<Artifact[]>([
-    // Initial mock data to populate the rail
-    { id: '1', type: 'file', title: 'Calculus_101.pdf', status: 'ready' },
-  ]);
+const GENERATORS = [
+  { id: 'podcast', label: 'Resumo em Áudio', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+  { id: 'guide', label: 'Cartões de estudo', icon: BookOpen, color: '#f472b6', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
+  { id: 'quiz', label: 'Teste', icon: FileQuestion, color: '#2dd4bf', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
+  { id: 'summary', label: 'Infográfico', icon: FileText, color: '#c084fc', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  { id: 'briefing', label: 'Slides', icon: Lightbulb, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+];
 
-  const inputRef = useRef<TextInput>(null);
+export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose, chatId }) => {
+  const router = useRouter();
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
 
-  // Focus input when entering editor mode
-  useEffect(() => {
-    if (mode !== 'menu') {
-      // Small delay to allow layout animation to start
-      setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      Keyboard.dismiss();
-    }
-  }, [mode]);
-
-  const toggleMode = (newMode: 'menu' | 'text-editor' | 'link-editor') => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setMode(newMode);
-    setInputText('');
-  };
-
-  const handleSave = () => {
-    if (!inputText.trim()) {
-      toggleMode('menu');
-      return;
-    }
-
-    const newArtifact: Artifact = {
-      id: Date.now().toString(),
-      type: mode === 'link-editor' ? 'link' : 'text',
-      title: mode === 'link-editor' ? inputText : 'Nova Nota de Texto', // Simplification
-      status: 'ready'
-    };
-
-    setArtifacts(prev => [newArtifact, ...prev]);
-    toggleMode('menu');
-  };
-
-  const handleGeneratePodcast = () => {
+  const handleGenerate = (gen: typeof GENERATORS[0]) => {
     const id = Date.now().toString();
-    // Add "Ghost" item
-    const ghostItem: Artifact = {
+    const newArtifact: Artifact = {
       id,
-      type: 'podcast',
-      title: 'Gerando Podcast...',
+      type: gen.id as ArtifactType,
+      title: gen.label,
       status: 'loading'
     };
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setArtifacts(prev => [ghostItem, ...prev]);
+    setArtifacts(prev => [newArtifact, ...prev]);
 
-    // Simulate API call
+    // Mock generation
     setTimeout(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setArtifacts(prev => prev.map(item =>
-        item.id === id
-          ? { ...item, status: 'ready', title: 'Resumo em Áudio' }
-          : item
+        item.id === id ? { ...item, status: 'ready' } : item
       ));
     }, 3000);
   };
 
-  // --- Components ---
+  const handleSeeAll = () => {
+    onClose?.();
+    router.push({
+      pathname: '/chat/studio-gallery',
+      params: { chatId }
+    });
+  };
 
   const ArtifactItem = ({ item }: { item: Artifact }) => (
     <Animated.View
       layout={Layout.springify()}
       entering={FadeIn}
-      className={`mr-3 items-center justify-center p-4 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] ${item.status === 'loading' ? 'opacity-50' : ''}`}
+      className={`mr-3 items-center justify-center p-3 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] relative overflow-hidden`}
     >
-      <View className="mb-2">
-        {item.type === 'podcast' && <Headphones color="#818cf8" size={32} />}
-        {item.type === 'file' && <File color="#94a3b8" size={32} />}
-        {item.type === 'link' && <Link color="#94a3b8" size={32} />}
-        {item.type === 'text' && <FileText color="#94a3b8" size={32} />}
+      <View className="mb-2 opacity-80">
+        {item.type === 'podcast' && <Headphones color="#818cf8" size={28} />}
+        {item.type === 'guide' && <BookOpen color="#f472b6" size={28} />}
+        {item.type === 'quiz' && <FileQuestion color="#2dd4bf" size={28} />}
+        {item.type === 'summary' && <FileText color="#c084fc" size={28} />}
+        {item.type === 'briefing' && <Lightbulb color="#fbbf24" size={28} />}
       </View>
 
       {item.status === 'loading' && (
-        <View className="absolute inset-0 items-center justify-center bg-black/20 rounded-2xl">
-           <ActivityIndicator color="#fff" />
+        <View className="absolute inset-0 items-center justify-center bg-space-dark/60 z-10">
+           <ActivityIndicator color="#fff" size="small" />
         </View>
       )}
 
-      <Text className="text-starlight text-xs text-center font-medium" numberOfLines={2}>
+      <Text className="text-starlight text-[10px] text-center font-medium leading-tight" numberOfLines={2}>
         {item.title}
       </Text>
     </Animated.View>
   );
 
-  const ActionButton = ({
-    icon: Icon,
-    label,
-    onPress,
-    color = "#fff"
-  }: {
-    icon: any,
-    label: string,
-    onPress: () => void,
-    color?: string
-  }) => (
-    <Pressable
-      onPress={onPress}
-      className="flex-1 items-center justify-center bg-white/5 rounded-2xl p-4 active:bg-white/10 space-y-2 aspect-square"
-    >
-      <Icon color={color} size={28} />
-      <Text className="text-starlight text-sm font-medium">{label}</Text>
-    </Pressable>
-  );
-
   return (
-    <View className="w-full bg-space-dark/95 border-t border-white/10 rounded-t-[32px] pb-8 pt-2 absolute bottom-0 shadow-2xl">
+    <View className="w-full bg-space-dark/95 border-t border-white/10 rounded-t-[32px] pb-8 pt-2 absolute bottom-0 shadow-2xl z-50">
       {/* Handle Bar */}
       <View className="w-12 h-1.5 bg-white/20 rounded-full self-center mb-6" />
 
       {/* 1. Generated Artifacts Rail (Outputs) */}
-      <View className="mb-8 pl-6">
-        <Text className="text-gray-400 text-sm font-medium mb-3">Mídia Gerada & Fontes</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {/* Special "Add Podcast" Button if not generating */}
-          <Pressable
-            onPress={handleGeneratePodcast}
-            className="mr-3 items-center justify-center p-4 rounded-2xl bg-cosmic-purple/20 border border-cosmic-purple/50 w-[100px] h-[100px] border-dashed"
-          >
-             <Headphones color="#818cf8" size={32} />
-             <Text className="text-cosmic-purple text-xs text-center font-bold mt-2">Gerar Podcast</Text>
-          </Pressable>
+      <View className="mb-6 pl-6">
+        <View className="flex-row justify-between items-center pr-6 mb-3">
+             <Text className="text-gray-400 text-sm font-medium">Mídia Gerada & Fontes</Text>
+             {artifacts.length > 0 && (
+                 <Pressable onPress={handleSeeAll} className="flex-row items-center active:opacity-60">
+                     <Text className="text-cosmic-purple text-xs font-bold mr-1">Ver tudo</Text>
+                     <Maximize2 color="#818cf8" size={12} />
+                 </Pressable>
+             )}
+        </View>
 
-          {artifacts.map(item => (
-            <ArtifactItem key={item.id} item={item} />
-          ))}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 }}>
+          {artifacts.length === 0 ? (
+             <View className="w-[120px] h-[100px] items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/5 mr-6 px-4">
+                 <Text className="text-gray-500 text-xs text-center">Nenhum conteúdo gerado ainda.</Text>
+             </View>
+          ) : (
+              artifacts.map(item => (
+                <ArtifactItem key={item.id} item={item} />
+              ))
+          )}
         </ScrollView>
       </View>
 
-      {/* 2. Mode Content (Inputs) */}
-      <View className="px-6 min-h-[220px]">
-        {mode === 'menu' ? (
-          <Animated.View entering={FadeIn} exiting={FadeOut}>
-            <Text className="text-gray-400 text-sm font-medium mb-3">Adicionar Conhecimento</Text>
-            <View className="flex-row gap-4 mb-4">
-               <ActionButton icon={FileText} label="Texto" onPress={() => toggleMode('text-editor')} />
-               <ActionButton icon={Link} label="Link" onPress={() => toggleMode('link-editor')} />
-               <ActionButton icon={File} label="Arquivo" onPress={() => {}} />
-            </View>
-            <View className="flex-row gap-4">
-               <ActionButton icon={Mic} label="Áudio" onPress={() => {}} />
-               <ActionButton icon={ImageIcon} label="Imagem" onPress={() => {}} />
-               <View className="flex-1" /> {/* Spacer to keep grid aligned */}
-            </View>
-          </Animated.View>
-        ) : (
-          <Animated.View entering={FadeIn} exiting={FadeOut} className="flex-1">
-             <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-starlight text-lg font-bold">
-                  {mode === 'text-editor' ? 'Nova Nota' : 'Adicionar Link'}
-                </Text>
-                <Pressable onPress={() => toggleMode('menu')} className="p-2 bg-white/10 rounded-full">
-                  <X color="#fff" size={20} />
-                </Pressable>
-             </View>
-
-             <TextInput
-               ref={inputRef}
-               className="flex-1 bg-white/5 text-starlight rounded-2xl p-4 text-base min-h-[120px]"
-               placeholder={mode === 'text-editor' ? "Digite sua nota aqui..." : "Cole o link aqui..."}
-               placeholderTextColor="#64748b"
-               multiline
-               textAlignVertical="top"
-               value={inputText}
-               onChangeText={setInputText}
-             />
-
-             <View className="flex-row justify-end mt-4">
-                <Pressable
-                  onPress={handleSave}
-                  className="bg-cosmic-purple px-6 py-3 rounded-xl flex-row items-center"
-                >
-                   <Check color="#fff" size={20} className="mr-2" />
-                   <Text className="text-white font-bold">Salvar</Text>
-                </Pressable>
-             </View>
-          </Animated.View>
-        )}
+      {/* 2. Generators Grid (Inputs) */}
+      <View className="px-6">
+        <Text className="text-starlight text-lg font-bold mb-4">Gerar novos</Text>
+        <View className="flex-row flex-wrap gap-3">
+           {GENERATORS.map((gen) => (
+             <Pressable
+                key={gen.id}
+                onPress={() => handleGenerate(gen)}
+                className={`flex-grow basis-[45%] flex-row items-center p-4 rounded-2xl border ${gen.border} ${gen.bg} active:opacity-80`}
+             >
+                <View className="p-2 rounded-full bg-white/10 mr-3">
+                   <gen.icon size={20} color={gen.color} />
+                </View>
+                <Text className="text-starlight font-bold text-sm flex-1" numberOfLines={1}>{gen.label}</Text>
+             </Pressable>
+           ))}
+        </View>
       </View>
     </View>
   );
