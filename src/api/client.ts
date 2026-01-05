@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const DEV_URL = 'http://192.168.1.88:8000';
+// Use environment variable if available, otherwise fallback to localhost for emulator
+// 10.0.2.2 is the localhost alias for Android Emulator
+const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8000';
 const PROD_URL = 'https://api.stelarys.com';
 
 export const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
@@ -39,7 +41,11 @@ client.interceptors.response.use(
       if (!isRefreshing) {
         isRefreshing = true;
         try {
-          await useAuthStore.getState().logout();
+           // Ensure we don't clear token if the request was to login!
+           // But normally 401 on other endpoints means token expired/invalid.
+           if (!error.config.url.includes('/login')) {
+               await useAuthStore.getState().logout();
+           }
         } catch (logoutError) {
           console.error("Logout failed during 401 handling:", logoutError);
         } finally {
