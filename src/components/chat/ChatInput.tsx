@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, Pressable, Text, Modal, SafeAreaView } from 'react-native';
-import { Mic, Send, Paperclip, Image as ImageIcon, Camera, Trash2, Maximize2, Minimize2 } from 'lucide-react-native';
+import { View, TextInput, Pressable, Text, Modal, SafeAreaView, Image } from 'react-native';
+import { Mic, Send, Paperclip, Image as ImageIcon, Camera, Trash2, Maximize2, Minimize2, X, File, Youtube } from 'lucide-react-native';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
-import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, withSequence, withTiming, FadeIn } from 'react-native-reanimated';
+
+export interface StagedAttachment {
+  type: 'image' | 'video' | 'document' | 'youtube';
+  uri?: string; // For files
+  url?: string; // For links
+  name?: string;
+  mimeType?: string;
+}
 
 interface ChatInputProps {
   value: string;
@@ -13,7 +21,11 @@ interface ChatInputProps {
   onCameraPress: () => void;
   onAudioRecorded: (uri: string, duration: number) => void;
   disabled?: boolean;
-  allowAttachments?: boolean; // New Prop
+  allowAttachments?: boolean;
+
+  // Staging
+  attachments?: StagedAttachment[];
+  onRemoveAttachment?: (index: number) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -25,7 +37,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onCameraPress,
   onAudioRecorded,
   disabled,
-  allowAttachments = true // Default true
+  allowAttachments = true,
+  attachments = [],
+  onRemoveAttachment
 }) => {
   const {
     recordingState,
@@ -86,7 +100,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSendPress = () => {
-    if (value.trim()) {
+    if (value.trim() || attachments.length > 0) {
         setIsExpanded(false); // Collapse on send
         onSend();
     } else {
@@ -101,6 +115,44 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   // Threshold for showing the expand button (approx 3 lines)
   const showExpandButton = contentHeight > 60 || isExpanded;
+
+  // Render Preview Item
+  const renderAttachmentPreview = (att: StagedAttachment, index: number) => {
+      let IconComp = File;
+      let color = "#94a3b8";
+      let label = att.name || "Arquivo";
+
+      if (att.type === 'youtube') {
+          IconComp = Youtube;
+          color = "#f87171";
+          label = "YouTube Link";
+      } else if (att.type === 'image') {
+          // If image, we could show thumbnail, but let's stick to icon + name for now to match style
+          IconComp = ImageIcon;
+          color = "#c084fc";
+      } else if (att.mimeType?.includes('zip')) {
+          label = "Arquivo ZIP";
+      }
+
+      return (
+          <View key={index} className="mr-2 mb-2 bg-white/5 border border-white/10 rounded-xl flex-row items-center p-2 pr-8 relative">
+              <View className="p-1.5 bg-white/5 rounded-lg mr-2">
+                  <IconComp size={16} color={color} />
+              </View>
+              <View>
+                  <Text className="text-starlight text-xs font-bold" numberOfLines={1}>{label}</Text>
+                  <Text className="text-gray-500 text-[10px]" numberOfLines={1}>{att.url || att.name}</Text>
+              </View>
+
+              <Pressable
+                 onPress={() => onRemoveAttachment?.(index)}
+                 className="absolute top-1 right-1 p-1"
+              >
+                  <X size={14} color="#ef4444" />
+              </Pressable>
+          </View>
+      );
+  };
 
   return (
     <>
@@ -138,6 +190,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 ) : (
                     // Standard Text Input UI
                     <>
+                        {/* Attachments Preview Row */}
+                        {attachments.length > 0 && (
+                            <Animated.View entering={FadeIn} className="flex-row flex-wrap mb-2">
+                                {attachments.map((att, idx) => renderAttachmentPreview(att, idx))}
+                            </Animated.View>
+                        )}
+
                         <View className="flex-row">
                             <TextInput
                                 placeholder="Peça ao Stelarys..."
@@ -201,10 +260,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             <Pressable
                                 onPress={handleSendPress}
                                 disabled={disabled}
-                                className={`p-3 rounded-full ${value.trim() ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                                className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-white/10'}`}
                                 accessibilityLabel={value.trim() ? "Enviar mensagem" : "Gravar áudio"}
                             >
-                                {value.trim() ? (
+                                {value.trim() || attachments.length > 0 ? (
                                     <Send color="white" size={20} />
                                 ) : (
                                     <Animated.View style={animatedMicStyle}>
@@ -258,7 +317,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
                          <Pressable
                             onPress={handleSendPress}
-                            className={`p-3 rounded-full ${value.trim() ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                            className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-white/10'}`}
                         >
                             <Send color="white" size={24} />
                         </Pressable>

@@ -3,7 +3,7 @@ import { View, FlatList, ActivityIndicator, Text, TextInput, Pressable, Keyboard
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X, ArrowLeft } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
-import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
+import Animated, { FadeInDown, Layout, FadeOut } from 'react-native-reanimated';
 
 import { exploreService, Category, ExploreBotItem } from '../../src/services/exploreService';
 import searchHistoryService, { SearchHistoryItem } from '../../src/services/searchHistoryService';

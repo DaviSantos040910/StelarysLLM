@@ -10,9 +10,9 @@ import { useChatStore } from '../../src/stores/chatStore';
 import { UserAvatar } from '../../src/components/UserAvatar';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
-import { ChatInput } from '../../src/components/chat/ChatInput';
+import { ChatInput, StagedAttachment } from '../../src/components/chat/ChatInput'; // Import StagedAttachment
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
-import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionSheet'; // Import KnowledgeActionSheet
+import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionSheet';
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { Message, ChatListItem, Bot } from '../../src/types/chat';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
@@ -31,7 +31,10 @@ export default function ChatScreen() {
 
   // Sheet Visibility States
   const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
-  const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false); // State for Studio/Knowledge sheet
+  const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false);
+
+  // Staged Attachments State
+  const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const { pickImage, pickDocument, takePhoto, isPickerLoading } = useAttachmentPicker();
@@ -39,7 +42,7 @@ export default function ChatScreen() {
   // Header Animation State
   const translateY = useSharedValue(0);
   const lastContentOffset = useSharedValue(0);
-  const isHeaderVisible = useSharedValue(1); // 1 = visible, 0 = hidden
+  const isHeaderVisible = useSharedValue(1);
 
   const handleScrollState = (offset: number) => {
     if (offset > 200) {
@@ -54,15 +57,11 @@ export default function ChatScreen() {
       const currentOffset = event.contentOffset.y;
       const diff = currentOffset - lastContentOffset.value;
 
-      // Update ScrollDown button visibility via JS callback
       runOnJS(handleScrollState)(currentOffset);
 
-      // If scrolling down (diff > 0) and deeper than 50px, hide header
       if (diff > 10 && currentOffset > 50) {
-        // Scrolling "down" into history (visually content moves up)
         isHeaderVisible.value = withTiming(0, { duration: 300 });
       } else if (diff < -10) {
-        // Scrolling "up" (visually content moves down)
         isHeaderVisible.value = withTiming(1, { duration: 300 });
       }
 
@@ -122,56 +121,102 @@ export default function ChatScreen() {
   }, [chatId, botId]);
 
   const handleSend = async (text: string = inputText) => {
-    if (!text.trim()) return;
-    if (text === inputText) setInputText('');
-    await sendMessage(chatId, text);
+    if (!text.trim() && stagedAttachments.length === 0) return;
+
+    // Clear input immediately
+    if (text === inputText) {
+        setInputText('');
+        setStagedAttachments([]);
+    }
+
+    // Upload Staged Attachments first (Sequential for now)
+    for (const att of stagedAttachments) {
+        if (att.type === 'youtube') {
+            // For youtube/links, we might just append to text or send as separate message
+            // Currently backend uploadFile expects a file.
+            // We'll append URL to text if it's a link, or if logic changes later.
+            // For now, let's just append to text for simplicity if it's a link
+            if (att.url) {
+                // If text is empty, send just the link. If text exists, append.
+                const linkMsg = `[YouTube](${att.url})`;
+                await sendMessage(chatId, linkMsg);
+            }
+        } else if (att.uri) {
+            // File Upload
+            await uploadFile(chatId, {
+                uri: att.uri,
+                name: att.name || 'file',
+                mimeType: att.mimeType || 'application/octet-stream'
+            });
+        }
+    }
+
+    // Send Text Message
+    if (text.trim()) {
+        await sendMessage(chatId, text);
+    }
+
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   const handleAudioRecorded = async (uri: string, duration: number) => {
+     // Direct upload for audio recorder (UX decision: don't stage voice notes usually)
      const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
      await uploadFile(chatId, file);
      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const handleAttachmentOption = async (option: string) => {
+  // Sheet Option Handler
+  const handleAttachmentOption = async (option: string, data?: any) => {
       setIsAttachmentSheetVisible(false);
+
+      if (option === 'youtube' && data?.url) {
+          setStagedAttachments(prev => [...prev, { type: 'youtube', url: data.url, name: 'YouTube Video' }]);
+          return;
+      }
 
       let results;
       if (option === 'files') {
           results = await pickDocument();
       } else if (option === 'audio') {
-          console.log("Audio option selected (Use mic input directly usually, but this is sheet)");
-      } else if (option === 'website') {
-          console.log("Website option selected");
-      } else if (option === 'youtube') {
-          console.log("YouTube option selected");
+           // Maybe open recorder? Or pick audio file?
+           // pickDocument handles audio mime types now too.
+           results = await pickDocument(); // Reusing document picker for audio files
       }
 
       if (results) {
-          for (const file of results) {
-              await uploadFile(chatId, { uri: file.uri, name: file.name, mimeType: file.type || 'application/octet-stream' });
-          }
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+          const newAttachments: StagedAttachment[] = results.map(file => ({
+              type: 'document',
+              uri: file.uri,
+              name: file.name,
+              mimeType: file.type
+          }));
+          setStagedAttachments(prev => [...prev, ...newAttachments]);
       }
   };
 
-  // Wire handleAttachmentSelect for Gallery/Camera specifically from ChatInput icons (not sheet)
+  // Direct Icon Handlers
   const handleDirectAttachment = async (type: 'image' | 'camera') => {
       let results;
       if (type === 'image') results = await pickImage();
       else if (type === 'camera') results = await takePhoto();
 
       if (results) {
-          for (const file of results) {
-              await uploadFile(chatId, { uri: file.uri, name: file.name, mimeType: file.type || 'application/octet-stream' });
-          }
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+          const newAttachments: StagedAttachment[] = results.map(file => ({
+              type: 'image',
+              uri: file.uri,
+              name: file.name,
+              mimeType: file.type
+          }));
+          setStagedAttachments(prev => [...prev, ...newAttachments]);
       }
   };
 
-  const handleCopy = async (text: string) => { await Clipboard.setStringAsync(text); };
+  const handleRemoveAttachment = (index: number) => {
+      setStagedAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
+  const handleCopy = async (text: string) => { await Clipboard.setStringAsync(text); };
   const scrollToBottom = () => { flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); };
 
   const renderItem = ({ item, index }: { item: Message, index: number }) => {
@@ -203,7 +248,7 @@ export default function ChatScreen() {
          botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
          botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
          animatedStyle={headerAnimatedStyle}
-         onNewChat={() => setIsKnowledgeSheetVisible(true)} // Open Knowledge Sheet
+         onNewChat={() => setIsKnowledgeSheetVisible(true)}
          onMenu={() => {}}
       />
 
@@ -230,7 +275,7 @@ export default function ChatScreen() {
                 keyExtractor={(item: any) => item.id.toString()}
                 renderItem={renderItem}
                 inverted
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }} // Fixed padding for inverted list
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }}
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 onEndReached={() => loadMoreMessages(chatId)}
@@ -261,6 +306,8 @@ export default function ChatScreen() {
             onCameraPress={() => handleDirectAttachment('camera')}
             onAudioRecorded={handleAudioRecorded}
             disabled={isStreaming || isPickerLoading}
+            attachments={stagedAttachments}
+            onRemoveAttachment={handleRemoveAttachment}
         />
       </KeyboardAvoidingView>
 
@@ -273,11 +320,6 @@ export default function ChatScreen() {
       {/* Render KnowledgeActionSheet when visible */}
       {isKnowledgeSheetVisible && (
           <View className="absolute inset-0 z-50">
-             {/* Using absolute View here, but KnowledgeActionSheet ideally handles its own animation or acts like a sheet.
-                 Looking at KnowledgeActionSheet source, it doesn't seem to have a modal wrapper or full screen backdrop logic built-in for the sheet itself?
-                 Let's check previous implementation. Ah, KnowledgeActionSheet renders "absolute bottom-0".
-                 So we need a backdrop here or wrap it.
-             */}
              <Pressable className="absolute inset-0 bg-black/60" onPress={() => setIsKnowledgeSheetVisible(false)} />
              <KnowledgeActionSheet onClose={() => setIsKnowledgeSheetVisible(false)} />
           </View>

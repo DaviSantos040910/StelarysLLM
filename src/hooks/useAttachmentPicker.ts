@@ -99,13 +99,15 @@ export const useAttachmentPicker = () => {
   /**
    * Abre o seletor de documentos
    * ✅ RETORNA ARRAY DE ANEXOS
+   * ✅ Suporta ZIP e outros tipos
    */
   const pickDocument = async (): Promise<AttachmentPickerResult[] | null> => {
     try {
       setIsPickerLoading(true);
 
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Permite qualquer tipo de arquivo
+        // Adicionado zip e compressed explicitamente junto com audio/video/pdf
+        type: ['*/*', 'application/zip', 'application/x-zip-compressed', 'application/pdf', 'audio/*'],
         copyToCacheDirectory: true,
         multiple: true, // ✅ HABILITA SELEÇÃO MÚLTIPLA
       });
@@ -116,10 +118,17 @@ export const useAttachmentPicker = () => {
         for (const asset of result.assets) {
           // Valida tamanho antes de adicionar
           if (validateFileSize(asset.size)) {
+            // Refina o tipo se vier genérico ou undefined
+            let mimeType = asset.mimeType;
+            if (!mimeType) {
+                 if (asset.name.endsWith('.zip')) mimeType = 'application/zip';
+                 else if (asset.name.endsWith('.pdf')) mimeType = 'application/pdf';
+            }
+
             validAssets.push({
               uri: asset.uri,
               name: asset.name,
-              type: asset.mimeType,
+              type: mimeType || 'application/octet-stream',
               size: asset.size,
             });
           }
