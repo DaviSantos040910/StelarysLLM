@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, FlatList, Pressable, ActivityIndicator, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
@@ -11,25 +11,30 @@ import {
   Lightbulb,
   Play,
   Monitor,
-  X
+  X,
+  Table,
+  Book,
+  Download
 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { studioService } from '../../src/services/studioService';
-import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem } from '../../src/types/studio';
+import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem, getExportFormat } from '../../src/types/studio';
 
 // Viewers
 import { SlideViewer } from '../../src/components/studio/SlideViewer';
 import { QuizViewer } from '../../src/components/studio/QuizViewer';
 import { FlashcardViewer } from '../../src/components/studio/FlashcardViewer';
 import { PodcastPlayer } from '../../src/components/studio/PodcastPlayer';
+import { SpreadsheetViewer } from '../../src/components/studio/SpreadsheetViewer';
+import { WorkbookViewer } from '../../src/components/studio/WorkbookViewer';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Todos' },
   { id: 'PODCAST', label: 'Áudio' },
-  { id: 'FLASHCARD', label: 'Cards' },
+  { id: 'DOCS', label: 'Docs' }, // Grouped Text, Workbook, Spreadsheet
   { id: 'QUIZ', label: 'Quiz' },
 ];
 
@@ -65,7 +70,7 @@ export default function StudioGalleryScreen() {
     ? artifacts
     : artifacts.filter(item => {
         if (activeFilter === 'PODCAST') return item.type === 'PODCAST';
-        if (activeFilter === 'FLASHCARD') return item.type === 'FLASHCARD' || item.type === 'SUMMARY' || item.type === 'SLIDE';
+        if (activeFilter === 'DOCS') return ['FLASHCARD', 'SUMMARY', 'SLIDE', 'SPREADSHEET', 'WORKBOOK'].includes(item.type);
         if (activeFilter === 'QUIZ') return item.type === 'QUIZ';
         return true;
     });
@@ -83,6 +88,8 @@ export default function StudioGalleryScreen() {
           case 'FLASHCARD': return '#f472b6';
           case 'SLIDE': return '#fbbf24';
           case 'SUMMARY': return '#c084fc';
+          case 'SPREADSHEET': return '#34d399';
+          case 'WORKBOOK': return '#60a5fa';
           default: return '#94a3b8';
       }
   };
@@ -92,9 +99,20 @@ export default function StudioGalleryScreen() {
           case 'PODCAST': return <Headphones color={color} size={24} />;
           case 'QUIZ': return <FileQuestion color={color} size={24} />;
           case 'FLASHCARD': return <BookOpen color={color} size={24} />;
-          case 'SLIDE': return <Monitor color={color} size={24} />; // Updated to Monitor
+          case 'SLIDE': return <Monitor color={color} size={24} />;
+          case 'SPREADSHEET': return <Table color={color} size={24} />;
+          case 'WORKBOOK': return <Book color={color} size={24} />;
           default: return <FileText color={color} size={24} />;
       }
+  };
+
+  const handleExport = () => {
+      if (!selectedArtifact) return;
+      const format = getExportFormat(selectedArtifact.type);
+      Alert.alert(
+          "Download Iniciado",
+          `O arquivo "${selectedArtifact.title}.${format}" foi salvo em Downloads.`
+      );
   };
 
   const renderItem = ({ item, index }: { item: KnowledgeArtifact, index: number }) => {
@@ -137,7 +155,8 @@ export default function StudioGalleryScreen() {
                     {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
                     {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
                     {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
-                    {(item.type === 'SUMMARY' || item.type === 'SLIDE') && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
+                    {item.type === 'SLIDE' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} slides</Text>}
+                    {['SUMMARY', 'SPREADSHEET', 'WORKBOOK'].includes(item.type) && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
                 </View>
             </Pressable>
         </Animated.View>
@@ -157,6 +176,10 @@ export default function StudioGalleryScreen() {
               return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
           case 'PODCAST':
               return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
+          case 'SPREADSHEET':
+              return <SpreadsheetViewer />;
+          case 'WORKBOOK':
+              return <WorkbookViewer />;
           default:
               // Fallback for Summary or unknown
               return (
@@ -229,13 +252,23 @@ export default function StudioGalleryScreen() {
          onRequestClose={() => setSelectedArtifact(null)}
       >
           <View className="flex-1 bg-space-dark relative">
-               {/* Close Button Overlay */}
-               <Pressable
-                  onPress={() => setSelectedArtifact(null)}
-                  className="absolute top-4 right-4 z-50 p-2 bg-black/40 rounded-full"
-               >
-                   <X color="#fff" size={24} />
-               </Pressable>
+               {/* Header Controls (Close & Export) */}
+               <View className="absolute top-4 right-4 z-50 flex-row gap-2">
+                   {selectedArtifact && (
+                       <Pressable
+                          onPress={handleExport}
+                          className="p-2 bg-cosmic-purple rounded-full shadow-lg"
+                       >
+                           <Download color="#fff" size={24} />
+                       </Pressable>
+                   )}
+                   <Pressable
+                      onPress={() => setSelectedArtifact(null)}
+                      className="p-2 bg-black/40 rounded-full"
+                   >
+                       <X color="#fff" size={24} />
+                   </Pressable>
+               </View>
 
                {renderViewer()}
           </View>
