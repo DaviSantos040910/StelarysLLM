@@ -23,19 +23,21 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
   const [selectedModel, setSelectedModel] = useState(MODELS[0]);
   const [isModelListOpen, setIsModelListOpen] = useState(false);
 
-  // YouTube Input State
+  // URL Input State (Shared for YouTube and Link)
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [inputType, setInputType] = useState<'youtube' | 'website'>('youtube');
   const [url, setUrl] = useState('');
 
-  const handleYoutubeSelect = () => {
+  const handleUrlSelect = (type: 'youtube' | 'website') => {
       // Instead of immediate close, show input
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setInputType(type);
       setShowUrlInput(true);
   };
 
   const handleUrlConfirm = () => {
       if (url.trim()) {
-          onSelectOption('youtube', { url: url.trim(), type: 'youtube' });
+          onSelectOption(inputType, { url: url.trim(), type: inputType });
           setUrl('');
           setShowUrlInput(false);
       }
@@ -51,6 +53,14 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
       setShowUrlInput(false);
       setIsModelListOpen(false);
       onClose();
+  };
+
+  const getInputTitle = () => {
+      return inputType === 'youtube' ? 'Adicionar Link do YouTube' : 'Adicionar Link do Site';
+  };
+
+  const getInputPlaceholder = () => {
+      return inputType === 'youtube' ? 'Cole a URL do vídeo...' : 'Cole a URL do site...';
   };
 
   return (
@@ -75,10 +85,10 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
         </View>
 
         {showUrlInput ? (
-            /* URL Input View */
+            /* URL Input View (Generic) */
             <Animated.View entering={FadeIn} className="px-6 py-6 min-h-[250px]">
                  <View className="flex-row items-center justify-between mb-4">
-                     <Text className="text-starlight text-lg font-bold">Adicionar Link do YouTube</Text>
+                     <Text className="text-starlight text-lg font-bold">{getInputTitle()}</Text>
                      <Pressable onPress={handleUrlCancel} className="p-2 bg-white/5 rounded-full">
                          <X color="#94a3b8" size={20} />
                      </Pressable>
@@ -87,7 +97,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                  <View className="bg-white/5 border border-white/10 rounded-xl flex-row items-center px-4 py-3 mb-6">
                      <Link color="#94a3b8" size={20} className="mr-3" />
                      <TextInput
-                        placeholder="Cole a URL aqui..."
+                        placeholder={getInputPlaceholder()}
                         placeholderTextColor="#64748b"
                         value={url}
                         onChangeText={setUrl}
@@ -100,7 +110,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
 
                  <Pressable
                     onPress={handleUrlConfirm}
-                    className={`w-full py-4 rounded-xl items-center ${url.trim() ? 'bg-red-500' : 'bg-white/10'}`}
+                    className={`w-full py-4 rounded-xl items-center ${url.trim() ? 'bg-cosmic-purple' : 'bg-white/10'}`}
                     disabled={!url.trim()}
                  >
                      <Text className={`font-bold text-base ${url.trim() ? 'text-white' : 'text-gray-500'}`}>Confirmar Link</Text>
@@ -128,13 +138,13 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                             icon={Globe}
                             label="Site"
                             color="#34d399"
-                            onPress={() => onSelectOption('website')}
+                            onPress={() => handleUrlSelect('website')}
                         />
                         <MediaButton
                             icon={Youtube}
                             label="YouTube"
                             color="#f87171"
-                            onPress={handleYoutubeSelect} // Opens Input View
+                            onPress={() => handleUrlSelect('youtube')}
                         />
                     </View>
                 </View>
