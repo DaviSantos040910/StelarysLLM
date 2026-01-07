@@ -45,6 +45,19 @@ let MOCK_STORE: KnowledgeArtifact[] = [
              { front: 'Regra da Cadeia', back: 'f(g(x))\' = f\'(g(x)) * g\'(x)' }
         ],
         createdAt: new Date(Date.now() - 604800000).toISOString(), // Last week
+    },
+    {
+        id: '5',
+        chatId: 'mock-chat-id',
+        type: 'SLIDE',
+        title: 'Apresentação: Integrais',
+        status: 'ready',
+        content: [
+            { title: 'Introdução às Integrais', bullets: ['Definição de área sob a curva', 'Notação de Leibniz', 'Soma de Riemann'] },
+            { title: 'Técnicas de Integração', bullets: ['Substituição', 'Por partes', 'Frações parciais'] },
+            { title: 'Aplicações', bullets: ['Cálculo de volume', 'Trabalho físico', 'Probabilidade'] }
+        ],
+        createdAt: new Date(Date.now() - 1209600000).toISOString(), // 2 weeks ago
     }
 ];
 

@@ -15,7 +15,8 @@ import {
   FileQuestion,
   FileText,
   Lightbulb,
-  Maximize2
+  Maximize2,
+  Monitor
 } from 'lucide-react-native';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
 import { useRouter, Href } from 'expo-router';
@@ -32,12 +33,14 @@ interface KnowledgeActionSheetProps {
   chatId?: string;
 }
 
+// Updated Generators based on Task 2:
+// Podcast (🎙️), Slides (🖥️), Quiz (🧠), Flashcards (📚), Resumo (📝)
 const GENERATORS: { id: ArtifactType; label: string; icon: any; color: string; bg: string; border: string }[] = [
-  { id: 'PODCAST', label: 'Resumo em Áudio', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-  { id: 'FLASHCARD', label: 'Cartões de estudo', icon: BookOpen, color: '#f472b6', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
-  { id: 'QUIZ', label: 'Teste', icon: FileQuestion, color: '#2dd4bf', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
-  { id: 'SUMMARY', label: 'Infográfico', icon: FileText, color: '#c084fc', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  { id: 'SLIDE', label: 'Slides', icon: Lightbulb, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  { id: 'PODCAST', label: 'Podcast', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+  { id: 'SLIDE', label: 'Slides', icon: Monitor, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }, // Using Monitor for "Slides" (🖥️)
+  { id: 'QUIZ', label: 'Quiz', icon: FileQuestion, color: '#2dd4bf', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
+  { id: 'FLASHCARD', label: 'Flashcards', icon: BookOpen, color: '#f472b6', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
+  { id: 'SUMMARY', label: 'Resumo', icon: FileText, color: '#c084fc', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
 ];
 
 export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose, chatId = 'mock-id' }) => {
@@ -81,7 +84,6 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
   const handleSeeAll = () => {
     onClose?.();
-    // Fix: Explicitly cast to Href<string> or use strict path
     router.push({
       pathname: '/chat/studio-gallery' as Href<string>,
       params: { chatId }
@@ -124,12 +126,10 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
       <View className="mb-6 pl-6">
         <View className="flex-row justify-between items-center pr-6 mb-3">
              <Text className="text-gray-400 text-sm font-medium">Mídia Gerada & Fontes</Text>
-             {artifacts.length > 0 && (
-                 <Pressable onPress={handleSeeAll} className="flex-row items-center active:opacity-60">
-                     <Text className="text-cosmic-purple text-xs font-bold mr-1">Ver tudo</Text>
-                     <Maximize2 color="#818cf8" size={12} />
-                 </Pressable>
-             )}
+             <Pressable onPress={handleSeeAll} className="flex-row items-center active:opacity-60">
+                 <Text className="text-cosmic-purple text-xs font-bold mr-1">Ver Galeria Completa</Text>
+                 <Maximize2 color="#818cf8" size={12} />
+             </Pressable>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 }}>
