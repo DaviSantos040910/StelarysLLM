@@ -13,10 +13,11 @@ import {
   Headphones,
   BookOpen,
   FileQuestion,
-  FileText,
   Lightbulb,
   Maximize2,
-  Monitor
+  Monitor,
+  Table,
+  Book
 } from 'lucide-react-native';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
 import { useRouter, Href } from 'expo-router';
@@ -34,13 +35,14 @@ interface KnowledgeActionSheetProps {
 }
 
 // Updated Generators based on Task 2:
-// Podcast (🎙️), Slides (🖥️), Quiz (🧠), Flashcards (📚), Resumo (📝)
+// Podcast (🎙️), Apresentações (🖥️), Quiz (🧠), Flashcards (📚), Tabelas (📊), Apostila (📘)
 const GENERATORS: { id: ArtifactType; label: string; icon: any; color: string; bg: string; border: string }[] = [
   { id: 'PODCAST', label: 'Podcast', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-  { id: 'SLIDE', label: 'Slides', icon: Monitor, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' }, // Using Monitor for "Slides" (🖥️)
+  { id: 'SLIDE', label: 'Apresentações', icon: Monitor, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
   { id: 'QUIZ', label: 'Quiz', icon: FileQuestion, color: '#2dd4bf', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
   { id: 'FLASHCARD', label: 'Flashcards', icon: BookOpen, color: '#f472b6', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
-  { id: 'SUMMARY', label: 'Resumo', icon: FileText, color: '#c084fc', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  { id: 'SPREADSHEET', label: 'Tabelas', icon: Table, color: '#34d399', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  { id: 'WORKBOOK', label: 'Apostila', icon: Book, color: '#60a5fa', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
 ];
 
 export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose, chatId = 'mock-id' }) => {
