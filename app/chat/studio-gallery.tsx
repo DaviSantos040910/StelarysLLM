@@ -19,6 +19,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import * as Sharing from 'expo-sharing';
 
 import { studioService } from '../../src/services/studioService';
 import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem, getExportFormat } from '../../src/types/studio';
@@ -34,7 +35,7 @@ import { WorkbookViewer } from '../../src/components/studio/WorkbookViewer';
 const FILTER_TABS = [
   { id: 'ALL', label: 'Todos' },
   { id: 'PODCAST', label: 'Áudio' },
-  { id: 'DOCS', label: 'Docs' }, // Grouped Text, Workbook, Spreadsheet
+  { id: 'DOCS', label: 'Docs' },
   { id: 'QUIZ', label: 'Quiz' },
 ];
 
@@ -47,6 +48,7 @@ export default function StudioGalleryScreen() {
 
   // Viewer State
   const [selectedArtifact, setSelectedArtifact] = useState<KnowledgeArtifact | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const loadData = async () => {
       setLoading(true);
@@ -106,13 +108,27 @@ export default function StudioGalleryScreen() {
       }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
       if (!selectedArtifact) return;
-      const format = getExportFormat(selectedArtifact.type);
-      Alert.alert(
-          "Download Iniciado",
-          `O arquivo "${selectedArtifact.title}.${format}" foi salvo em Downloads.`
-      );
+
+      setIsExporting(true);
+      try {
+          const format = getExportFormat(selectedArtifact.type);
+          // 1. Request backend generation/download
+          const localUri = await studioService.exportArtifact(selectedArtifact.id, format);
+
+          // 2. Share/Save
+          if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(localUri);
+          } else {
+              Alert.alert("Sucesso", "Arquivo salvo em: " + localUri);
+          }
+      } catch (error) {
+          console.error(error);
+          Alert.alert("Erro", "Falha ao exportar arquivo.");
+      } finally {
+          setIsExporting(false);
+      }
   };
 
   const renderItem = ({ item, index }: { item: KnowledgeArtifact, index: number }) => {
@@ -181,7 +197,6 @@ export default function StudioGalleryScreen() {
           case 'WORKBOOK':
               return <WorkbookViewer />;
           default:
-              // Fallback for Summary or unknown
               return (
                   <View className="flex-1 bg-space-dark p-6 pt-20">
                       <Text className="text-starlight text-2xl font-bold mb-4">{selectedArtifact.title}</Text>
@@ -257,9 +272,14 @@ export default function StudioGalleryScreen() {
                    {selectedArtifact && (
                        <Pressable
                           onPress={handleExport}
-                          className="p-2 bg-cosmic-purple rounded-full shadow-lg"
+                          disabled={isExporting}
+                          className={`p-2 rounded-full shadow-lg ${isExporting ? 'bg-gray-600' : 'bg-cosmic-purple'}`}
                        >
-                           <Download color="#fff" size={24} />
+                           {isExporting ? (
+                               <ActivityIndicator color="#fff" size="small" />
+                           ) : (
+                               <Download color="#fff" size={24} />
+                           )}
                        </Pressable>
                    )}
                    <Pressable

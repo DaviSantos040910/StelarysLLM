@@ -1,4 +1,7 @@
 import { KnowledgeArtifact, ArtifactType } from '../types/studio';
+import * as FileSystem from 'expo-file-system';
+import { BASE_URL } from '../api/client';
+import { useAuthStore } from '../stores/authStore';
 
 // In-memory store for mock data
 let MOCK_STORE: KnowledgeArtifact[] = [
@@ -112,5 +115,54 @@ export const studioService = {
         }, 4000);
 
         return newArtifact;
+    },
+
+    /**
+     * Exports an artifact by downloading it from the backend API.
+     */
+    async exportArtifact(artifactId: string, format: string): Promise<string> {
+        const artifact = MOCK_STORE.find(a => a.id === artifactId);
+        if (!artifact) throw new Error('Artifact not found');
+
+        const fileName = `${artifact.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
+        const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+        const token = useAuthStore.getState().token;
+
+        // Use the actual backend endpoint (prepared for when it's ready)
+        // If the backend is not reachable, this will throw, which is correct behavior for "integration ready" code.
+        try {
+            const downloadRes = await FileSystem.downloadAsync(
+                `${BASE_URL}/api/v1/studio/artifacts/${artifactId}/export?format=${format}`,
+                fileUri,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (downloadRes.status !== 200) {
+                // If backend 404s/fails (likely right now), fallback to mock generation for demo purposes
+                // ONLY if we are in DEV mode, to allow UI testing to continue.
+                if (__DEV__) {
+                    console.warn("Backend export failed, falling back to mock generation for demo.");
+                    let content = 'Mock Data Content';
+                    await FileSystem.writeAsStringAsync(fileUri, content);
+                    return fileUri;
+                }
+                throw new Error(`Download failed with status ${downloadRes.status}`);
+            }
+
+            return downloadRes.uri;
+        } catch (e) {
+            console.error("Export error:", e);
+            // Fallback for demo continuity
+            if (__DEV__) {
+                 let content = 'Mock Data Content (Fallback)';
+                 await FileSystem.writeAsStringAsync(fileUri, content);
+                 return fileUri;
+            }
+            throw e;
+        }
     }
 };
