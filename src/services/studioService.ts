@@ -58,6 +58,24 @@ let MOCK_STORE: KnowledgeArtifact[] = [
             { title: 'Aplicações', bullets: ['Cálculo de volume', 'Trabalho físico', 'Probabilidade'] }
         ],
         createdAt: new Date(Date.now() - 1209600000).toISOString(), // 2 weeks ago
+    },
+    {
+        id: '6',
+        chatId: 'mock-chat-id',
+        type: 'SPREADSHEET',
+        title: 'Tabela de Fórmulas',
+        status: 'ready',
+        content: 'Mock content for spreadsheet view', // Future: structured data
+        createdAt: new Date(Date.now() - 1800000).toISOString(), // 30 mins ago
+    },
+    {
+        id: '7',
+        chatId: 'mock-chat-id',
+        type: 'WORKBOOK',
+        title: 'Apostila Completa: Módulo 1',
+        status: 'ready',
+        content: 'Mock content for workbook PDF view',
+        createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     }
 ];
 
