@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, Pressable, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
@@ -9,14 +9,22 @@ import {
   FileQuestion,
   FileText,
   Lightbulb,
-  Play
+  Play,
+  Monitor,
+  X
 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { studioService } from '../../src/services/studioService';
-import { KnowledgeArtifact, ArtifactType } from '../../src/types/studio';
+import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem } from '../../src/types/studio';
+
+// Viewers
+import { SlideViewer } from '../../src/components/studio/SlideViewer';
+import { QuizViewer } from '../../src/components/studio/QuizViewer';
+import { FlashcardViewer } from '../../src/components/studio/FlashcardViewer';
+import { PodcastPlayer } from '../../src/components/studio/PodcastPlayer';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Todos' },
@@ -31,6 +39,9 @@ export default function StudioGalleryScreen() {
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Viewer State
+  const [selectedArtifact, setSelectedArtifact] = useState<KnowledgeArtifact | null>(null);
 
   const loadData = async () => {
       setLoading(true);
@@ -54,7 +65,7 @@ export default function StudioGalleryScreen() {
     ? artifacts
     : artifacts.filter(item => {
         if (activeFilter === 'PODCAST') return item.type === 'PODCAST';
-        if (activeFilter === 'FLASHCARD') return item.type === 'FLASHCARD' || item.type === 'SUMMARY' || item.type === 'SLIDE'; // Group text-ish
+        if (activeFilter === 'FLASHCARD') return item.type === 'FLASHCARD' || item.type === 'SUMMARY' || item.type === 'SLIDE';
         if (activeFilter === 'QUIZ') return item.type === 'QUIZ';
         return true;
     });
@@ -81,7 +92,7 @@ export default function StudioGalleryScreen() {
           case 'PODCAST': return <Headphones color={color} size={24} />;
           case 'QUIZ': return <FileQuestion color={color} size={24} />;
           case 'FLASHCARD': return <BookOpen color={color} size={24} />;
-          case 'SLIDE': return <Lightbulb color={color} size={24} />;
+          case 'SLIDE': return <Monitor color={color} size={24} />; // Updated to Monitor
           default: return <FileText color={color} size={24} />;
       }
   };
@@ -92,41 +103,69 @@ export default function StudioGalleryScreen() {
 
     return (
         <Animated.View
-        entering={FadeInDown.delay(index * 50)}
-        className="flex-1 m-2 p-4 bg-space-light rounded-2xl border border-white/10 min-h-[140px] justify-between"
+            entering={FadeInDown.delay(index * 50)}
+            className="flex-1 m-2"
         >
-            <View className="flex-row justify-between items-start">
-                <View className="p-2 bg-white/5 rounded-full">
-                    {icon}
-                </View>
-                {item.type === 'PODCAST' && (
-                    <Pressable className="p-1.5 bg-cosmic-purple/20 rounded-full">
-                        <Play size={12} color="#818cf8" fill="#818cf8" />
-                    </Pressable>
-                )}
-                {item.type === 'QUIZ' && item.score && (
-                    <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
-                        <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
+            <Pressable
+                onPress={() => setSelectedArtifact(item)}
+                className="flex-1 p-4 bg-space-light rounded-2xl border border-white/10 min-h-[140px] justify-between active:bg-white/5 transition-colors"
+            >
+                <View className="flex-row justify-between items-start">
+                    <View className="p-2 bg-white/5 rounded-full">
+                        {icon}
                     </View>
-                )}
-            </View>
+                    {item.type === 'PODCAST' && (
+                        <View className="p-1.5 bg-cosmic-purple/20 rounded-full">
+                            <Play size={12} color="#818cf8" fill="#818cf8" />
+                        </View>
+                    )}
+                    {item.type === 'QUIZ' && item.score && (
+                        <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
+                            <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
+                        </View>
+                    )}
+                </View>
 
-            <View>
-                <Text className="text-starlight font-bold text-base leading-tight mb-1" numberOfLines={2}>
-                    {item.title}
-                </Text>
-                <Text className="text-gray-500 text-xs">{dateStr}</Text>
-            </View>
+                <View>
+                    <Text className="text-starlight font-bold text-base leading-tight mb-1" numberOfLines={2}>
+                        {item.title}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">{dateStr}</Text>
+                </View>
 
-            {/* Footer info based on type */}
-            <View className="mt-2 pt-2 border-t border-white/5">
-                {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
-                {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
-                {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
-                {(item.type === 'SUMMARY' || item.type === 'SLIDE') && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
-            </View>
+                <View className="mt-2 pt-2 border-t border-white/5">
+                    {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
+                    {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
+                    {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
+                    {(item.type === 'SUMMARY' || item.type === 'SLIDE') && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
+                </View>
+            </Pressable>
         </Animated.View>
     );
+  };
+
+  // Render Content based on Type
+  const renderViewer = () => {
+      if (!selectedArtifact) return null;
+
+      switch(selectedArtifact.type) {
+          case 'SLIDE':
+              return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
+          case 'QUIZ':
+              return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={() => setSelectedArtifact(null)} />;
+          case 'FLASHCARD':
+              return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
+          case 'PODCAST':
+              return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
+          default:
+              // Fallback for Summary or unknown
+              return (
+                  <View className="flex-1 bg-space-dark p-6 pt-20">
+                      <Text className="text-starlight text-2xl font-bold mb-4">{selectedArtifact.title}</Text>
+                      <Text className="text-gray-300 text-lg leading-8">{selectedArtifact.content as string}</Text>
+                  </View>
+              );
+      }
   };
 
   return (
@@ -181,6 +220,27 @@ export default function StudioGalleryScreen() {
             }
         />
       )}
+
+      {/* Artifact Viewer Modal */}
+      <Modal
+         visible={!!selectedArtifact}
+         animationType="slide"
+         presentationStyle="pageSheet"
+         onRequestClose={() => setSelectedArtifact(null)}
+      >
+          <View className="flex-1 bg-space-dark relative">
+               {/* Close Button Overlay */}
+               <Pressable
+                  onPress={() => setSelectedArtifact(null)}
+                  className="absolute top-4 right-4 z-50 p-2 bg-black/40 rounded-full"
+               >
+                   <X color="#fff" size={24} />
+               </Pressable>
+
+               {renderViewer()}
+          </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
