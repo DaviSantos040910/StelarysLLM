@@ -125,8 +125,6 @@ export const studioService = {
         if (!artifact) throw new Error('Artifact not found');
 
         const fileName = `${artifact.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
-
-        // Fix: Use explicit FileSystem methods if namespace import fails
         const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
         const token = useAuthStore.getState().token;
 

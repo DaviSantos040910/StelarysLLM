@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Image, ActivityIndicator } from 'react-native';
-import { Audio } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import { Play, Pause, RotateCcw, FastForward, Rewind } from 'lucide-react-native';
+import TrackPlayer, { usePlaybackState, useProgress, State } from 'react-native-track-player';
+import { useSetupPlayer } from '../../hooks/useSetupPlayer';
 
 interface Props {
   uri?: string;
@@ -10,75 +11,77 @@ interface Props {
 }
 
 export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const isPlayerReady = useSetupPlayer();
+  const playbackState = usePlaybackState();
+  const progress = useProgress();
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    return () => {
-        sound?.unloadAsync();
-    };
-  }, [sound]);
+  // Helper to check if playing based on State enum or string
+  const isPlaying = playbackState.state === State.Playing;
 
-  const loadSound = async () => {
-      if (!uri) return;
+  useEffect(() => {
+    const loadTrack = async () => {
+      if (!isPlayerReady || !uri) return;
+
       setIsLoading(true);
       try {
-          const { sound: newSound, status } = await Audio.Sound.createAsync(
-              { uri },
-              { shouldPlay: true },
-              onPlaybackStatusUpdate
-          );
-          setSound(newSound);
-          if (status.isLoaded) {
-             setDuration(status.durationMillis || 0);
-          }
-          setIsLoading(false);
-      } catch (e) {
-          console.error(e);
-          setIsLoading(false);
+        await TrackPlayer.reset();
+        await TrackPlayer.add({
+          id: 'podcast',
+          url: uri,
+          title: title,
+          artist: 'Stelarys AI',
+          // artwork: require('path/to/image') // Optional: Add artwork
+        });
+        // We don't auto-play to respect user context, or we could:
+        // await TrackPlayer.play();
+      } catch (error) {
+        console.error('Error loading track:', error);
+      } finally {
+        setIsLoading(false);
       }
-  };
+    };
 
-  const onPlaybackStatusUpdate = (status: any) => {
-      if (status.isLoaded) {
-          setPosition(status.positionMillis);
-          setDuration(status.durationMillis || duration);
-          setIsPlaying(status.isPlaying);
-          if (status.didJustFinish) {
-              setIsPlaying(false);
-              setPosition(0);
-          }
-      }
-  };
+    loadTrack();
 
-  const handlePlayPause = async () => {
-      if (!sound) await loadSound();
-      else {
-          if (isPlaying) await sound.pauseAsync();
-          else await sound.playAsync();
-      }
+    return () => {
+        // Cleanup on unmount
+        TrackPlayer.reset();
+    };
+  }, [isPlayerReady, uri, title]);
+
+  const togglePlayback = async () => {
+    const state = (await TrackPlayer.getPlaybackState()).state;
+    if (state === State.Playing) {
+      await TrackPlayer.pause();
+    } else {
+      await TrackPlayer.play();
+    }
   };
 
   const handleSeek = async (value: number) => {
-      if (sound) await sound.setPositionAsync(value);
+    await TrackPlayer.seekTo(value);
   };
 
-  const handleSkip = async (amount: number) => {
-      if (sound) {
-          const newPos = Math.max(0, Math.min(position + amount, duration));
-          await sound.setPositionAsync(newPos);
-      }
+  const handleSkip = async (seconds: number) => {
+    const newPos = progress.position + seconds;
+    await TrackPlayer.seekTo(Math.max(0, Math.min(newPos, progress.duration)));
   };
 
-  const formatTime = (ms: number) => {
-      const totalSeconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
+
+  if (!isPlayerReady) {
+      return (
+          <View className="flex-1 items-center justify-center bg-space-dark">
+              <ActivityIndicator color="#818cf8" size="large" />
+              <Text className="text-gray-500 mt-4">Inicializando Player...</Text>
+          </View>
+      );
+  }
 
   return (
     <View className="flex-1 bg-space-dark items-center justify-center p-8">
@@ -98,28 +101,28 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
             <Slider
                 style={{ width: '100%', height: 40 }}
                 minimumValue={0}
-                maximumValue={duration}
-                value={position}
+                maximumValue={progress.duration}
+                value={progress.position}
                 onSlidingComplete={handleSeek}
                 minimumTrackTintColor="#818cf8"
                 maximumTrackTintColor="rgba(255,255,255,0.1)"
                 thumbTintColor="#818cf8"
             />
             <View className="flex-row justify-between px-2">
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(position)}</Text>
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(duration)}</Text>
+                <Text className="text-gray-500 text-xs font-mono">{formatTime(progress.position)}</Text>
+                <Text className="text-gray-500 text-xs font-mono">{formatTime(progress.duration)}</Text>
             </View>
         </View>
 
         {/* Controls */}
         <View className="flex-row items-center gap-8 mt-4">
-             <Pressable onPress={() => handleSkip(-15000)} className="p-4 bg-white/5 rounded-full">
+             <Pressable onPress={() => handleSkip(-15)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
                  <RotateCcw size={24} color="#fff" />
              </Pressable>
 
              <Pressable
-                onPress={handlePlayPause}
-                className="w-20 h-20 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50"
+                onPress={togglePlayback}
+                className="w-20 h-20 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90"
              >
                  {isLoading ? (
                      <ActivityIndicator color="#fff" size="large" />
@@ -130,7 +133,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
                  )}
              </Pressable>
 
-             <Pressable onPress={() => handleSkip(30000)} className="p-4 bg-white/5 rounded-full">
+             <Pressable onPress={() => handleSkip(30)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
                  <FastForward size={24} color="#fff" />
              </Pressable>
         </View>
