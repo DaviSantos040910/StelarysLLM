@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
+import { MinimizedNoteButton } from '../src/components/studio/MinimizedNoteButton';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -51,6 +52,10 @@ export default function RootLayout() {
         <Stack.Screen name="study/details" options={{ title: 'Settings', headerBackTitle: 'Back' }} />
         <Stack.Screen name="create/index" options={{ presentation: 'modal', title: 'New Study', headerBackTitle: 'Back' }} />
       </Stack>
+
+      {/* Global Minimized Note Button */}
+      <MinimizedNoteButton />
+
       <StatusBar style="light" backgroundColor="#0b0e14" />
 
       {/* Loading Overlay */}
