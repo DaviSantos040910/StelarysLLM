@@ -43,6 +43,7 @@ const FILTER_TABS = [
 
 export default function StudioGalleryScreen() {
   const router = useRouter();
+  // Ensure chatId is read from params, even in the new route
   const { chatId, restoreId } = useLocalSearchParams();
   const { minimizedArtifact, maximize } = useMinimizedStore();
 
@@ -59,7 +60,6 @@ export default function StudioGalleryScreen() {
       if (restoreId && minimizedArtifact && minimizedArtifact.id === restoreId) {
           setSelectedArtifact(minimizedArtifact);
           maximize(); // Clear from store as it's now open
-          // Clean up params? Router replace might be needed but not strictly necessary visually
       }
   }, [restoreId, minimizedArtifact]);
 

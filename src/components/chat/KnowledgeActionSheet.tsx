@@ -86,8 +86,9 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
   const handleSeeAll = () => {
     onClose?.();
+    // Updated route to new location
     router.push({
-      pathname: '/chat/studio-gallery' as Href<string>,
+      pathname: '/studio/gallery' as Href<string>,
       params: { chatId }
     });
   };

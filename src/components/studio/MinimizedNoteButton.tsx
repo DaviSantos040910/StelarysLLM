@@ -14,8 +14,9 @@ export const MinimizedNoteButton = () => {
   const handlePress = () => {
     // Navigate to gallery to restore context.
     // Passing params to trigger restoration logic in the target screen.
+    // Ensure casting if strict types complain, although Href<string> is safer.
     router.push({
-      pathname: '/chat/studio-gallery',
+      pathname: '/studio/gallery' as any,
       params: {
         chatId: minimizedArtifact.chatId,
         restoreId: minimizedArtifact.id

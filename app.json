@@ -39,7 +39,32 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
+      [
+        "react-native-track-player",
+        {
+          "capabilities": [
+            "play",
+            "pause",
+            "stop",
+            "seekTo"
+          ],
+          "notificationCapabilities": [
+            "play",
+            "pause"
+          ],
+          "compactCapabilities": [
+            "play",
+            "pause"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
