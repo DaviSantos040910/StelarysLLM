@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, FlatList, Pressable, ActivityIndicator, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -23,6 +23,7 @@ import * as Sharing from 'expo-sharing';
 
 import { studioService } from '../../src/services/studioService';
 import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem, getExportFormat } from '../../src/types/studio';
+import { useMinimizedStore } from '../../src/stores/minimizedStore';
 
 // Viewers
 import { SlideViewer } from '../../src/components/studio/SlideViewer';
@@ -31,6 +32,7 @@ import { FlashcardViewer } from '../../src/components/studio/FlashcardViewer';
 import { PodcastPlayer } from '../../src/components/studio/PodcastPlayer';
 import { SpreadsheetViewer } from '../../src/components/studio/SpreadsheetViewer';
 import { WorkbookViewer } from '../../src/components/studio/WorkbookViewer';
+import { NoteViewer } from '../../src/components/studio/NoteViewer';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Todos' },
@@ -41,7 +43,9 @@ const FILTER_TABS = [
 
 export default function StudioGalleryScreen() {
   const router = useRouter();
-  const { chatId } = useLocalSearchParams();
+  const { chatId, restoreId } = useLocalSearchParams();
+  const { minimizedArtifact, maximize } = useMinimizedStore();
+
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +53,15 @@ export default function StudioGalleryScreen() {
   // Viewer State
   const [selectedArtifact, setSelectedArtifact] = useState<KnowledgeArtifact | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Restore minimized artifact if requested
+  useEffect(() => {
+      if (restoreId && minimizedArtifact && minimizedArtifact.id === restoreId) {
+          setSelectedArtifact(minimizedArtifact);
+          maximize(); // Clear from store as it's now open
+          // Clean up params? Router replace might be needed but not strictly necessary visually
+      }
+  }, [restoreId, minimizedArtifact]);
 
   const loadData = async () => {
       setLoading(true);
@@ -114,10 +127,8 @@ export default function StudioGalleryScreen() {
       setIsExporting(true);
       try {
           const format = getExportFormat(selectedArtifact.type);
-          // 1. Request backend generation/download
           const localUri = await studioService.exportArtifact(selectedArtifact.id, format);
 
-          // 2. Share/Save
           if (await Sharing.isAvailableAsync()) {
               await Sharing.shareAsync(localUri);
           } else {
@@ -183,27 +194,48 @@ export default function StudioGalleryScreen() {
   const renderViewer = () => {
       if (!selectedArtifact) return null;
 
-      switch(selectedArtifact.type) {
-          case 'SLIDE':
-              return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
-          case 'QUIZ':
-              return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={() => setSelectedArtifact(null)} />;
-          case 'FLASHCARD':
-              return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
-          case 'PODCAST':
-              return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
-          case 'SPREADSHEET':
-              return <SpreadsheetViewer />;
-          case 'WORKBOOK':
-              return <WorkbookViewer />;
-          default:
-              return (
-                  <View className="flex-1 bg-space-dark p-6 pt-20">
-                      <Text className="text-starlight text-2xl font-bold mb-4">{selectedArtifact.title}</Text>
-                      <Text className="text-gray-300 text-lg leading-8">{selectedArtifact.content as string}</Text>
-                  </View>
-              );
+      // NoteViewer handles its own header logic for minimize, so we return it directly
+      if (selectedArtifact.type === 'SUMMARY') {
+          return (
+              <NoteViewer
+                  data={selectedArtifact.content as string}
+                  artifact={selectedArtifact}
+                  onClose={() => setSelectedArtifact(null)}
+                  onExport={handleExport}
+              />
+          );
       }
+
+      const ViewerContent = () => {
+          switch(selectedArtifact.type) {
+              case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
+              case 'QUIZ': return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={() => setSelectedArtifact(null)} />;
+              case 'FLASHCARD': return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
+              case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
+              case 'SPREADSHEET': return <SpreadsheetViewer />;
+              case 'WORKBOOK': return <WorkbookViewer />;
+              default: return <View />;
+          }
+      };
+
+      // Default Header for other types
+      return (
+          <View className="flex-1 bg-space-dark relative">
+               <View className="absolute top-4 right-4 z-50 flex-row gap-2">
+                   <Pressable
+                      onPress={handleExport}
+                      disabled={isExporting}
+                      className={`p-2 rounded-full shadow-lg ${isExporting ? 'bg-gray-600' : 'bg-cosmic-purple'}`}
+                   >
+                       {isExporting ? <ActivityIndicator color="#fff" size="small" /> : <Download color="#fff" size={24} />}
+                   </Pressable>
+                   <Pressable onPress={() => setSelectedArtifact(null)} className="p-2 bg-black/40 rounded-full">
+                       <X color="#fff" size={24} />
+                   </Pressable>
+               </View>
+               <ViewerContent />
+          </View>
+      );
   };
 
   return (
@@ -266,32 +298,7 @@ export default function StudioGalleryScreen() {
          presentationStyle="pageSheet"
          onRequestClose={() => setSelectedArtifact(null)}
       >
-          <View className="flex-1 bg-space-dark relative">
-               {/* Header Controls (Close & Export) */}
-               <View className="absolute top-4 right-4 z-50 flex-row gap-2">
-                   {selectedArtifact && (
-                       <Pressable
-                          onPress={handleExport}
-                          disabled={isExporting}
-                          className={`p-2 rounded-full shadow-lg ${isExporting ? 'bg-gray-600' : 'bg-cosmic-purple'}`}
-                       >
-                           {isExporting ? (
-                               <ActivityIndicator color="#fff" size="small" />
-                           ) : (
-                               <Download color="#fff" size={24} />
-                           )}
-                       </Pressable>
-                   )}
-                   <Pressable
-                      onPress={() => setSelectedArtifact(null)}
-                      className="p-2 bg-black/40 rounded-full"
-                   >
-                       <X color="#fff" size={24} />
-                   </Pressable>
-               </View>
-
-               {renderViewer()}
-          </View>
+          {renderViewer()}
       </Modal>
 
     </SafeAreaView>
