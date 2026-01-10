@@ -51,6 +51,13 @@ export default function RootLayout() {
         <Stack.Screen name="study/[id]" options={{ title: 'Study Session', headerBackTitle: 'Back' }} />
         <Stack.Screen name="study/details" options={{ title: 'Settings', headerBackTitle: 'Back' }} />
         <Stack.Screen name="create/index" options={{ presentation: 'modal', title: 'New Study', headerBackTitle: 'Back' }} />
+
+        {/* Chat Routes */}
+        <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/reader" options={{ headerShown: false, presentation: 'modal' }} />
+
+        {/* Studio Routes */}
+        <Stack.Screen name="studio/gallery" options={{ headerShown: false }} />
       </Stack>
 
       {/* Global Minimized Note Button */}
