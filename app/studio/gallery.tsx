@@ -44,7 +44,7 @@ const FILTER_TABS = [
 export default function StudioGalleryScreen() {
   const router = useRouter();
   // Ensure chatId is read from params, even in the new route
-  const { chatId, restoreId } = useLocalSearchParams();
+  const { chatId, restoreId } = useLocalSearchParams<{ chatId: string; restoreId: string }>();
   const { minimizedArtifact, maximize } = useMinimizedStore();
 
   const [activeFilter, setActiveFilter] = useState('ALL');
@@ -66,7 +66,7 @@ export default function StudioGalleryScreen() {
   const loadData = async () => {
       setLoading(true);
       try {
-        const data = await studioService.getArtifacts(chatId as string || 'mock-id');
+        const data = await studioService.getArtifacts(chatId || 'mock-id');
         setArtifacts(data);
       } catch (e) {
           console.error(e);
