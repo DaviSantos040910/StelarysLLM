@@ -46,25 +46,7 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
         }
       ],
-      [
-        "react-native-track-player",
-        {
-          "capabilities": [
-            "play",
-            "pause",
-            "stop",
-            "seekTo"
-          ],
-          "notificationCapabilities": [
-            "play",
-            "pause"
-          ],
-          "compactCapabilities": [
-            "play",
-            "pause"
-          ]
-        }
-      ]
+      "./plugins/withReactNativeTrackPlayer"
     ],
     "experiments": {
       "typedRoutes": true,

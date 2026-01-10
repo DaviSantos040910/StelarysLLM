@@ -88,7 +88,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     onClose?.();
     // Updated route to new location
     router.push({
-      pathname: '/studio/gallery' as Href<string>,
+      pathname: '/studio/gallery',
       params: { chatId }
     });
   };

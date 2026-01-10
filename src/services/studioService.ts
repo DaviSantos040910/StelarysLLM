@@ -1,5 +1,5 @@
 import { KnowledgeArtifact, ArtifactType } from '../types/studio';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
 

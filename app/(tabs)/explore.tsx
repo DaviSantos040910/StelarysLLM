@@ -54,10 +54,6 @@ export default function ExploreScreen() {
               setActiveCategoryId(cats[0].id);
               loadBots(cats[0].id);
           } else if (activeCategoryId) {
-             // Just refresh bots if already on a category
-             // loadBots(activeCategoryId);
-             // Logic to avoid double loading on mount?
-             // We can skip if bots are already populated, but let's refresh to be safe
              if (bots.length === 0) loadBots(activeCategoryId);
           }
       } catch (e) {
