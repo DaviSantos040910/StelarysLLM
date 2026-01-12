@@ -45,7 +45,7 @@ export default function StudioGalleryScreen() {
   const router = useRouter();
   // Ensure chatId is read from params, even in the new route
   const { chatId, restoreId } = useLocalSearchParams<{ chatId: string; restoreId: string }>();
-  const { minimizedArtifact, maximize } = useMinimizedStore();
+  const { minimizedArtifact, maximizeNote } = useMinimizedStore();
 
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
@@ -55,13 +55,27 @@ export default function StudioGalleryScreen() {
   const [selectedArtifact, setSelectedArtifact] = useState<KnowledgeArtifact | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Track if opened via restoration to handle navigation back
+  const [wasRestored, setWasRestored] = useState(false);
+
   // Restore minimized artifact if requested
   useEffect(() => {
       if (restoreId && minimizedArtifact && minimizedArtifact.id === restoreId) {
           setSelectedArtifact(minimizedArtifact);
-          maximize(); // Clear from store as it's now open
+          maximizeNote(); // Clear from store as it's now open
+          setWasRestored(true);
+          // Clear param to prevent loop when minimizing again
+          router.setParams({ restoreId: undefined });
       }
   }, [restoreId, minimizedArtifact]);
+
+  const handleCloseViewer = () => {
+      setSelectedArtifact(null);
+      if (wasRestored) {
+          setWasRestored(false);
+          router.back();
+      }
+  };
 
   const loadData = async () => {
       setLoading(true);
@@ -200,7 +214,7 @@ export default function StudioGalleryScreen() {
               <NoteViewer
                   data={selectedArtifact.content as string}
                   artifact={selectedArtifact}
-                  onClose={() => setSelectedArtifact(null)}
+                  onClose={handleCloseViewer}
                   onExport={handleExport}
               />
           );
@@ -209,7 +223,7 @@ export default function StudioGalleryScreen() {
       const ViewerContent = () => {
           switch(selectedArtifact.type) {
               case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
-              case 'QUIZ': return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={() => setSelectedArtifact(null)} />;
+              case 'QUIZ': return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={handleCloseViewer} />;
               case 'FLASHCARD': return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
               case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
               case 'SPREADSHEET': return <SpreadsheetViewer />;
@@ -229,7 +243,7 @@ export default function StudioGalleryScreen() {
                    >
                        {isExporting ? <ActivityIndicator color="#fff" size="small" /> : <Download color="#fff" size={24} />}
                    </Pressable>
-                   <Pressable onPress={() => setSelectedArtifact(null)} className="p-2 bg-black/40 rounded-full">
+                   <Pressable onPress={handleCloseViewer} className="p-2 bg-black/40 rounded-full">
                        <X color="#fff" size={24} />
                    </Pressable>
                </View>
@@ -296,7 +310,7 @@ export default function StudioGalleryScreen() {
          visible={!!selectedArtifact}
          animationType="slide"
          presentationStyle="pageSheet"
-         onRequestClose={() => setSelectedArtifact(null)}
+         onRequestClose={handleCloseViewer}
       >
           {renderViewer()}
       </Modal>

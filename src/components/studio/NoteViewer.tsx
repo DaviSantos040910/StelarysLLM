@@ -13,19 +13,19 @@ interface Props {
 }
 
 export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport }) => {
-  const { minimize, close: closeStore } = useMinimizedStore();
+  const { minimizeNote, closeNote } = useMinimizedStore();
   const [text, setText] = useState(data);
 
   // Mock styles state (in real app, use a Rich Text Editor lib)
   const [styles, setStyles] = useState<{ color?: string, backgroundColor?: string }>({});
 
   const handleMinimize = () => {
-    minimize(artifact);
+    minimizeNote(artifact);
     onClose(); // Close the modal visually
   };
 
   const handleClose = () => {
-    closeStore(); // Clear from store
+    closeNote(); // Clear from store
     onClose(); // Close modal
   };
 

@@ -6,7 +6,7 @@ import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 import { useMinimizedStore } from '../../stores/minimizedStore';
 
 export const MinimizedNoteButton = () => {
-  const { minimizedArtifact, close } = useMinimizedStore();
+  const { minimizedArtifact, closeNote } = useMinimizedStore();
   const router = useRouter();
 
   if (!minimizedArtifact) return null;
@@ -42,7 +42,7 @@ export const MinimizedNoteButton = () => {
 
           {/* Close Button (Small X next to it) */}
           <Pressable
-            onPress={close}
+            onPress={closeNote}
             className="ml-2 p-1 bg-black/40 rounded-full"
           >
              <X color="#fff" size={14} />
