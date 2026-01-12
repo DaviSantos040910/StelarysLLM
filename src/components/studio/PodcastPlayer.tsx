@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Play, Pause, RotateCcw, FastForward, Rewind } from 'lucide-react-native';
-import TrackPlayer, { usePlaybackState, useProgress, State } from 'react-native-track-player';
-import { useSetupPlayer } from '../../hooks/useSetupPlayer';
+import { Play, Pause, RotateCcw, FastForward } from 'lucide-react-native';
+import { Audio, AVPlaybackStatus } from 'expo-av';
 
 interface Props {
   uri?: string;
@@ -11,77 +10,92 @@ interface Props {
 }
 
 export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
-  const isPlayerReady = useSetupPlayer();
-  const playbackState = usePlaybackState();
-  const progress = useProgress();
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Helper to check if playing based on State enum or string
-  const isPlaying = playbackState.state === State.Playing;
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const loadTrack = async () => {
-      if (!isPlayerReady || !uri) return;
+    let isMounted = true;
+
+    const setupAudio = async () => {
+      if (!uri) return;
 
       setIsLoading(true);
       try {
-        await TrackPlayer.reset();
-        await TrackPlayer.add({
-          id: 'podcast',
-          url: uri,
-          title: title,
-          artist: 'Stelarys AI',
-          // artwork: require('path/to/image') // Optional: Add artwork
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
         });
-        // We don't auto-play to respect user context, or we could:
-        // await TrackPlayer.play();
+
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: false },
+          (status) => {
+             if (isMounted && status.isLoaded) {
+                 setPosition(status.positionMillis / 1000);
+                 setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+                 setIsPlaying(status.isPlaying);
+                 setIsReady(true);
+                 if (status.didJustFinish) {
+                     setIsPlaying(false);
+                     sound.setPositionAsync(0);
+                 }
+             }
+          }
+        );
+
+        soundRef.current = sound;
       } catch (error) {
-        console.error('Error loading track:', error);
+        console.error("Error loading audio:", error);
+        Alert.alert("Erro", "Não foi possível carregar o áudio. Verifique sua conexão.");
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    loadTrack();
+    setupAudio();
 
     return () => {
-        // Cleanup on unmount
-        TrackPlayer.reset();
+      isMounted = false;
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
     };
-  }, [isPlayerReady, uri, title]);
+  }, [uri]);
 
   const togglePlayback = async () => {
-    const state = (await TrackPlayer.getPlaybackState()).state;
-    if (state === State.Playing) {
-      await TrackPlayer.pause();
+    if (!soundRef.current || !isReady) return;
+
+    if (isPlaying) {
+      await soundRef.current.pauseAsync();
     } else {
-      await TrackPlayer.play();
+      await soundRef.current.playAsync();
     }
   };
 
   const handleSeek = async (value: number) => {
-    await TrackPlayer.seekTo(value);
+    if (!soundRef.current || !isReady) return;
+    await soundRef.current.setPositionAsync(value * 1000);
   };
 
   const handleSkip = async (seconds: number) => {
-    const newPos = progress.position + seconds;
-    await TrackPlayer.seekTo(Math.max(0, Math.min(newPos, progress.duration)));
+    if (!soundRef.current || !isReady) return;
+    const newPos = Math.max(0, Math.min(position + seconds, duration));
+    await soundRef.current.setPositionAsync(newPos * 1000);
   };
 
   const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return "0:00";
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-
-  if (!isPlayerReady) {
-      return (
-          <View className="flex-1 items-center justify-center bg-space-dark">
-              <ActivityIndicator color="#818cf8" size="large" />
-              <Text className="text-gray-500 mt-4">Inicializando Player...</Text>
-          </View>
-      );
-  }
 
   return (
     <View className="flex-1 bg-space-dark items-center justify-center p-8">
@@ -101,16 +115,17 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
             <Slider
                 style={{ width: '100%', height: 40 }}
                 minimumValue={0}
-                maximumValue={progress.duration}
-                value={progress.position}
+                maximumValue={duration}
+                value={position}
                 onSlidingComplete={handleSeek}
                 minimumTrackTintColor="#818cf8"
                 maximumTrackTintColor="rgba(255,255,255,0.1)"
                 thumbTintColor="#818cf8"
+                disabled={!isReady}
             />
             <View className="flex-row justify-between px-2">
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(progress.position)}</Text>
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(progress.duration)}</Text>
+                <Text className="text-gray-500 text-xs font-mono">{formatTime(position)}</Text>
+                <Text className="text-gray-500 text-xs font-mono">{formatTime(duration)}</Text>
             </View>
         </View>
 
@@ -122,7 +137,8 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
 
              <Pressable
                 onPress={togglePlayback}
-                className="w-20 h-20 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90"
+                className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isReady ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
+                disabled={!isReady}
              >
                  {isLoading ? (
                      <ActivityIndicator color="#fff" size="large" />

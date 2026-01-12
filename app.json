@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.davisantos.stelarysllm"
+      "bundleIdentifier": "com.davisantos.stelarysllm",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -47,8 +52,7 @@
         {
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
         }
-      ],
-      "./plugins/withReactNativeTrackPlayer"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
