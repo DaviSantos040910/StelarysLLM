@@ -14,7 +14,8 @@ import {
   X,
   Table,
   Book,
-  Download
+  Download,
+  ChevronDown
 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -74,6 +75,13 @@ export default function StudioGalleryScreen() {
       if (wasRestored) {
           setWasRestored(false);
           router.back();
+      }
+  };
+
+  const handleMinimizeViewer = () => {
+      if (selectedArtifact) {
+          minimizeNote(selectedArtifact);
+          handleCloseViewer();
       }
   };
 
@@ -236,6 +244,9 @@ export default function StudioGalleryScreen() {
       return (
           <View className="flex-1 bg-space-dark relative">
                <View className="absolute top-4 right-4 z-50 flex-row gap-2">
+                   <Pressable onPress={handleMinimizeViewer} className="p-2 bg-black/40 rounded-full">
+                       <ChevronDown color="#94a3b8" size={24} />
+                   </Pressable>
                    <Pressable
                       onPress={handleExport}
                       disabled={isExporting}

@@ -66,6 +66,18 @@ export const EDITOR_HTML = `
      // optional: notify RN focused
   });
 
+  // Listen for selection changes to update toolbar state
+  document.addEventListener('selectionchange', function() {
+    var styles = [];
+    if (document.queryCommandState('bold')) styles.push('bold');
+    if (document.queryCommandState('italic')) styles.push('italic');
+    // Send state back to RN
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'selection',
+      styles: styles
+    }));
+  });
+
 </script>
 </body>
 </html>

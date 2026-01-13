@@ -17,6 +17,7 @@ interface Props {
 export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport }) => {
   const { minimizeNote, closeNote } = useMinimizedStore();
   const [text, setText] = useState(data);
+  const [activeStyles, setActiveStyles] = useState<string[]>([]);
   const webViewRef = useRef<WebView>(null);
 
   const handleMinimize = () => {
@@ -47,6 +48,9 @@ export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport 
           const data = JSON.parse(event.nativeEvent.data);
           if (data.type === 'change') {
               setText(data.content);
+          }
+          if (data.type === 'selection') {
+              setActiveStyles(data.styles || []);
           }
       } catch (e) {
           console.error('WebView message error:', e);
@@ -95,10 +99,13 @@ export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport 
               scrollEnabled={true}
               hideKeyboardAccessoryView={true}
               keyboardDisplayRequiresUserAction={false}
+              startInLoadingState={true}
+              renderLoading={() => <View />}
+              androidLayerType="software"
           />
 
           {/* Toolbar */}
-          <RichTextToolbar onStylePress={handleStylePress} />
+          <RichTextToolbar onStylePress={handleStylePress} activeStyles={activeStyles} />
       </KeyboardAvoidingView>
     </View>
   );
