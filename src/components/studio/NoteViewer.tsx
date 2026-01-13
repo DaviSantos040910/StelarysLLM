@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { View, TextInput, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronDown, X, Download } from 'lucide-react-native';
+import { WebView } from 'react-native-webview';
 import { useMinimizedStore } from '../../stores/minimizedStore';
 import { KnowledgeArtifact } from '../../types/studio';
 import { RichTextToolbar } from './RichTextToolbar';
+import { EDITOR_HTML } from './EditorHtml';
 
 interface Props {
   data: string; // The text content
@@ -15,31 +17,50 @@ interface Props {
 export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport }) => {
   const { minimizeNote, closeNote } = useMinimizedStore();
   const [text, setText] = useState(data);
-
-  // Mock styles state (in real app, use a Rich Text Editor lib)
-  const [styles, setStyles] = useState<{ color?: string, backgroundColor?: string }>({});
+  const webViewRef = useRef<WebView>(null);
 
   const handleMinimize = () => {
+    // In a real app, update artifact.content with 'text' before minimizing
     minimizeNote(artifact);
-    onClose(); // Close the modal visually
+    onClose();
   };
 
   const handleClose = () => {
-    closeNote(); // Clear from store
-    onClose(); // Close modal
+    closeNote();
+    onClose();
   };
 
   const handleStylePress = (style: string, value?: string) => {
-      console.log(`Applying style: ${style} with value: ${value}`);
-      // Mock visual feedback
-      if (style === 'color') setStyles(prev => ({ ...prev, color: value }));
-      if (style === 'highlight') setStyles(prev => ({ ...prev, backgroundColor: value ? value + '40' : undefined })); // 25% opacity
+      let command = style;
+      if (style === 'color') command = 'foreColor';
+      if (style === 'highlight') command = 'hiliteColor';
+
+      // Inject JS to execute command
+      const script = `
+        handleMessage('${JSON.stringify({ type: 'format', command, value })}');
+      `;
+      webViewRef.current?.injectJavaScript(script);
   };
+
+  const handleWebViewMessage = (event: any) => {
+      try {
+          const data = JSON.parse(event.nativeEvent.data);
+          if (data.type === 'change') {
+              setText(data.content);
+          }
+      } catch (e) {
+          console.error('WebView message error:', e);
+      }
+  };
+
+  const initialInjection = `
+    handleMessage('${JSON.stringify({ type: 'init', content: data })}');
+  `;
 
   return (
     <View className="flex-1 bg-space-dark">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-4 border-b border-white/10">
+      <View className="flex-row items-center justify-between px-4 py-4 border-b border-white/10 z-10 bg-space-dark">
           <Pressable onPress={handleMinimize} className="p-2 rounded-full active:bg-white/10">
               <ChevronDown color="#94a3b8" size={24} />
           </Pressable>
@@ -60,25 +81,21 @@ export const NoteViewer: React.FC<Props> = ({ data, artifact, onClose, onExport 
 
       {/* Editor Area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-          <ScrollView className="flex-1 px-4 py-4">
-              <TextInput
-                  value={text}
-                  onChangeText={setText}
-                  multiline
-                  placeholder="Escreva sua nota aqui..."
-                  placeholderTextColor="#64748b"
-                  className="text-lg leading-8"
-                  style={{
-                      color: styles.color || '#e2e8f0',
-                      backgroundColor: styles.backgroundColor,
-                      minHeight: 300,
-                      textAlignVertical: 'top'
-                  }}
-              />
-          </ScrollView>
+          <WebView
+              ref={webViewRef}
+              originWhitelist={['*']}
+              source={{ html: EDITOR_HTML }}
+              onMessage={handleWebViewMessage}
+              injectedJavaScript={initialInjection}
+              style={{ backgroundColor: '#020617', flex: 1 }}
+              containerStyle={{ flex: 1 }}
+              scrollEnabled={true}
+              hideKeyboardAccessoryView={true}
+              keyboardDisplayRequiresUserAction={false}
+          />
 
           {/* Toolbar */}
           <RichTextToolbar onStylePress={handleStylePress} />
