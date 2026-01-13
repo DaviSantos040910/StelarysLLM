@@ -24,7 +24,7 @@ import * as Sharing from 'expo-sharing';
 
 import { studioService } from '../../src/services/studioService';
 import { KnowledgeArtifact, ArtifactType, SlidePage, QuizQuestion, FlashcardItem, getExportFormat } from '../../src/types/studio';
-import { useMinimizedStore } from '../../src/stores/minimizedStore';
+import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 
 // Viewers
 import { SlideViewer } from '../../src/components/studio/SlideViewer';
@@ -33,7 +33,6 @@ import { FlashcardViewer } from '../../src/components/studio/FlashcardViewer';
 import { PodcastPlayer } from '../../src/components/studio/PodcastPlayer';
 import { SpreadsheetViewer } from '../../src/components/studio/SpreadsheetViewer';
 import { WorkbookViewer } from '../../src/components/studio/WorkbookViewer';
-import { NoteViewer } from '../../src/components/studio/NoteViewer';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Todos' },
@@ -45,8 +44,8 @@ const FILTER_TABS = [
 export default function StudioGalleryScreen() {
   const router = useRouter();
   // Ensure chatId is read from params, even in the new route
-  const { chatId, restoreId } = useLocalSearchParams<{ chatId: string; restoreId: string }>();
-  const { minimizedArtifact, maximizeNote } = useMinimizedStore();
+  const { chatId } = useLocalSearchParams<{ chatId: string }>();
+  const { minimize } = useAudioPlayerStore();
 
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
@@ -59,17 +58,6 @@ export default function StudioGalleryScreen() {
   // Track if opened via restoration to handle navigation back
   const [wasRestored, setWasRestored] = useState(false);
 
-  // Restore minimized artifact if requested
-  useEffect(() => {
-      if (restoreId && minimizedArtifact && minimizedArtifact.id === restoreId) {
-          setSelectedArtifact(minimizedArtifact);
-          maximizeNote(); // Clear from store as it's now open
-          setWasRestored(true);
-          // Clear param to prevent loop when minimizing again
-          router.setParams({ restoreId: undefined });
-      }
-  }, [restoreId, minimizedArtifact]);
-
   const handleCloseViewer = () => {
       setSelectedArtifact(null);
       if (wasRestored) {
@@ -79,8 +67,8 @@ export default function StudioGalleryScreen() {
   };
 
   const handleMinimizeViewer = () => {
-      if (selectedArtifact) {
-          minimizeNote(selectedArtifact);
+      if (selectedArtifact?.type === 'PODCAST') {
+          minimize();
           handleCloseViewer();
       }
   };
@@ -216,18 +204,6 @@ export default function StudioGalleryScreen() {
   const renderViewer = () => {
       if (!selectedArtifact) return null;
 
-      // NoteViewer handles its own header logic for minimize, so we return it directly
-      if (selectedArtifact.type === 'SUMMARY') {
-          return (
-              <NoteViewer
-                  data={selectedArtifact.content as string}
-                  artifact={selectedArtifact}
-                  onClose={handleCloseViewer}
-                  onExport={handleExport}
-              />
-          );
-      }
-
       const ViewerContent = () => {
           switch(selectedArtifact.type) {
               case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
@@ -244,9 +220,11 @@ export default function StudioGalleryScreen() {
       return (
           <View className="flex-1 bg-space-dark relative">
                <View className="absolute top-4 right-4 z-50 flex-row gap-2">
-                   <Pressable onPress={handleMinimizeViewer} className="p-2 bg-black/40 rounded-full">
-                       <ChevronDown color="#94a3b8" size={24} />
-                   </Pressable>
+                   {selectedArtifact.type === 'PODCAST' && (
+                       <Pressable onPress={handleMinimizeViewer} className="p-2 bg-black/40 rounded-full">
+                           <ChevronDown color="#94a3b8" size={24} />
+                       </Pressable>
+                   )}
                    <Pressable
                       onPress={handleExport}
                       disabled={isExporting}

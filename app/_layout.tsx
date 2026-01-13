@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
-import { MinimizedNoteButton } from '../src/components/studio/MinimizedNoteButton';
 import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 
 export default function RootLayout() {
@@ -60,9 +59,6 @@ export default function RootLayout() {
         {/* Studio Routes */}
         <Stack.Screen name="studio/gallery" options={{ headerShown: false }} />
       </Stack>
-
-      {/* Global Minimized Note Button */}
-      <MinimizedNoteButton />
 
       {/* Global Mini Audio Player */}
       <MiniAudioPlayer />
