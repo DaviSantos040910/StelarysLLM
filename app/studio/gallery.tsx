@@ -41,6 +41,80 @@ const FILTER_TABS = [
   { id: 'QUIZ', label: 'Quiz' },
 ];
 
+const getColor = (type: ArtifactType) => {
+    switch(type) {
+        case 'PODCAST': return '#818cf8';
+        case 'QUIZ': return '#2dd4bf';
+        case 'FLASHCARD': return '#f472b6';
+        case 'SLIDE': return '#fbbf24';
+        case 'SUMMARY': return '#c084fc';
+        case 'SPREADSHEET': return '#34d399';
+        case 'WORKBOOK': return '#60a5fa';
+        default: return '#94a3b8';
+    }
+};
+
+const getIcon = (type: ArtifactType, color: string) => {
+    switch(type) {
+        case 'PODCAST': return <Headphones color={color} size={24} />;
+        case 'QUIZ': return <FileQuestion color={color} size={24} />;
+        case 'FLASHCARD': return <BookOpen color={color} size={24} />;
+        case 'SLIDE': return <Monitor color={color} size={24} />;
+        case 'SPREADSHEET': return <Table color={color} size={24} />;
+        case 'WORKBOOK': return <Book color={color} size={24} />;
+        default: return <FileText color={color} size={24} />;
+    }
+};
+
+const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtifact, index: number, onPress: (item: KnowledgeArtifact) => void }) => {
+    const color = getColor(item.type);
+    const icon = getIcon(item.type, color);
+    const dateStr = formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true, locale: ptBR });
+
+    return (
+        <Animated.View
+            entering={FadeInDown.delay(index * 50)}
+            className="flex-1 m-2"
+        >
+            <Pressable
+                onPress={() => onPress(item)}
+                className="flex-1 p-4 bg-space-light rounded-2xl border border-white/10 min-h-[140px] justify-between active:bg-white/5 transition-colors"
+            >
+                <View className="flex-row justify-between items-start">
+                    <View className="p-2 bg-white/5 rounded-full">
+                        {icon}
+                    </View>
+                    {item.type === 'PODCAST' && (
+                        <View className="p-1.5 bg-cosmic-purple/20 rounded-full">
+                            <Play size={12} color="#818cf8" fill="#818cf8" />
+                        </View>
+                    )}
+                    {item.type === 'QUIZ' && item.score && (
+                        <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
+                            <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View>
+                    <Text className="text-starlight font-bold text-base leading-tight mb-1" numberOfLines={2}>
+                        {item.title}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">{dateStr}</Text>
+                </View>
+
+                <View className="mt-2 pt-2 border-t border-white/5">
+                    {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
+                    {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
+                    {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
+                    {item.type === 'SLIDE' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} slides</Text>}
+                    {['SPREADSHEET', 'WORKBOOK'].includes(item.type) && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
+                </View>
+            </Pressable>
+        </Animated.View>
+    );
+});
+
 export default function StudioGalleryScreen() {
   const router = useRouter();
   // Ensure chatId is read from params, even in the new route
@@ -95,41 +169,10 @@ export default function StudioGalleryScreen() {
     ? artifacts
     : artifacts.filter(item => {
         if (activeFilter === 'PODCAST') return item.type === 'PODCAST';
-        if (activeFilter === 'DOCS') return ['FLASHCARD', 'SUMMARY', 'SLIDE', 'SPREADSHEET', 'WORKBOOK'].includes(item.type);
+        if (activeFilter === 'DOCS') return ['FLASHCARD', 'SLIDE', 'SPREADSHEET', 'WORKBOOK'].includes(item.type);
         if (activeFilter === 'QUIZ') return item.type === 'QUIZ';
         return true;
     });
-
-  const getMetadata = (item: KnowledgeArtifact) => {
-      const color = getColor(item.type);
-      const icon = getIcon(item.type, color);
-      return { color, icon };
-  };
-
-  const getColor = (type: ArtifactType) => {
-      switch(type) {
-          case 'PODCAST': return '#818cf8';
-          case 'QUIZ': return '#2dd4bf';
-          case 'FLASHCARD': return '#f472b6';
-          case 'SLIDE': return '#fbbf24';
-          case 'SUMMARY': return '#c084fc';
-          case 'SPREADSHEET': return '#34d399';
-          case 'WORKBOOK': return '#60a5fa';
-          default: return '#94a3b8';
-      }
-  };
-
-  const getIcon = (type: ArtifactType, color: string) => {
-      switch(type) {
-          case 'PODCAST': return <Headphones color={color} size={24} />;
-          case 'QUIZ': return <FileQuestion color={color} size={24} />;
-          case 'FLASHCARD': return <BookOpen color={color} size={24} />;
-          case 'SLIDE': return <Monitor color={color} size={24} />;
-          case 'SPREADSHEET': return <Table color={color} size={24} />;
-          case 'WORKBOOK': return <Book color={color} size={24} />;
-          default: return <FileText color={color} size={24} />;
-      }
-  };
 
   const handleExport = async () => {
       if (!selectedArtifact) return;
@@ -152,53 +195,9 @@ export default function StudioGalleryScreen() {
       }
   };
 
-  const renderItem = ({ item, index }: { item: KnowledgeArtifact, index: number }) => {
-    const { color, icon } = getMetadata(item);
-    const dateStr = formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true, locale: ptBR });
-
-    return (
-        <Animated.View
-            entering={FadeInDown.delay(index * 50)}
-            className="flex-1 m-2"
-        >
-            <Pressable
-                onPress={() => setSelectedArtifact(item)}
-                className="flex-1 p-4 bg-space-light rounded-2xl border border-white/10 min-h-[140px] justify-between active:bg-white/5 transition-colors"
-            >
-                <View className="flex-row justify-between items-start">
-                    <View className="p-2 bg-white/5 rounded-full">
-                        {icon}
-                    </View>
-                    {item.type === 'PODCAST' && (
-                        <View className="p-1.5 bg-cosmic-purple/20 rounded-full">
-                            <Play size={12} color="#818cf8" fill="#818cf8" />
-                        </View>
-                    )}
-                    {item.type === 'QUIZ' && item.score && (
-                        <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
-                            <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
-                        </View>
-                    )}
-                </View>
-
-                <View>
-                    <Text className="text-starlight font-bold text-base leading-tight mb-1" numberOfLines={2}>
-                        {item.title}
-                    </Text>
-                    <Text className="text-gray-500 text-xs">{dateStr}</Text>
-                </View>
-
-                <View className="mt-2 pt-2 border-t border-white/5">
-                    {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
-                    {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
-                    {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
-                    {item.type === 'SLIDE' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} slides</Text>}
-                    {['SUMMARY', 'SPREADSHEET', 'WORKBOOK'].includes(item.type) && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
-                </View>
-            </Pressable>
-        </Animated.View>
-    );
-  };
+  const renderItem = useCallback(({ item, index }: { item: KnowledgeArtifact, index: number }) => (
+      <GalleryItem item={item} index={index} onPress={setSelectedArtifact} />
+  ), []);
 
   // Render Content based on Type
   const renderViewer = () => {

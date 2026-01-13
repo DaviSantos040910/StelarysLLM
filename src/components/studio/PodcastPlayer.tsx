@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Play, Pause, RotateCcw, FastForward } from 'lucide-react-native';
-import { Audio, AVPlaybackStatus } from 'expo-av';
+import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 
 interface Props {
   uri?: string;
@@ -10,84 +10,56 @@ interface Props {
 }
 
 export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isReady, setIsReady] = useState(false);
+  const {
+    play,
+    pause,
+    resume,
+    seek,
+    position: storePos,
+    duration: storeDur,
+    isPlaying: storeIsPlaying,
+    currentUri
+  } = useAudioPlayerStore();
+
+  const isCurrent = currentUri === uri;
+  // If not current, we are loading or idle.
+  // We use store state only if isCurrent.
+
+  const position = isCurrent ? storePos / 1000 : 0;
+  const duration = isCurrent && storeDur > 0 ? storeDur / 1000 : 0;
+  const isPlaying = isCurrent && storeIsPlaying;
+  // If we are current, we are "ready" effectively.
+  // But we might want to show loading if duration is 0?
+  const isLoading = isCurrent && duration === 0 && storeIsPlaying;
 
   useEffect(() => {
-    let isMounted = true;
-
-    const setupAudio = async () => {
-      if (!uri) return;
-
-      setIsLoading(true);
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-
-        const { sound, status } = await Audio.Sound.createAsync(
-          { uri },
-          { shouldPlay: false },
-          (status) => {
-             if (isMounted && status.isLoaded) {
-                 setPosition(status.positionMillis / 1000);
-                 setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
-                 setIsPlaying(status.isPlaying);
-                 setIsReady(true);
-                 if (status.didJustFinish) {
-                     setIsPlaying(false);
-                     sound.setPositionAsync(0);
-                 }
-             }
-          }
-        );
-
-        soundRef.current = sound;
-      } catch (error) {
-        console.error("Error loading audio:", error);
-        Alert.alert("Erro", "Não foi possível carregar o áudio. Verifique sua conexão.");
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    setupAudio();
-
-    return () => {
-      isMounted = false;
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, [uri]);
+    if (uri && !isCurrent) {
+        play(uri, title);
+    }
+  }, [uri, isCurrent]);
 
   const togglePlayback = async () => {
-    if (!soundRef.current || !isReady) return;
-
     if (isPlaying) {
-      await soundRef.current.pauseAsync();
-    } else {
-      await soundRef.current.playAsync();
+      await pause();
+    } else if (isCurrent) {
+      await resume();
+    } else if (uri) {
+      await play(uri, title);
     }
   };
 
   const handleSeek = async (value: number) => {
-    if (!soundRef.current || !isReady) return;
-    await soundRef.current.setPositionAsync(value * 1000);
+    if (isCurrent) {
+      await seek(value * 1000);
+    }
   };
 
   const handleSkip = async (seconds: number) => {
-    if (!soundRef.current || !isReady) return;
-    const newPos = Math.max(0, Math.min(position + seconds, duration));
-    await soundRef.current.setPositionAsync(newPos * 1000);
+    if (isCurrent) {
+        const currentMs = storePos;
+        const newPos = Math.max(0, Math.min(currentMs + (seconds * 1000), storeDur));
+        await seek(newPos);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -121,7 +93,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
                 minimumTrackTintColor="#818cf8"
                 maximumTrackTintColor="rgba(255,255,255,0.1)"
                 thumbTintColor="#818cf8"
-                disabled={!isReady}
+                disabled={!isCurrent}
             />
             <View className="flex-row justify-between px-2">
                 <Text className="text-gray-500 text-xs font-mono">{formatTime(position)}</Text>
@@ -137,8 +109,8 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
 
              <Pressable
                 onPress={togglePlayback}
-                className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isReady ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
-                disabled={!isReady}
+                className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isCurrent ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
+                disabled={!isCurrent}
              >
                  {isLoading ? (
                      <ActivityIndicator color="#fff" size="large" />

@@ -61,7 +61,7 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
   }
 
   return (
-    <View className="flex-1 bg-space-dark pt-6">
+    <View className="flex-1 bg-space-dark pt-24">
       {/* Scrollable Content Container */}
       <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 100 }}>
           {/* Header Stats */}

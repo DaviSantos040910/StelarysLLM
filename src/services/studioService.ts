@@ -16,15 +16,6 @@ let MOCK_STORE: KnowledgeArtifact[] = [
         createdAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
     },
     {
-        id: '2',
-        chatId: 'mock-chat-id',
-        type: 'SUMMARY',
-        title: 'Notas sobre Derivadas',
-        status: 'ready',
-        content: 'Derivadas representam a taxa de variação instantânea de uma função...',
-        createdAt: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-    },
-    {
         id: '3',
         chatId: 'mock-chat-id',
         type: 'QUIZ',
