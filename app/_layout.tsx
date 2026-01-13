@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
 import { MinimizedNoteButton } from '../src/components/studio/MinimizedNoteButton';
+import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -62,6 +63,9 @@ export default function RootLayout() {
 
       {/* Global Minimized Note Button */}
       <MinimizedNoteButton />
+
+      {/* Global Mini Audio Player */}
+      <MiniAudioPlayer />
 
       <StatusBar style="light" backgroundColor="#0b0e14" />
 

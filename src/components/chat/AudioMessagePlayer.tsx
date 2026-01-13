@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { Audio } from 'expo-av';
 import Slider from '@react-native-community/slider';
-import { Play, Pause } from 'lucide-react-native';
+import { Play, Pause, ChevronDown } from 'lucide-react-native';
+import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 
 interface AudioMessagePlayerProps {
   uri: string;
@@ -11,86 +11,55 @@ interface AudioMessagePlayerProps {
 }
 
 export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, duration, isUser }) => {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0); // Current position in ms
-  const [localDuration, setLocalDuration] = useState(duration || 0); // Total duration
-  const [isLoading, setIsLoading] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const {
+    currentUri,
+    isPlaying: storeIsPlaying,
+    position: storePosition,
+    duration: storeDuration,
+    play,
+    pause,
+    resume,
+    seek,
+    rate,
+    setRate,
+    isMinimized,
+    minimize
+  } = useAudioPlayerStore();
 
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [sound]);
+  const isCurrent = currentUri === uri;
+  // If minimized, we show as not playing locally (so user can "maximize" by clicking play, or we show just static)
+  // Actually, let's keep it "active" if minimized? No, user wants it to "disappear" locally.
+  const isActive = isCurrent && !isMinimized;
 
-  const loadSound = async () => {
-    if (sound) return sound;
-
-    setIsLoading(true);
-    try {
-      const { sound: newSound, status } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, rate: playbackSpeed, shouldCorrectPitch: true },
-        onPlaybackStatusUpdate
-      );
-      setSound(newSound);
-      setIsPlaying(true); // Auto-play on first load
-
-      if (status.isLoaded && status.durationMillis) {
-          setLocalDuration(status.durationMillis);
-      }
-      setIsLoading(false);
-      return newSound;
-    } catch (error) {
-      console.error('Error loading sound', error);
-      setIsLoading(false);
-      return null;
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      setPosition(status.positionMillis);
-      setLocalDuration(status.durationMillis || localDuration);
-      setIsPlaying(status.isPlaying);
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPosition(0);
-      }
-    }
-  };
+  const isPlaying = isActive && storeIsPlaying;
+  const position = isActive ? storePosition : 0;
+  const localDuration = isActive && storeDuration > 0 ? storeDuration : (duration || 0);
+  const playbackSpeed = isActive ? rate : 1.0;
 
   const handlePlayPause = async () => {
-    if (!sound) {
-      await loadSound();
+    if (isActive) {
+      if (isPlaying) await pause();
+      else await resume();
     } else {
-      if (isPlaying) {
-        await sound.pauseAsync();
-      } else {
-        if (position >= localDuration) {
-             await sound.replayAsync();
-        } else {
-             await sound.playAsync();
-        }
-      }
+      await play(uri, 'Audio Message');
     }
   };
 
   const handleSeek = async (value: number) => {
-    if (sound) {
-      await sound.setPositionAsync(value);
+    if (isActive) {
+      await seek(value);
     }
   };
 
   const handleSpeedToggle = async () => {
-    const nextSpeed = playbackSpeed === 1.0 ? 1.5 : playbackSpeed === 1.5 ? 2.0 : 1.0;
-    setPlaybackSpeed(nextSpeed);
-    if (sound) {
-        await sound.setRateAsync(nextSpeed, true);
+    if (isActive) {
+        const nextSpeed = playbackSpeed === 1.0 ? 1.5 : playbackSpeed === 1.5 ? 2.0 : 1.0;
+        await setRate(nextSpeed);
     }
+  };
+
+  const handleMinimize = () => {
+      minimize();
   };
 
   const formatTime = (ms: number) => {
@@ -108,9 +77,7 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
   return (
     <View className="flex-row items-center w-full min-w-[200px] py-1">
       <Pressable onPress={handlePlayPause} className="p-2 mr-1">
-        {isLoading ? (
-          <ActivityIndicator size="small" color={iconColor} />
-        ) : isPlaying ? (
+        {isActive && storeIsPlaying ? (
           <Pause color={iconColor} size={24} fill={iconColor} />
         ) : (
           <Play color={iconColor} size={24} fill={iconColor} />
@@ -127,6 +94,7 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
           minimumTrackTintColor={activeTrackColor}
           maximumTrackTintColor={trackColor}
           thumbTintColor={thumbColor}
+          disabled={!isActive}
         />
       </View>
 
@@ -134,14 +102,22 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
         {formatTime(position)} / {formatTime(localDuration)}
       </Text>
 
-      <Pressable
-        onPress={handleSpeedToggle}
-        className={`ml-2 px-2 py-1 rounded-md ${isUser ? 'bg-white/20' : 'bg-cosmic-purple/10'}`}
-      >
-        <Text className={`text-[10px] font-bold ${isUser ? 'text-white' : 'text-cosmic-purple'}`}>
-            {playbackSpeed}x
-        </Text>
-      </Pressable>
+      {isActive && (
+        <Pressable
+            onPress={handleSpeedToggle}
+            className={`ml-2 px-2 py-1 rounded-md ${isUser ? 'bg-white/20' : 'bg-cosmic-purple/10'}`}
+        >
+            <Text className={`text-[10px] font-bold ${isUser ? 'text-white' : 'text-cosmic-purple'}`}>
+                {playbackSpeed}x
+            </Text>
+        </Pressable>
+      )}
+
+      {isActive && (
+          <Pressable onPress={handleMinimize} className="ml-2 p-1">
+              <ChevronDown color={iconColor} size={20} />
+          </Pressable>
+      )}
     </View>
   );
 };
