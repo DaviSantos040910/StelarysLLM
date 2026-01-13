@@ -16,6 +16,7 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
   const [position, setPosition] = useState(0); // Current position in ms
   const [localDuration, setLocalDuration] = useState(duration || 0); // Total duration
   const [isLoading, setIsLoading] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
 
   useEffect(() => {
     return () => {
@@ -32,7 +33,7 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
     try {
       const { sound: newSound, status } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true },
+        { shouldPlay: true, rate: playbackSpeed, shouldCorrectPitch: true },
         onPlaybackStatusUpdate
       );
       setSound(newSound);
@@ -84,6 +85,14 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
     }
   };
 
+  const handleSpeedToggle = async () => {
+    const nextSpeed = playbackSpeed === 1.0 ? 1.5 : playbackSpeed === 1.5 ? 2.0 : 1.0;
+    setPlaybackSpeed(nextSpeed);
+    if (sound) {
+        await sound.setRateAsync(nextSpeed, true);
+    }
+  };
+
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -124,6 +133,15 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
       <Text className={`text-xs ml-2 font-mono ${isUser ? 'text-white' : 'text-gray-400'}`}>
         {formatTime(position)} / {formatTime(localDuration)}
       </Text>
+
+      <Pressable
+        onPress={handleSpeedToggle}
+        className={`ml-2 px-2 py-1 rounded-md ${isUser ? 'bg-white/20' : 'bg-cosmic-purple/10'}`}
+      >
+        <Text className={`text-[10px] font-bold ${isUser ? 'text-white' : 'text-cosmic-purple'}`}>
+            {playbackSpeed}x
+        </Text>
+      </Pressable>
     </View>
   );
 };
