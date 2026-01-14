@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   LayoutAnimation,
   Platform,
-  UIManager
+  UIManager,
+  Alert
 } from 'react-native';
 import {
   Headphones,
@@ -34,8 +35,7 @@ interface KnowledgeActionSheetProps {
   chatId?: string;
 }
 
-// Updated Generators based on Task 2:
-// Podcast (🎙️), Apresentações (🖥️), Quiz (🧠), Flashcards (📚), Tabelas (📊), Apostila (📘)
+// Updated Generators
 const GENERATORS: { id: ArtifactType; label: string; icon: any; color: string; bg: string; border: string }[] = [
   { id: 'PODCAST', label: 'Podcast', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
   { id: 'SLIDE', label: 'Apresentações', icon: Monitor, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
@@ -45,7 +45,7 @@ const GENERATORS: { id: ArtifactType; label: string; icon: any; color: string; b
   { id: 'WORKBOOK', label: 'Apostila', icon: Book, color: '#60a5fa', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
 ];
 
-export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose, chatId = 'mock-id' }) => {
+export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onClose, chatId = '0' }) => {
   const router = useRouter();
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,37 +56,47 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
      studioService.getArtifacts(chatId).then(data => {
          setArtifacts(data.slice(0, 5)); // Show only recent few
          setLoading(false);
+     }).catch(e => {
+         console.error("Failed to load artifacts", e);
+         setLoading(false);
      });
   }, [chatId]);
 
   const handleGenerate = async (gen: typeof GENERATORS[0]) => {
     // Optimistic Update
-    const tempId = Date.now().toString();
+    // Use a negative temp ID to distinguish from real IDs (or a very large number)
+    const tempId = -Date.now();
     const tempArtifact: KnowledgeArtifact = {
         id: tempId,
-        chatId,
+        chat: parseInt(chatId, 10) || 0,
         type: gen.id,
         title: gen.label,
         status: 'processing',
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString() // Snake case prop
     };
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setArtifacts(prev => [tempArtifact, ...prev]);
 
-    // Call Service
-    const created = await studioService.generateArtifact(chatId, gen.id, gen.label);
+    try {
+        // Call Service
+        const created = await studioService.generateArtifact(chatId, gen.id, gen.label);
 
-    // Update with real object (or simulate finish after delay within component for visual feedback)
-    setTimeout(() => {
+        // Success: Replace optimistic item with real one
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setArtifacts(prev => prev.map(a => a.id === tempId ? { ...a, status: 'ready' } : a));
-    }, 4000); // Visual sync with mock service delay
+        setArtifacts(prev => prev.map(a => a.id === tempId ? created : a));
+
+    } catch (error) {
+        console.error("Generation failed", error);
+        // Error: Remove optimistic item
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setArtifacts(prev => prev.filter(a => a.id !== tempId));
+        Alert.alert("Erro", "Não foi possível gerar o artefato. Tente novamente.");
+    }
   };
 
   const handleSeeAll = () => {
     onClose?.();
-    // Updated route to new location
     router.push({
       pathname: '/studio/gallery',
       params: { chatId }

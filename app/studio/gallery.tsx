@@ -69,7 +69,7 @@ const getIcon = (type: ArtifactType, color: string) => {
 const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtifact, index: number, onPress: (item: KnowledgeArtifact) => void }) => {
     const color = getColor(item.type);
     const icon = getIcon(item.type, color);
-    const dateStr = formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true, locale: ptBR });
+    const dateStr = formatDistanceToNowStrict(new Date(item.created_at), { addSuffix: true, locale: ptBR });
 
     return (
         <Animated.View
@@ -150,7 +150,7 @@ export default function StudioGalleryScreen() {
   const loadData = async () => {
       setLoading(true);
       try {
-        const data = await studioService.getArtifacts(chatId || 'mock-id');
+        const data = await studioService.getArtifacts(chatId || '0');
         setArtifacts(data);
       } catch (e) {
           console.error(e);
@@ -208,7 +208,7 @@ export default function StudioGalleryScreen() {
               case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
               case 'QUIZ': return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={handleCloseViewer} />;
               case 'FLASHCARD': return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
-              case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.mediaUrl} title={selectedArtifact.title} />;
+              case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.media_url} title={selectedArtifact.title} />;
               case 'SPREADSHEET': return <SpreadsheetViewer />;
               case 'WORKBOOK': return <WorkbookViewer />;
               default: return <View />;
@@ -256,7 +256,7 @@ export default function StudioGalleryScreen() {
              data={FILTER_TABS}
              horizontal
              showsHorizontalScrollIndicator={false}
-             keyExtractor={item => item.id}
+             keyExtractor={item => item.id.toString()}
              renderItem={({ item }) => {
                  const isActive = activeFilter === item.id;
                  return (
@@ -279,7 +279,7 @@ export default function StudioGalleryScreen() {
       ) : (
         <FlatList
             data={filteredData}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item.id.toString()}
             renderItem={renderItem}
             numColumns={2}
             contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 40 }}

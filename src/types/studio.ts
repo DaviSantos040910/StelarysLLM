@@ -36,15 +36,15 @@ export interface FlashcardItem {
 }
 
 export interface KnowledgeArtifact {
-  id: string;
-  chatId: string;
+  id: number;
+  chat: number;
   type: ArtifactType;
   title: string;
   status: 'processing' | 'ready' | 'error';
-  mediaUrl?: string; // For PODCAST audio
-  duration?: string; // For PODCAST duration display
-  score?: string; // For QUIZ results (if taken)
+  media_url?: string; // snake_case to match backend
+  duration?: string;
+  score?: string;
   // Polymorphic content
   content?: SlidePage[] | QuizQuestion[] | FlashcardItem[] | string;
-  createdAt: string;
+  created_at: string; // snake_case to match backend
 }
