@@ -2,6 +2,7 @@ import { KnowledgeArtifact, ArtifactType } from '../types/studio';
 import * as FileSystem from 'expo-file-system/legacy';
 import apiClient, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
+import { Alert } from 'react-native';
 
 export const studioService = {
     async getArtifacts(chatId: string): Promise<KnowledgeArtifact[]> {
@@ -15,14 +16,29 @@ export const studioService = {
         // Parse chatId to integer to ensure backend serializer accepts it
         const chatInt = parseInt(chatId, 10);
 
-        const response = await apiClient.post<KnowledgeArtifact>('/api/v1/studio/artifacts/', {
+        const payload: any = {
             chat: isNaN(chatInt) ? chatId : chatInt,
             type,
-            title,
-            // Explicitly send null content to satisfy potential strict checks, though backend should handle missing
-            content: null
-        });
-        return response.data;
+            title
+        };
+
+        // Do not send 'content' key at all if it is empty, to rely on backend default/null handling
+        // payload.content = null;
+
+        try {
+            const response = await apiClient.post<KnowledgeArtifact>('/api/v1/studio/artifacts/', payload);
+            return response.data;
+        } catch (error: any) {
+            console.error("Studio Generation Error Details:", error.response?.data);
+            if (error.response?.data) {
+                 // Format the validation errors for display
+                 const errorMsg = Object.entries(error.response.data)
+                    .map(([key, val]) => `${key}: ${val}`)
+                    .join('\n');
+                 Alert.alert("Erro de Validação", errorMsg);
+            }
+            throw error;
+        }
     },
 
     /**
