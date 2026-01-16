@@ -1,7 +1,11 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import apiClient, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
+<<<<<<< HEAD
 import { ArtifactType, KnowledgeArtifact } from '../types/studio';
+=======
+import { Alert } from 'react-native';
+>>>>>>> 7552c60bcd21dddfcd43f84b827f03f4ec7366f0
 
 export const studioService = {
     async getArtifacts(chatId: string): Promise<KnowledgeArtifact[]> {
@@ -15,6 +19,7 @@ export const studioService = {
         // Parse chatId to integer - Django ForeignKey expects an integer, not a string
         const chatInt = parseInt(chatId, 10);
 
+<<<<<<< HEAD
         // Validate that we have a valid chat ID before making the request
         if (isNaN(chatInt) || chatInt <= 0) {
             throw new Error('Invalid chat ID: cannot generate artifact without a valid chat.');
@@ -28,6 +33,31 @@ export const studioService = {
             content: null
         });
         return response.data;
+=======
+        const payload: any = {
+            chat: isNaN(chatInt) ? chatId : chatInt,
+            type,
+            title
+        };
+
+        // Do not send 'content' key at all if it is empty, to rely on backend default/null handling
+        // payload.content = null;
+
+        try {
+            const response = await apiClient.post<KnowledgeArtifact>('/api/v1/studio/artifacts/', payload);
+            return response.data;
+        } catch (error: any) {
+            console.error("Studio Generation Error Details:", error.response?.data);
+            if (error.response?.data) {
+                 // Format the validation errors for display
+                 const errorMsg = Object.entries(error.response.data)
+                    .map(([key, val]) => `${key}: ${val}`)
+                    .join('\n');
+                 Alert.alert("Erro de Validação", errorMsg);
+            }
+            throw error;
+        }
+>>>>>>> 7552c60bcd21dddfcd43f84b827f03f4ec7366f0
     },
 
     /**
