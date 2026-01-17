@@ -122,7 +122,7 @@ export const MiniAudioPlayer = () => {
             <Text className="text-starlight font-bold text-xs">{rate}x</Text>
           </Pressable>
 
-          <Pressable onPress={handleClose} className="p-2">
+          <Pressable onPress={handleClose} className="p-2" hitSlop={10}>
             <X color="#94a3b8" size={20} />
           </Pressable>
         </View>

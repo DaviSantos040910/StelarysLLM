@@ -87,17 +87,31 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   pause: async () => {
     const { sound } = get();
-    if (sound) {
-      await sound.pauseAsync();
-      set({ isPlaying: false });
+    try {
+      if (sound) {
+        await sound.pauseAsync();
+      }
+    } catch (error) {
+      console.error('Error pausing sound:', error);
     }
+    // Always update UI state
+    set({ isPlaying: false });
   },
 
   resume: async () => {
     const { sound } = get();
-    if (sound) {
-      await sound.playAsync();
-      set({ isPlaying: true });
+    try {
+      if (sound) {
+        await sound.playAsync();
+        set({ isPlaying: true });
+      } else {
+        // Fallback: if no sound object but UI thinks we can resume, force sync
+        set({ isPlaying: false });
+      }
+    } catch (error) {
+      console.error('Error resuming sound:', error);
+      // Force UI to stop if resume failed
+      set({ isPlaying: false });
     }
   },
 

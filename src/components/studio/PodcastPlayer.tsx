@@ -33,29 +33,50 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   const [seekValue, setSeekValue] = useState(0);
 
   const isCurrent = currentUri === uri;
-  // If not current, we are loading or idle.
-  // We use store state only if isCurrent.
 
+  // Se não for o áudio atual da store, assumimos estado zerado ou de carregamento se for o URI alvo
   const position = isCurrent ? storePos / 1000 : 0;
   const duration = isCurrent && storeDur > 0 ? storeDur / 1000 : 0;
   const isPlaying = isCurrent && storeIsPlaying;
-  // If we are current, we are "ready" effectively.
-  // But we might want to show loading if duration is 0?
-  const isLoading = isCurrent && duration === 0 && storeIsPlaying;
+
+  // Loading se for current mas sem duração válida ainda, ou se não for current (está trocando/carregando)
+  const isLoading = (isCurrent && duration === 0 && storeIsPlaying) || (!isCurrent && !!uri);
 
   useEffect(() => {
     if (uri && !isCurrent) {
-      play(uri, title, artifactId, chatId);
+      // Inicia a reprodução se o URI mudou
+      play(uri, title, artifactId, chatId).catch(console.error);
     }
   }, [uri, isCurrent]);
 
+  // Cleanup: para o áudio se desmontar e não estiver minimizado
+  useEffect(() => {
+    return () => {
+      // Usamos o estado da store (acessado via hook ou getters da store se disponível)
+      // Como não temos acesso direto ao state atualizado no cleanup, confiamos na logica do componente pai
+      // ou verificamos se devemos parar.
+      // A regra é: se saiu da tela (unmount) e NÃO clicou em minimizar, para.
+      // O usuario pode ter minimizado antes? O componente MiniAudioPlayer cuida do minimize.
+      // Aqui, assumimos que se o componente desmonta, devemos pausar, A MENOS que tenha sido minimizado.
+      // A store global mantém o isMinimized.
+      const { isMinimized, pause } = useAudioPlayerStore.getState();
+      if (!isMinimized) {
+        pause().catch(console.error);
+      }
+    };
+  }, []);
+
   const togglePlayback = async () => {
-    if (isPlaying) {
-      await pause();
-    } else if (isCurrent) {
-      await resume();
-    } else if (uri) {
-      await play(uri, title, artifactId, chatId);
+    try {
+      if (isPlaying) {
+        await pause();
+      } else if (isCurrent) {
+        await resume();
+      } else if (uri) {
+        await play(uri, title, artifactId, chatId);
+      }
+    } catch (error) {
+      console.error('Playback toggle error:', error);
     }
   };
 

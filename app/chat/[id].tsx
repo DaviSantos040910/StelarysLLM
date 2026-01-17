@@ -13,6 +13,7 @@ import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionSheet';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
+import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
@@ -42,6 +43,8 @@ export default function ChatScreen() {
     const translateY = useSharedValue(0);
     const lastContentOffset = useSharedValue(0);
     const isHeaderVisible = useSharedValue(1);
+
+    const miniPlayerHeight = useMiniPlayerHeight();
 
     const handleScrollState = (offset: number) => {
         if (offset > 200) {
@@ -296,18 +299,20 @@ export default function ChatScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
-                <ChatInput
-                    value={inputText}
-                    onChangeText={setInputText}
-                    onSend={() => handleSend()}
-                    onPlusPress={() => setIsAttachmentSheetVisible(true)}
-                    onGalleryPress={() => handleDirectAttachment('image')}
-                    onCameraPress={() => handleDirectAttachment('camera')}
-                    onAudioRecorded={handleAudioRecorded}
-                    disabled={isStreaming || isPickerLoading}
-                    attachments={stagedAttachments}
-                    onRemoveAttachment={handleRemoveAttachment}
-                />
+                <View style={{ paddingBottom: miniPlayerHeight }}>
+                    <ChatInput
+                        value={inputText}
+                        onChangeText={setInputText}
+                        onSend={() => handleSend()}
+                        onPlusPress={() => setIsAttachmentSheetVisible(true)}
+                        onGalleryPress={() => handleDirectAttachment('image')}
+                        onCameraPress={() => handleDirectAttachment('camera')}
+                        onAudioRecorded={handleAudioRecorded}
+                        disabled={isStreaming || isPickerLoading}
+                        attachments={stagedAttachments}
+                        onRemoveAttachment={handleRemoveAttachment}
+                    />
+                </View>
             </KeyboardAvoidingView>
 
             <AttachmentSheet
