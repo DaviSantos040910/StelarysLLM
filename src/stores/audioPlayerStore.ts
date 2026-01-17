@@ -117,10 +117,17 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   close: async () => {
     const { sound } = get();
+    // Update UI immediately to prevent "stuck" pause button
+    set({ isPlaying: false });
+
     try {
       if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        // Check status before operations to prevent errors if already unloaded
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        }
       }
     } catch (error) {
       console.error('Error stopping/unloading sound:', error);

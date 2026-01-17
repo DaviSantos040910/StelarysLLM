@@ -4,6 +4,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, User, MessageCircle, Compass, LayoutDashboard } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { useMiniPlayerHeight } from '../hooks/useMiniPlayerHeight';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -69,18 +70,31 @@ function TabBarItem({
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const miniPlayerHeight = useMiniPlayerHeight();
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const baseMargin = Platform.OS === 'ios' ? insets.bottom : 20;
+    return {
+      marginBottom: withSpring(baseMargin + miniPlayerHeight, {
+        damping: 20,
+        stiffness: 100
+      })
+    };
+  });
 
   return (
     <View className="absolute bottom-0 left-0 right-0 items-center" pointerEvents="box-none">
-      <View
-        style={{
-          marginBottom: Platform.OS === 'ios' ? insets.bottom : 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.3,
-          shadowRadius: 5,
-          elevation: 10,
-        }}
+      <Animated.View
+        style={[
+          animatedStyle,
+          {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.3,
+            shadowRadius: 5,
+            elevation: 10,
+          }
+        ]}
         className="flex-row bg-space-light/95 border border-white/10 rounded-full px-6 py-2 mx-4 min-w-[200px] justify-around items-center"
       >
         {state.routes.map((route, index) => {
@@ -117,7 +131,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             />
           );
         })}
-      </View>
+      </Animated.View>
     </View>
   );
 }
