@@ -5,6 +5,7 @@ interface AudioPlayerState {
   sound: Audio.Sound | null;
   isPlaying: boolean;
   isMinimized: boolean;
+  isLoading: boolean; // NOVO: Estado explícito
   currentUri: string | null;
   duration: number;
   position: number;
@@ -27,6 +28,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
   sound: null,
   isPlaying: false,
   isMinimized: false,
+  isLoading: false,
   currentUri: null,
   duration: 0,
   position: 0,
@@ -37,9 +39,21 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   play: async (uri, title, artifactId, chatId) => {
     const { sound: oldSound, close } = get();
-    // If same URI, just resume/toggle? No, caller handles toggle logic usually.
-    // Ideally play(uri) starts fresh or resumes if same?
-    // Let's assume play(uri) replaces.
+
+    // Se já estiver tocando esse URI, apenas resume e maximiza
+    if (get().currentUri === uri && oldSound) {
+      try {
+        await oldSound.playAsync();
+        set({ isPlaying: true, isMinimized: false, isLoading: false });
+      } catch (error) {
+         console.error('Error resuming existing sound:', error);
+         set({ isPlaying: false, isLoading: false });
+      }
+      return;
+    }
+
+    set({ isLoading: true }); // Inicia loading
+
     if (oldSound) {
       await close();
     }
@@ -78,10 +92,12 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         isMinimized: false,
         title: title || 'Audio Playing',
         artifactId: artifactId || null,
-        chatId: chatId || null
+        chatId: chatId || null,
+        isLoading: false // Sucesso
       });
     } catch (error) {
       console.error('Failed to play audio', error);
+      set({ isLoading: false, isPlaying: false }); // Garante que destrava a UI em caso de erro
     }
   },
 
@@ -105,12 +121,11 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         await sound.playAsync();
         set({ isPlaying: true });
       } else {
-        // Fallback: if no sound object but UI thinks we can resume, force sync
-        set({ isPlaying: false });
+         // Fallback: if no sound object but UI thinks we can resume, force sync
+         set({ isPlaying: false });
       }
     } catch (error) {
       console.error('Error resuming sound:', error);
-      // Force UI to stop if resume failed
       set({ isPlaying: false });
     }
   },
@@ -131,12 +146,10 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   close: async () => {
     const { sound } = get();
-    // Update UI immediately to prevent "stuck" pause button
-    set({ isPlaying: false });
+    set({ isPlaying: false, isLoading: false }); // Reset imediato
 
     try {
       if (sound) {
-        // Check status before operations to prevent errors if already unloaded
         const status = await sound.getStatusAsync();
         if (status.isLoaded) {
           await sound.stopAsync();
@@ -146,7 +159,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
     } catch (error) {
       console.error('Error stopping/unloading sound:', error);
     }
-    // Sempre limpa o estado, mesmo se houver erro no sound
+
     set({
       sound: null,
       currentUri: null,
@@ -156,7 +169,8 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       isMinimized: false,
       artifactId: null,
       chatId: null,
-      title: null
+      title: null,
+      isLoading: false
     });
   }
 }));

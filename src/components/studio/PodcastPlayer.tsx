@@ -24,6 +24,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
     position: storePos,
     duration: storeDur,
     isPlaying: storeIsPlaying,
+    isLoading: storeIsLoading,
     currentUri,
     rate
   } = useAudioPlayerStore();
@@ -39,11 +40,12 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   const duration = isCurrent && storeDur > 0 ? storeDur / 1000 : 0;
   const isPlaying = isCurrent && storeIsPlaying;
 
-  // Loading se for current mas sem duração válida ainda, ou se não for current (está trocando/carregando)
-  const isLoading = (isCurrent && duration === 0 && storeIsPlaying) || (!isCurrent && !!uri);
+  // Usamos o isLoading da store ou se estamos carregando este URI especifico (não é current mas tem URI)
+  const isLoading = isCurrent ? storeIsLoading : (!!uri && storeIsLoading);
 
   useEffect(() => {
-    if (uri && !isCurrent) {
+    // Só toca se não for current E se não estivermos já carregando algo
+    if (uri && !isCurrent && !storeIsLoading) {
       // Inicia a reprodução se o URI mudou
       play(uri, title, artifactId, chatId).catch(console.error);
     }
@@ -172,7 +174,8 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
         <Pressable
           onPress={togglePlayback}
           className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isCurrent ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
-          disabled={!isCurrent}
+          // Não desabilita se não for current. Permite clicar para tentar novamente ou forçar play.
+          disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" size="large" />

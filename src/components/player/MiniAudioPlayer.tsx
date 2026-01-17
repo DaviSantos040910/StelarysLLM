@@ -17,6 +17,7 @@ export const MiniAudioPlayer = () => {
     currentUri,
     isMinimized,
     isPlaying,
+    isLoading,
     title,
     resume,
     pause,
@@ -105,8 +106,15 @@ export const MiniAudioPlayer = () => {
           <Pressable
             onPress={isPlaying ? pause : resume}
             className="w-10 h-10 bg-white/5 rounded-full items-center justify-center mr-3 active:bg-white/10"
+            disabled={isLoading}
           >
-            {isPlaying ? <Pause color="#fff" size={20} fill="#fff" /> : <Play color="#fff" size={20} fill="#fff" />}
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : isPlaying ? (
+              <Pause color="#fff" size={20} fill="#fff" />
+            ) : (
+              <Play color="#fff" size={20} fill="#fff" />
+            )}
           </Pressable>
 
           <Pressable className="flex-1" onPress={handlePress}>
