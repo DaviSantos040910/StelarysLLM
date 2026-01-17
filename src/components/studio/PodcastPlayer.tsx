@@ -41,12 +41,13 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   const isPlaying = isCurrent && storeIsPlaying;
 
   // Usamos o isLoading da store ou se estamos carregando este URI especifico (não é current mas tem URI)
+  // Agora que a store atualiza currentUri imediatamente, podemos confiar mais na store
   const isLoading = isCurrent ? storeIsLoading : (!!uri && storeIsLoading);
 
   useEffect(() => {
-    // Só toca se não for current E se não estivermos já carregando algo
-    if (uri && !isCurrent && !storeIsLoading) {
-      // Inicia a reprodução se o URI mudou
+    // Se o URI mudou e não é o atual, pede play
+    // A store agora lida com isLoading e currentUri internamente para evitar loops
+    if (uri && !isCurrent) {
       play(uri, title, artifactId, chatId).catch(console.error);
     }
   }, [uri, isCurrent]);
@@ -54,14 +55,8 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   // Cleanup: para o áudio se desmontar e não estiver minimizado
   useEffect(() => {
     return () => {
-      // Usamos o estado da store (acessado via hook ou getters da store se disponível)
-      // Como não temos acesso direto ao state atualizado no cleanup, confiamos na logica do componente pai
-      // ou verificamos se devemos parar.
-      // A regra é: se saiu da tela (unmount) e NÃO clicou em minimizar, para.
-      // O usuario pode ter minimizado antes? O componente MiniAudioPlayer cuida do minimize.
-      // Aqui, assumimos que se o componente desmonta, devemos pausar, A MENOS que tenha sido minimizado.
-      // A store global mantém o isMinimized.
       const { isMinimized, pause } = useAudioPlayerStore.getState();
+      // Se não minimizou explicitamente, pausa ao sair da tela
       if (!isMinimized) {
         pause().catch(console.error);
       }

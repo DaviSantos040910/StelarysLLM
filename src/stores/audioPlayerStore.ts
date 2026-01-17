@@ -5,7 +5,7 @@ interface AudioPlayerState {
   sound: Audio.Sound | null;
   isPlaying: boolean;
   isMinimized: boolean;
-  isLoading: boolean; // NOVO: Estado explícito
+  isLoading: boolean;
   currentUri: string | null;
   duration: number;
   position: number;
@@ -38,9 +38,12 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
   chatId: null,
 
   play: async (uri, title, artifactId, chatId) => {
+    // Evita chamadas duplicadas se já estiver carregando o MESMO uri
+    if (get().isLoading && get().currentUri === uri) return;
+
     const { sound: oldSound, close } = get();
 
-    // Se já estiver tocando esse URI, apenas resume e maximiza
+    // Lógica de Resume (se for o mesmo áudio já carregado)
     if (get().currentUri === uri && oldSound) {
       try {
         await oldSound.playAsync();
@@ -52,11 +55,23 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       return;
     }
 
-    set({ isLoading: true }); // Inicia loading
-
+    // 1. Limpa o som anterior (isso reseta o estado, então fazemos ANTES de setar o novo)
     if (oldSound) {
       await close();
     }
+
+    // 2. Define estado inicial IMEDIATAMENTE (Feedback Visual)
+    set({
+      isLoading: true,
+      currentUri: uri, // Otimista: assume que esse é o atual
+      title: title || 'Carregando áudio...',
+      duration: 0,
+      position: 0,
+      isPlaying: false,
+      isMinimized: false,
+      artifactId: artifactId || null,
+      chatId: chatId || null
+    });
 
     try {
       await Audio.setAudioModeAsync({
@@ -67,7 +82,8 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         playThroughEarpieceAndroid: false,
       });
 
-      const { sound, status } = await Audio.Sound.createAsync(
+      // 3. Race Condition com Timeout de 15s para evitar spinner eterno
+      const loadPromise = Audio.Sound.createAsync(
         { uri },
         { shouldPlay: true, rate: get().rate, shouldCorrectPitch: true },
         (status) => {
@@ -79,38 +95,43 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
             });
             if (status.didJustFinish) {
               set({ isPlaying: false, position: 0 });
-              sound.setPositionAsync(0);
+              // Reinicia posição para replay
+              get().sound?.setPositionAsync(0);
             }
           }
         }
       );
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout ao carregar áudio')), 15000)
+      );
+
+      const result = await Promise.race([loadPromise, timeoutPromise]) as { sound: Audio.Sound, status: any };
+      const { sound, status } = result;
+
+      // 4. Sucesso
       set({
         sound,
-        currentUri: uri,
+        isLoading: false,
         isPlaying: true,
-        isMinimized: false,
-        title: title || 'Audio Playing',
-        artifactId: artifactId || null,
-        chatId: chatId || null,
-        isLoading: false // Sucesso
+        duration: status.durationMillis || 0
       });
+
     } catch (error) {
-      console.error('Failed to play audio', error);
-      set({ isLoading: false, isPlaying: false }); // Garante que destrava a UI em caso de erro
+      console.error('Failed to play audio:', error);
+      // Mantemos o currentUri para permitir "Tentar Novamente", mas paramos o loading
+      set({ isLoading: false, isPlaying: false });
+      alert('Não foi possível reproduzir o áudio. Verifique sua conexão.');
     }
   },
 
   pause: async () => {
     const { sound } = get();
     try {
-      if (sound) {
-        await sound.pauseAsync();
-      }
+      if (sound) await sound.pauseAsync();
     } catch (error) {
-      console.error('Error pausing sound:', error);
+      console.error('Error pausing:', error);
     }
-    // Always update UI state
     set({ isPlaying: false });
   },
 
@@ -120,12 +141,8 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       if (sound) {
         await sound.playAsync();
         set({ isPlaying: true });
-      } else {
-         // Fallback: if no sound object but UI thinks we can resume, force sync
-         set({ isPlaying: false });
       }
     } catch (error) {
-      console.error('Error resuming sound:', error);
       set({ isPlaying: false });
     }
   },
@@ -146,20 +163,20 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   close: async () => {
     const { sound } = get();
-    set({ isPlaying: false, isLoading: false }); // Reset imediato
+    // Feedback imediato na UI
+    set({ isPlaying: false, isLoading: false });
 
     try {
       if (sound) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        }
+        // Tenta parar antes de descarregar
+        try { await sound.stopAsync(); } catch (e) {}
+        await sound.unloadAsync();
       }
     } catch (error) {
-      console.error('Error stopping/unloading sound:', error);
+      console.error('Error closing sound:', error);
     }
 
+    // Limpeza total
     set({
       sound: null,
       currentUri: null,
@@ -167,9 +184,6 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       position: 0,
       duration: 0,
       isMinimized: false,
-      artifactId: null,
-      chatId: null,
-      title: null,
       isLoading: false
     });
   }
