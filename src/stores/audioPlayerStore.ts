@@ -1,5 +1,5 @@
-import { create } from 'zustand';
 import { Audio } from 'expo-av';
+import { create } from 'zustand';
 
 interface AudioPlayerState {
   sound: Audio.Sound | null;
@@ -10,8 +10,10 @@ interface AudioPlayerState {
   position: number;
   rate: number;
   title: string | null;
+  artifactId: number | null;
+  chatId: string | null;
 
-  play: (uri: string, title?: string) => Promise<void>;
+  play: (uri: string, title?: string, artifactId?: number, chatId?: string) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
   seek: (position: number) => Promise<void>;
@@ -30,8 +32,10 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
   position: 0,
   rate: 1.0,
   title: null,
+  artifactId: null,
+  chatId: null,
 
-  play: async (uri, title) => {
+  play: async (uri, title, artifactId, chatId) => {
     const { sound: oldSound, close } = get();
     // If same URI, just resume/toggle? No, caller handles toggle logic usually.
     // Ideally play(uri) starts fresh or resumes if same?
@@ -67,7 +71,15 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         }
       );
 
-      set({ sound, currentUri: uri, isPlaying: true, isMinimized: false, title: title || 'Audio Playing' });
+      set({
+        sound,
+        currentUri: uri,
+        isPlaying: true,
+        isMinimized: false,
+        title: title || 'Audio Playing',
+        artifactId: artifactId || null,
+        chatId: chatId || null
+      });
     } catch (error) {
       console.error('Failed to play audio', error);
     }
@@ -76,28 +88,28 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
   pause: async () => {
     const { sound } = get();
     if (sound) {
-        await sound.pauseAsync();
-        set({ isPlaying: false });
+      await sound.pauseAsync();
+      set({ isPlaying: false });
     }
   },
 
   resume: async () => {
     const { sound } = get();
     if (sound) {
-        await sound.playAsync();
-        set({ isPlaying: true });
+      await sound.playAsync();
+      set({ isPlaying: true });
     }
   },
 
   seek: async (pos) => {
-      const { sound } = get();
-      if(sound) await sound.setPositionAsync(pos);
+    const { sound } = get();
+    if (sound) await sound.setPositionAsync(pos);
   },
 
   setRate: async (rate) => {
-      const { sound } = get();
-      if(sound) await sound.setRateAsync(rate, true);
-      set({ rate });
+    const { sound } = get();
+    if (sound) await sound.setRateAsync(rate, true);
+    set({ rate });
   },
 
   minimize: () => set({ isMinimized: true }),
@@ -105,9 +117,25 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
   close: async () => {
     const { sound } = get();
-    if (sound) {
-      await sound.unloadAsync();
+    try {
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+    } catch (error) {
+      console.error('Error stopping/unloading sound:', error);
     }
-    set({ sound: null, currentUri: null, isPlaying: false, position: 0, duration: 0 });
+    // Sempre limpa o estado, mesmo se houver erro no sound
+    set({
+      sound: null,
+      currentUri: null,
+      isPlaying: false,
+      position: 0,
+      duration: 0,
+      isMinimized: false,
+      artifactId: null,
+      chatId: null,
+      title: null
+    });
   }
 }));

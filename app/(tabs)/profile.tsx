@@ -1,14 +1,16 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../src/stores/authStore';
+import { ChevronRight, HelpCircle, LogOut, Settings, User } from 'lucide-react-native';
+import React from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Settings, LogOut, HelpCircle, ChevronRight } from 'lucide-react-native';
 import { UserAvatar } from '../../src/components/UserAvatar';
+import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
+import { useAuthStore } from '../../src/stores/authStore';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const miniPlayerHeight = useMiniPlayerHeight();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -20,8 +22,8 @@ export default function ProfileScreen() {
           text: "Log Out",
           style: "destructive",
           onPress: async () => {
-             await logout();
-             router.replace('/(auth)/login');
+            await logout();
+            router.replace('/(auth)/login');
           }
         }
       ]
@@ -29,9 +31,9 @@ export default function ProfileScreen() {
   };
 
   const menuItems = [
-    { icon: User, label: 'My Account', action: () => {} },
-    { icon: Settings, label: 'Settings', action: () => {} },
-    { icon: HelpCircle, label: 'Help & Support', action: () => {} },
+    { icon: User, label: 'My Account', action: () => { } },
+    { icon: Settings, label: 'Settings', action: () => { } },
+    { icon: HelpCircle, label: 'Help & Support', action: () => { } },
   ];
 
   return (
@@ -42,7 +44,7 @@ export default function ProfileScreen() {
         <Text className="text-gray-400">{user?.email || 'explorer@stelarys.com'}</Text>
       </View>
 
-      <ScrollView className="mt-2 px-4" contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView className="mt-2 px-4" contentContainerStyle={{ paddingBottom: 120 + miniPlayerHeight }}>
         <View className="bg-space-card rounded-xl overflow-hidden border border-white/10">
           {menuItems.map((item, index) => (
             <TouchableOpacity

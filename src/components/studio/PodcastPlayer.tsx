@@ -1,25 +1,36 @@
-import React, { useEffect } from 'react';
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Play, Pause, RotateCcw, FastForward } from 'lucide-react-native';
+import { FastForward, Pause, Play, RotateCcw } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
+
+// Opções de velocidade disponíveis
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 interface Props {
   uri?: string;
   title: string;
+  artifactId?: number;
+  chatId?: string;
 }
 
-export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
+export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId }) => {
   const {
     play,
     pause,
     resume,
     seek,
+    setRate,
     position: storePos,
     duration: storeDur,
     isPlaying: storeIsPlaying,
-    currentUri
+    currentUri,
+    rate
   } = useAudioPlayerStore();
+
+  // Estado local para evitar que a barra de progresso oscile durante o seek
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
 
   const isCurrent = currentUri === uri;
   // If not current, we are loading or idle.
@@ -34,7 +45,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
 
   useEffect(() => {
     if (uri && !isCurrent) {
-        play(uri, title);
+      play(uri, title, artifactId, chatId);
     }
   }, [uri, isCurrent]);
 
@@ -44,22 +55,39 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
     } else if (isCurrent) {
       await resume();
     } else if (uri) {
-      await play(uri, title);
+      await play(uri, title, artifactId, chatId);
     }
   };
 
-  const handleSeek = async (value: number) => {
+  const handleSeekStart = () => {
+    setIsSeeking(true);
+    setSeekValue(position);
+  };
+
+  const handleSeekChange = (value: number) => {
+    setSeekValue(value);
+  };
+
+  const handleSeekComplete = async (value: number) => {
     if (isCurrent) {
       await seek(value * 1000);
     }
+    setIsSeeking(false);
   };
 
   const handleSkip = async (seconds: number) => {
     if (isCurrent) {
-        const currentMs = storePos;
-        const newPos = Math.max(0, Math.min(currentMs + (seconds * 1000), storeDur));
-        await seek(newPos);
+      const currentMs = storePos;
+      const newPos = Math.max(0, Math.min(currentMs + (seconds * 1000), storeDur));
+      await seek(newPos);
     }
+  };
+
+  const handleSpeedChange = async () => {
+    // Cicla para a próxima velocidade na lista
+    const currentIndex = SPEED_OPTIONS.indexOf(rate);
+    const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
+    await setRate(SPEED_OPTIONS[nextIndex]);
   };
 
   const formatTime = (seconds: number) => {
@@ -69,62 +97,75 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title }) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Usa o valor do seek local durante o arraste, caso contrário usa a posição real
+  const displayPosition = isSeeking ? seekValue : position;
+
   return (
     <View className="flex-1 bg-space-dark items-center justify-center p-8">
-        {/* Cover Art */}
-        <View className="w-64 h-64 bg-space-light rounded-3xl border border-white/10 shadow-2xl items-center justify-center mb-8">
-             <View className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-3xl items-center justify-center">
-                 <Text className="text-6xl">🎧</Text>
-             </View>
+      {/* Cover Art */}
+      <View className="w-64 h-64 bg-space-light rounded-3xl border border-white/10 shadow-2xl items-center justify-center mb-8">
+        <View className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-3xl items-center justify-center">
+          <Text className="text-6xl">🎧</Text>
         </View>
+      </View>
 
-        {/* Title */}
-        <Text className="text-starlight text-2xl font-bold text-center mb-2">{title}</Text>
-        <Text className="text-gray-400 text-sm font-medium mb-10">AI Audio Overview</Text>
+      {/* Title */}
+      <Text className="text-starlight text-2xl font-bold text-center mb-2">{title}</Text>
+      <Text className="text-gray-400 text-sm font-medium mb-6">AI Audio Overview</Text>
 
-        {/* Progress */}
-        <View className="w-full mb-2">
-            <Slider
-                style={{ width: '100%', height: 40 }}
-                minimumValue={0}
-                maximumValue={duration}
-                value={position}
-                onSlidingComplete={handleSeek}
-                minimumTrackTintColor="#818cf8"
-                maximumTrackTintColor="rgba(255,255,255,0.1)"
-                thumbTintColor="#818cf8"
-                disabled={!isCurrent}
-            />
-            <View className="flex-row justify-between px-2">
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(position)}</Text>
-                <Text className="text-gray-500 text-xs font-mono">{formatTime(duration)}</Text>
-            </View>
+      {/* Speed Control */}
+      <Pressable
+        onPress={handleSpeedChange}
+        className="px-4 py-2 bg-white/10 rounded-full mb-6 active:bg-white/20"
+      >
+        <Text className="text-starlight font-bold text-sm">{rate}x</Text>
+      </Pressable>
+
+      {/* Progress */}
+      <View className="w-full mb-2">
+        <Slider
+          style={{ width: '100%', height: 40 }}
+          minimumValue={0}
+          maximumValue={duration}
+          value={displayPosition}
+          onSlidingStart={handleSeekStart}
+          onValueChange={handleSeekChange}
+          onSlidingComplete={handleSeekComplete}
+          minimumTrackTintColor="#818cf8"
+          maximumTrackTintColor="rgba(255,255,255,0.1)"
+          thumbTintColor="#818cf8"
+          disabled={!isCurrent}
+        />
+        <View className="flex-row justify-between px-2">
+          <Text className="text-gray-500 text-xs font-mono">{formatTime(displayPosition)}</Text>
+          <Text className="text-gray-500 text-xs font-mono">{formatTime(duration)}</Text>
         </View>
+      </View>
 
-        {/* Controls */}
-        <View className="flex-row items-center gap-8 mt-4">
-             <Pressable onPress={() => handleSkip(-15)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
-                 <RotateCcw size={24} color="#fff" />
-             </Pressable>
+      {/* Controls */}
+      <View className="flex-row items-center gap-8 mt-4">
+        <Pressable onPress={() => handleSkip(-15)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
+          <RotateCcw size={24} color="#fff" />
+        </Pressable>
 
-             <Pressable
-                onPress={togglePlayback}
-                className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isCurrent ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
-                disabled={!isCurrent}
-             >
-                 {isLoading ? (
-                     <ActivityIndicator color="#fff" size="large" />
-                 ) : isPlaying ? (
-                     <Pause size={32} color="#fff" fill="#fff" />
-                 ) : (
-                     <Play size={32} color="#fff" fill="#fff" className="ml-1" />
-                 )}
-             </Pressable>
+        <Pressable
+          onPress={togglePlayback}
+          className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isCurrent ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
+          disabled={!isCurrent}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" size="large" />
+          ) : isPlaying ? (
+            <Pause size={32} color="#fff" fill="#fff" />
+          ) : (
+            <Play size={32} color="#fff" fill="#fff" className="ml-1" />
+          )}
+        </Pressable>
 
-             <Pressable onPress={() => handleSkip(30)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
-                 <FastForward size={24} color="#fff" />
-             </Pressable>
-        </View>
+        <Pressable onPress={() => handleSkip(30)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
+          <FastForward size={24} color="#fff" />
+        </Pressable>
+      </View>
     </View>
   );
 };

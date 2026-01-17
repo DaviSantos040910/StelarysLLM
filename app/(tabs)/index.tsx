@@ -1,15 +1,16 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuthStore } from '../../src/stores/authStore';
-import { UserAvatar } from '../../src/components/UserAvatar';
-import { ChatListItem } from '../../src/types/chat';
-import { chatListService } from '../../src/services/chatListService';
 import { ChatListItemRow } from '../../src/components/chat/ChatListItemRow';
+import { UserAvatar } from '../../src/components/UserAvatar';
+import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
+import { chatListService } from '../../src/services/chatListService';
+import { useAuthStore } from '../../src/stores/authStore';
+import { ChatListItem } from '../../src/types/chat';
 
 // Wrapper component to apply entry animations
 const AnimatedChatRow = ({ item, index }: { item: ChatListItem; index: number }) => {
@@ -25,6 +26,7 @@ const AnimatedChatRow = ({ item, index }: { item: ChatListItem; index: number })
 export default function ChatListScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const miniPlayerHeight = useMiniPlayerHeight();
   const [chats, setChats] = useState<ChatListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,38 +53,38 @@ export default function ChatListScreen() {
       {/* Header */}
       <View className="flex-row justify-between items-center px-4 py-4 mb-2 border-b border-white/5 bg-space-dark/95 backdrop-blur-md z-10">
         <View>
-             <Text className="text-starlight text-lg font-medium">Olá,</Text>
-             <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
+          <Text className="text-starlight text-lg font-medium">Olá,</Text>
+          <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-            <UserAvatar imageUri={user?.avatar_url} size={48} />
+          <UserAvatar imageUri={user?.avatar_url} size={48} />
         </TouchableOpacity>
       </View>
 
       {/* Chat List */}
       {isLoading ? (
-         <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#818cf8" />
-         </View>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#818cf8" />
+        </View>
       ) : (
         <FlatList
           data={chats}
           renderItem={({ item, index }) => <AnimatedChatRow item={item} index={index} />}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 100 + miniPlayerHeight }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={loadChats} tintColor="#818cf8" />
           }
           ListEmptyComponent={
             <View className="items-center justify-center py-20 px-6">
-               <View className="w-16 h-16 bg-white/5 rounded-full items-center justify-center mb-4">
-                  <Text className="text-4xl">👋</Text>
-               </View>
-               <Text className="text-starlight text-lg font-bold mb-2">Sem conversas ainda</Text>
-               <Text className="text-gray-400 text-center">
-                   Visite a aba Explorar para encontrar um Tutor e começar a aprender!
-               </Text>
+              <View className="w-16 h-16 bg-white/5 rounded-full items-center justify-center mb-4">
+                <Text className="text-4xl">👋</Text>
+              </View>
+              <Text className="text-starlight text-lg font-bold mb-2">Sem conversas ainda</Text>
+              <Text className="text-gray-400 text-center">
+                Visite a aba Explorar para encontrar um Tutor e começar a aprender!
+              </Text>
             </View>
           }
         />
@@ -90,7 +92,8 @@ export default function ChatListScreen() {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        className="absolute bottom-24 right-6 bg-cosmic-purple w-14 h-14 rounded-full justify-center items-center shadow-lg shadow-indigo-500/50 active:scale-95 transition-transform"
+        style={{ bottom: 96 + miniPlayerHeight }}
+        className="absolute right-6 bg-cosmic-purple w-14 h-14 rounded-full justify-center items-center shadow-lg shadow-indigo-500/50 active:scale-95 transition-transform"
         onPress={() => router.push('/(tabs)/explore')}
       >
         <Plus color="white" size={28} />
