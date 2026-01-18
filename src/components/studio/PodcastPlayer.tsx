@@ -1,6 +1,6 @@
 import Slider from '@react-native-community/slider';
 import { FastForward, Pause, Play, RotateCcw } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 
@@ -15,108 +15,126 @@ interface Props {
 }
 
 export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId }) => {
-  const {
-    play,
-    pause,
-    resume,
-    seek,
-    setRate,
-    position: storePos,
-    duration: storeDur,
-    isPlaying: storeIsPlaying,
-    isLoading: storeIsLoading,
-    currentUri,
-    rate
-  } = useAudioPlayerStore();
+  // ---------- Store (seletores granulares para evitar re-renders desnecessários) ----------
+  const sound = useAudioPlayerStore(state => state.sound);
+  const currentUri = useAudioPlayerStore(state => state.currentUri);
+  const storePosition = useAudioPlayerStore(state => state.position);
+  const storeDuration = useAudioPlayerStore(state => state.duration);
+  const storeIsPlaying = useAudioPlayerStore(state => state.isPlaying);
+  const storeIsLoading = useAudioPlayerStore(state => state.isLoading);
+  const rate = useAudioPlayerStore(state => state.rate);
+  const isMinimized = useAudioPlayerStore(state => state.isMinimized);
 
-  // Estado local para evitar que a barra de progresso oscile durante o seek
+  // Actions
+  const play = useAudioPlayerStore(state => state.play);
+  const pause = useAudioPlayerStore(state => state.pause);
+  const resume = useAudioPlayerStore(state => state.resume);
+  const seek = useAudioPlayerStore(state => state.seek);
+  const setRate = useAudioPlayerStore(state => state.setRate);
+
+  // ---------- Estado local para controle do slider ----------
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
 
+  // ---------- Valores derivados ----------
   const isCurrent = currentUri === uri;
-
-  // Se não for o áudio atual da store, assumimos estado zerado ou de carregamento se for o URI alvo
-  const position = isCurrent ? storePos / 1000 : 0;
-  const duration = isCurrent && storeDur > 0 ? storeDur / 1000 : 0;
+  const position = isCurrent ? storePosition / 1000 : 0;
+  const duration = isCurrent && storeDuration > 0 ? storeDuration / 1000 : 0;
   const isPlaying = isCurrent && storeIsPlaying;
+  const isLoading = storeIsLoading;
 
-  // Usamos o isLoading da store ou se estamos carregando este URI especifico (não é current mas tem URI)
-  // Agora que a store atualiza currentUri imediatamente, podemos confiar mais na store
-  const isLoading = isCurrent ? storeIsLoading : (!!uri && storeIsLoading);
+  // ---------- Efeitos ----------
 
+  // Inicia reprodução quando o componente monta com um URI válido
   useEffect(() => {
-    // Se o URI mudou e não é o atual, pede play
-    // A store agora lida com isLoading e currentUri internamente para evitar loops
-    if (uri && !isCurrent) {
+    if (uri && !isCurrent && !storeIsLoading) {
       play(uri, title, artifactId, chatId).catch(console.error);
     }
-  }, [uri, isCurrent]);
+  }, [uri]); // Dependência apenas do uri para evitar loops
 
-  // Cleanup: para o áudio se desmontar e não estiver minimizado
+  // Cleanup: pausa ao desmontar se não estiver minimizado
   useEffect(() => {
     return () => {
-      const { isMinimized, pause } = useAudioPlayerStore.getState();
-      // Se não minimizou explicitamente, pausa ao sair da tela
-      if (!isMinimized) {
-        pause().catch(console.error);
+      const state = useAudioPlayerStore.getState();
+      if (!state.isMinimized && state.sound) {
+        state.pause().catch(console.error);
       }
     };
   }, []);
 
-  const togglePlayback = async () => {
+  // ---------- Handlers ----------
+
+  const togglePlayback = useCallback(async () => {
     try {
-      if (isPlaying) {
+      if (isLoading) return;
+      // Se já está tocando, pausa
+      if (storeIsPlaying) {
         await pause();
-      } else if (isCurrent) {
-        await resume();
-      } else if (uri) {
+        return;
+      }
+      // Caso contrário, tenta reproduzir (mesmo que já seja o atual)
+      if (uri) {
         await play(uri, title, artifactId, chatId);
       }
     } catch (error) {
       console.error('Playback toggle error:', error);
     }
-  };
+  }, [storeIsPlaying, uri, title, artifactId, chatId, play, pause]);
 
-  const handleSeekStart = () => {
+  const handleSeekStart = useCallback(() => {
     setIsSeeking(true);
     setSeekValue(position);
-  };
+  }, [position]);
 
-  const handleSeekChange = (value: number) => {
+  const handleSeekChange = useCallback((value: number) => {
     setSeekValue(value);
-  };
+  }, []);
 
-  const handleSeekComplete = async (value: number) => {
-    if (isCurrent) {
-      await seek(value * 1000);
-    }
+  const handleSeekComplete = useCallback(async (value: number) => {
     setIsSeeking(false);
-  };
-
-  const handleSkip = async (seconds: number) => {
     if (isCurrent) {
-      const currentMs = storePos;
-      const newPos = Math.max(0, Math.min(currentMs + (seconds * 1000), storeDur));
-      await seek(newPos);
+      try {
+        await seek(value * 1000);
+      } catch (error) {
+        console.error('Seek error:', error);
+      }
     }
-  };
+  }, [isCurrent, seek]);
 
-  const handleSpeedChange = async () => {
-    // Cicla para a próxima velocidade na lista
-    const currentIndex = SPEED_OPTIONS.indexOf(rate);
-    const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
-    await setRate(SPEED_OPTIONS[nextIndex]);
-  };
+  const handleSkip = useCallback(async (seconds: number) => {
+    if (!uri) return;
+    try {
+      const currentMs = storePosition;
+      const newPos = Math.max(0, Math.min(currentMs + seconds * 1000, storeDuration));
+      await seek(newPos);
+    } catch (error) {
+      console.error('Skip error:', error);
+    }
+  }, [uri, storePosition, storeDuration, seek]);
 
-  const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return "0:00";
+  const handleSpeedChange = useCallback(async () => {
+    try {
+      const currentIndex = SPEED_OPTIONS.indexOf(rate);
+      const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
+      await setRate(SPEED_OPTIONS[nextIndex]);
+    } catch (error) {
+      console.error('Speed change error:', error);
+    }
+  }, [rate, setRate]);
+
+  // ---------- Helpers ----------
+
+  const formatTime = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return "0:00";
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Usa o valor do seek local durante o arraste, caso contrário usa a posição real
+  // Usa valor local durante o seek, caso contrário usa a posição real
   const displayPosition = isSeeking ? seekValue : position;
+
+  // ---------- Render ----------
 
   return (
     <View className="flex-1 bg-space-dark items-center justify-center p-8">
@@ -128,7 +146,9 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
       </View>
 
       {/* Title */}
-      <Text className="text-starlight text-2xl font-bold text-center mb-2">{title}</Text>
+      <Text className="text-starlight text-2xl font-bold text-center mb-2" numberOfLines={2}>
+        {title}
+      </Text>
       <Text className="text-gray-400 text-sm font-medium mb-6">AI Audio Overview</Text>
 
       {/* Speed Control */}
@@ -144,7 +164,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
         <Slider
           style={{ width: '100%', height: 40 }}
           minimumValue={0}
-          maximumValue={duration}
+          maximumValue={duration > 0 ? duration : 1}
           value={displayPosition}
           onSlidingStart={handleSeekStart}
           onValueChange={handleSeekChange}
@@ -152,7 +172,7 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
           minimumTrackTintColor="#818cf8"
           maximumTrackTintColor="rgba(255,255,255,0.1)"
           thumbTintColor="#818cf8"
-          disabled={!isCurrent}
+          disabled={!uri || isLoading}
         />
         <View className="flex-row justify-between px-2">
           <Text className="text-gray-500 text-xs font-mono">{formatTime(displayPosition)}</Text>
@@ -162,27 +182,35 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
 
       {/* Controls */}
       <View className="flex-row items-center gap-8 mt-4">
-        <Pressable onPress={() => handleSkip(-15)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
-          <RotateCcw size={24} color="#fff" />
+        <Pressable
+          onPress={() => handleSkip(-15)}
+          className="p-4 bg-white/5 rounded-full active:bg-white/10"
+          disabled={!uri || isLoading}
+        >
+          <RotateCcw size={24} color={uri && !isLoading ? "#fff" : "#666"} />
         </Pressable>
 
         <Pressable
           onPress={togglePlayback}
-          className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isCurrent ? 'bg-cosmic-purple' : 'bg-gray-700'}`}
-          // Não desabilita se não for current. Permite clicar para tentar novamente ou forçar play.
+          className={`w-20 h-20 rounded-full items-center justify-center shadow-lg shadow-indigo-500/50 active:opacity-90 ${isLoading ? 'bg-gray-600' : storeIsPlaying ? 'bg-cosmic-purple' : 'bg-gray-700'
+            }`}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" size="large" />
-          ) : isPlaying ? (
+          ) : storeIsPlaying ? (
             <Pause size={32} color="#fff" fill="#fff" />
           ) : (
-            <Play size={32} color="#fff" fill="#fff" className="ml-1" />
+            <Play size={32} color="#fff" fill="#fff" />
           )}
         </Pressable>
 
-        <Pressable onPress={() => handleSkip(30)} className="p-4 bg-white/5 rounded-full active:bg-white/10">
-          <FastForward size={24} color="#fff" />
+        <Pressable
+          onPress={() => handleSkip(30)}
+          className="p-4 bg-white/5 rounded-full active:bg-white/10"
+          disabled={!uri || isLoading}
+        >
+          <FastForward size={24} color={uri && !isLoading ? "#fff" : "#666"} />
         </Pressable>
       </View>
     </View>
