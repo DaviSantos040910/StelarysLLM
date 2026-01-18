@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import apiClient, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
-import { ArtifactType, KnowledgeArtifact } from '../types/studio';
+import { ArtifactType, KnowledgeArtifact, ContextSource, ArtifactGenerationOptions } from '../types/studio';
 
 export const studioService = {
     async getArtifacts(chatId: string): Promise<KnowledgeArtifact[]> {
@@ -12,7 +12,22 @@ export const studioService = {
         return response.data;
     },
 
-    async generateArtifact(chatId: string, type: ArtifactType, title: string): Promise<KnowledgeArtifact> {
+    async getSources(chatId: string): Promise<ContextSource[]> {
+        try {
+            const response = await apiClient.get<ContextSource[]>(`/api/v1/context-sources/${chatId}/`);
+            return response.data;
+        } catch (error) {
+            console.error("Failed to fetch context sources:", error);
+            return [];
+        }
+    },
+
+    async generateArtifact(
+        chatId: string,
+        type: ArtifactType,
+        title: string,
+        options?: ArtifactGenerationOptions
+    ): Promise<KnowledgeArtifact> {
         // Parse chatId to integer - Django ForeignKey expects an integer, not a string
         const chatInt = parseInt(chatId, 10);
 
@@ -24,7 +39,13 @@ export const studioService = {
         const payload = {
             chat: chatInt, // Send as integer for Django ForeignKey
             type,
-            title
+            title,
+            // Map optional config fields
+            quantity: options?.quantity,
+            difficulty: options?.difficulty,
+            source_ids: options?.sourceIds,
+            custom_instructions: options?.customInstructions,
+            include_chat_history: options?.includeChatHistory
         };
 
         try {

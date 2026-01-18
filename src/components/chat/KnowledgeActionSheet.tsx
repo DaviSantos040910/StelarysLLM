@@ -21,8 +21,9 @@ import {
   View
 } from 'react-native';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
+import { ArtifactConfigModal } from '../../components/studio/ArtifactConfigModal';
 import { studioService } from '../../services/studioService';
-import { ArtifactType, KnowledgeArtifact } from '../../types/studio';
+import { ArtifactGenerationOptions, ArtifactType, KnowledgeArtifact } from '../../types/studio';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -62,6 +63,10 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   const [artifacts, setArtifacts] = useState<KnowledgeArtifact[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Modal Config State
+  const [configVisible, setConfigVisible] = useState(false);
+  const [selectedArtifactType, setSelectedArtifactType] = useState<ArtifactType | null>(null);
+
   // Load recent artifacts
   useEffect(() => {
     setLoading(true);
@@ -74,9 +79,27 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     });
   }, [chatId]);
 
-  const handleGenerate = async (gen: typeof GENERATORS[0]) => {
+  const handlePressGenerator = (gen: typeof GENERATORS[0]) => {
+    // If Podcast, skip configuration for now as requested
+    if (gen.id === 'PODCAST') {
+        executeGenerate(gen);
+    } else {
+        // Open configuration modal for other types
+        setSelectedArtifactType(gen.id);
+        setConfigVisible(true);
+    }
+  };
+
+  const handleConfigConfirm = (options: ArtifactGenerationOptions) => {
+    if (!selectedArtifactType) return;
+    const gen = GENERATORS.find(g => g.id === selectedArtifactType);
+    if (gen) {
+        executeGenerate(gen, options);
+    }
+  };
+
+  const executeGenerate = async (gen: typeof GENERATORS[0], options?: ArtifactGenerationOptions) => {
     // Optimistic Update
-    // Use a negative temp ID to distinguish from real IDs (or a very large number)
     const tempId = -Date.now();
     const tempArtifact: KnowledgeArtifact = {
       id: tempId,
@@ -84,7 +107,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
       type: gen.id,
       title: gen.label,
       status: 'processing',
-      created_at: new Date().toISOString() // Snake case prop
+      created_at: new Date().toISOString()
     };
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -92,7 +115,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
     try {
       // Call Service
-      const created = await studioService.generateArtifact(chatId, gen.id, gen.label);
+      const created = await studioService.generateArtifact(chatId, gen.id, gen.label, options);
 
       // Success: Replace optimistic item with real one
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -144,53 +167,66 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   };
 
   return (
-    <View className="w-full bg-space-dark/95 border-t border-white/10 rounded-t-[32px] pb-8 pt-2 absolute bottom-0 shadow-2xl z-50">
-      {/* Handle Bar */}
-      <View className="w-12 h-1.5 bg-white/20 rounded-full self-center mb-6" />
+    <>
+      <View className="w-full bg-space-dark/95 border-t border-white/10 rounded-t-[32px] pb-8 pt-2 absolute bottom-0 shadow-2xl z-50">
+        {/* Handle Bar */}
+        <View className="w-12 h-1.5 bg-white/20 rounded-full self-center mb-6" />
 
-      {/* 1. Generated Artifacts Rail (Outputs) */}
-      <View className="mb-6 pl-6">
-        <View className="flex-row justify-between items-center pr-6 mb-3">
-          <Text className="text-gray-400 text-sm font-medium">Mídia Gerada & Fontes</Text>
-          <Pressable onPress={handleSeeAll} className="flex-row items-center active:opacity-60">
-            <Text className="text-cosmic-purple text-xs font-bold mr-1">Ver Galeria Completa</Text>
-            <Maximize2 color="#818cf8" size={12} />
-          </Pressable>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 }}>
-          {loading ? (
-            <ActivityIndicator color="#818cf8" size="small" className="ml-4" />
-          ) : artifacts.length === 0 ? (
-            <View className="w-[120px] h-[100px] items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/5 mr-6 px-4">
-              <Text className="text-gray-500 text-xs text-center">Nenhum conteúdo gerado ainda.</Text>
-            </View>
-          ) : (
-            artifacts.map(item => (
-              <ArtifactItem key={item.id} item={item} />
-            ))
-          )}
-        </ScrollView>
-      </View>
-
-      {/* 2. Generators Grid (Inputs) */}
-      <View className="px-6">
-        <Text className="text-starlight text-lg font-bold mb-4">Gerar novos</Text>
-        <View className="flex-row flex-wrap gap-3">
-          {GENERATORS.map((gen) => (
-            <Pressable
-              key={gen.id}
-              onPress={() => handleGenerate(gen)}
-              className={`flex-grow basis-[45%] flex-row items-center p-4 rounded-2xl border ${gen.border} ${gen.bg} active:opacity-80`}
-            >
-              <View className="p-2 rounded-full bg-white/10 mr-3">
-                <gen.icon size={20} color={gen.color} />
-              </View>
-              <Text className="text-starlight font-bold text-sm flex-1" numberOfLines={1}>{gen.label}</Text>
+        {/* 1. Generated Artifacts Rail (Outputs) */}
+        <View className="mb-6 pl-6">
+          <View className="flex-row justify-between items-center pr-6 mb-3">
+            <Text className="text-gray-400 text-sm font-medium">Mídia Gerada & Fontes</Text>
+            <Pressable onPress={handleSeeAll} className="flex-row items-center active:opacity-60">
+              <Text className="text-cosmic-purple text-xs font-bold mr-1">Ver Galeria Completa</Text>
+              <Maximize2 color="#818cf8" size={12} />
             </Pressable>
-          ))}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 }}>
+            {loading ? (
+              <ActivityIndicator color="#818cf8" size="small" className="ml-4" />
+            ) : artifacts.length === 0 ? (
+              <View className="w-[120px] h-[100px] items-center justify-center border border-dashed border-white/10 rounded-2xl bg-white/5 mr-6 px-4">
+                <Text className="text-gray-500 text-xs text-center">Nenhum conteúdo gerado ainda.</Text>
+              </View>
+            ) : (
+              artifacts.map(item => (
+                <ArtifactItem key={item.id} item={item} />
+              ))
+            )}
+          </ScrollView>
+        </View>
+
+        {/* 2. Generators Grid (Inputs) */}
+        <View className="px-6">
+          <Text className="text-starlight text-lg font-bold mb-4">Gerar novos</Text>
+          <View className="flex-row flex-wrap gap-3">
+            {GENERATORS.map((gen) => (
+              <Pressable
+                key={gen.id}
+                onPress={() => handlePressGenerator(gen)}
+                className={`flex-grow basis-[45%] flex-row items-center p-4 rounded-2xl border ${gen.border} ${gen.bg} active:opacity-80`}
+              >
+                <View className="p-2 rounded-full bg-white/10 mr-3">
+                  <gen.icon size={20} color={gen.color} />
+                </View>
+                <Text className="text-starlight font-bold text-sm flex-1" numberOfLines={1}>{gen.label}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
-    </View>
+
+      {/* Configuration Modal */}
+      {selectedArtifactType && (
+          <ArtifactConfigModal
+              visible={configVisible}
+              onClose={() => setConfigVisible(false)}
+              onGenerate={handleConfigConfirm}
+              artifactType={selectedArtifactType}
+              chatId={chatId}
+          />
+      )}
+    </>
   );
 };

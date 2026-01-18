@@ -48,3 +48,18 @@ export interface KnowledgeArtifact {
   content?: SlidePage[] | QuizQuestion[] | FlashcardItem[] | string;
   created_at: string; // snake_case to match backend
 }
+
+export interface ContextSource {
+    id: string; // The source name/filename or unique ID
+    name: string;
+    type: 'file' | 'kb';
+    selected?: boolean;
+}
+
+export interface ArtifactGenerationOptions {
+    quantity?: number;
+    difficulty?: 'Easy' | 'Medium' | 'Hard';
+    sourceIds?: string[];
+    customInstructions?: string;
+    includeChatHistory?: boolean;
+}
