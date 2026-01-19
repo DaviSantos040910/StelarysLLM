@@ -62,4 +62,5 @@ export interface ArtifactGenerationOptions {
     sourceIds?: string[];
     customInstructions?: string;
     includeChatHistory?: boolean;
+    targetDuration?: 'Short' | 'Medium' | 'Long';
 }

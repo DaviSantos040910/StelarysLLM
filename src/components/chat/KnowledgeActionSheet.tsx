@@ -80,14 +80,9 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   }, [chatId]);
 
   const handlePressGenerator = (gen: typeof GENERATORS[0]) => {
-    // If Podcast, skip configuration for now as requested
-    if (gen.id === 'PODCAST') {
-        executeGenerate(gen);
-    } else {
-        // Open configuration modal for other types
-        setSelectedArtifactType(gen.id);
-        setConfigVisible(true);
-    }
+    // Open configuration modal for ALL types
+    setSelectedArtifactType(gen.id);
+    setConfigVisible(true);
   };
 
   const handleConfigConfirm = (options: ArtifactGenerationOptions) => {
