@@ -14,7 +14,8 @@ export const studioService = {
 
     async getSources(chatId: string): Promise<ContextSource[]> {
         try {
-            const response = await apiClient.get<ContextSource[]>(`/api/v1/context-sources/${chatId}/`);
+            // Updated URL to match nested backend route: /api/v1/chats/<id>/context-sources/
+            const response = await apiClient.get<ContextSource[]>(`/api/v1/chats/${chatId}/context-sources/`);
             return response.data;
         } catch (error) {
             console.error("Failed to fetch context sources:", error);
