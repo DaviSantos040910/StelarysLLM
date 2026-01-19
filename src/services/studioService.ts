@@ -46,7 +46,7 @@ export const studioService = {
             difficulty: options?.difficulty,
             source_ids: options?.sourceIds,
             custom_instructions: options?.customInstructions,
-            include_chat_history: options?.includeChatHistory,
+            // include_chat_history removed
             // Map targetDuration to 'duration' as requested by API contract
             duration: options?.targetDuration
         };

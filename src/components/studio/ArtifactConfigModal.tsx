@@ -42,7 +42,6 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
     const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
     const [duration, setDuration] = useState<'Short' | 'Medium' | 'Long'>('Medium');
     const [customInstructions, setCustomInstructions] = useState('');
-    const [includeChatHistory, setIncludeChatHistory] = useState(false);
     const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
 
     // UI State: Wizard Mode (Config vs Source Selection)
@@ -79,7 +78,6 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
             difficulty,
             targetDuration: artifactType === 'PODCAST' ? duration : undefined,
             customInstructions,
-            includeChatHistory,
             sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined
         });
         onClose();
@@ -220,25 +218,6 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                 className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 min-h-[100px] mb-6"
                                 textAlignVertical="top"
                             />
-
-                            {/* 5. Chat History Context */}
-                            <View className="flex-row items-center justify-between mb-8">
-                                <View className="flex-row items-center flex-1 mr-4">
-                                    <View className="p-2 bg-white/5 rounded-lg mr-3">
-                                        <FileText size={20} color="#34d399" />
-                                    </View>
-                                    <View>
-                                        <Text className="text-starlight font-bold">Incluir histórico do chat</Text>
-                                        <Text className="text-gray-500 text-xs">Usa as últimas mensagens como contexto</Text>
-                                    </View>
-                                </View>
-                                <Switch
-                                    value={includeChatHistory}
-                                    onValueChange={setIncludeChatHistory}
-                                    trackColor={{ false: '#334155', true: '#818cf8' }}
-                                    thumbColor="#fff"
-                                />
-                            </View>
 
                             {/* Action Button */}
                             <Pressable
