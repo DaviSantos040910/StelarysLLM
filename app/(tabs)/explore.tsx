@@ -5,6 +5,9 @@ import { ActivityIndicator, FlatList, Keyboard, Pressable, Text, TextInput, View
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Create animated version of Pressable to support entering/exiting animations
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 import { ExploreBotRow } from '../../src/components/explore/ExploreBotRow';
 import { SearchHistory } from '../../src/components/explore/SearchHistory';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
@@ -144,9 +147,9 @@ export default function ExploreScreen() {
             <View className="px-4 py-3 border-b border-white/5 bg-space-dark z-10">
                 <View className="flex-row items-center gap-2">
                     {isSearchMode && (
-                        <Pressable onPress={handleSearchCancel} entering={FadeInDown} exiting={FadeOut}>
+                        <AnimatedPressable onPress={handleSearchCancel} entering={FadeInDown} exiting={FadeOut}>
                             <ArrowLeft color="#fff" size={24} />
-                        </Pressable>
+                        </AnimatedPressable>
                     )}
 
                     <View className="flex-1 flex-row items-center bg-space-light rounded-xl px-3 py-3 border border-white/10">
@@ -197,8 +200,8 @@ export default function ExploreScreen() {
                                             <Pressable
                                                 onPress={() => handleCategoryPress(item.id)}
                                                 className={`mr-2 px-4 py-2 rounded-full border ${isActive
-                                                        ? 'bg-cosmic-purple border-cosmic-purple'
-                                                        : 'bg-transparent border-white/20'
+                                                    ? 'bg-cosmic-purple border-cosmic-purple'
+                                                    : 'bg-transparent border-white/20'
                                                     }`}
                                             >
                                                 <Text className={`${isActive ? 'text-white' : 'text-gray-400'} font-medium`}>

@@ -1,7 +1,7 @@
 import { usePathname, useRouter } from 'expo-router';
 import { Pause, Play, X } from 'lucide-react-native';
 import React from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
