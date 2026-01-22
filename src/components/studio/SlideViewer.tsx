@@ -12,6 +12,15 @@ interface Props {
 export const SlideViewer: React.FC<Props> = ({ data }) => {
   const [currentPage, setCurrentPage] = useState(0);
 
+  // Safety check for empty data
+  if (!data || data.length === 0) {
+      return (
+          <View className="flex-1 bg-black items-center justify-center">
+              <Text className="text-gray-400">Nenhum slide disponível.</Text>
+          </View>
+      );
+  }
+
   const renderItem = ({ item, index }: { item: SlidePage, index: number }) => (
     <View style={{ width, padding: 32 }} className="flex-1 justify-center items-center">
        <Animated.View

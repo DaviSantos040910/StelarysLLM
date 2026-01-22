@@ -16,6 +16,15 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
 
+  // Safety check for empty data
+  if (!data || data.length === 0) {
+      return (
+          <View className="flex-1 bg-space-dark items-center justify-center">
+              <Text className="text-gray-400">Nenhum dado disponível.</Text>
+          </View>
+      );
+  }
+
   const currentQuestion = data[currentIndex];
 
   const handleSelect = (index: number) => {

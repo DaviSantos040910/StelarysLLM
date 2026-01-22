@@ -18,6 +18,15 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
+  // Safety check
+  if (!data || data.length === 0) {
+      return (
+          <View className="flex-1 bg-space-dark items-center justify-center">
+              <Text className="text-gray-400">Nenhum flashcard disponível.</Text>
+          </View>
+      );
+  }
+
   const spin = useSharedValue(0);
 
   const frontStyle = useAnimatedStyle(() => {
