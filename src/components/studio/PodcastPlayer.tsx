@@ -2,6 +2,7 @@ import Slider from '@react-native-community/slider';
 import { FastForward, Pause, Play, RotateCcw } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { BASE_URL } from '../../api/client';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 
 // Opções de velocidade disponíveis
@@ -48,7 +49,9 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   // Inicia reprodução quando o componente monta com um URI válido
   useEffect(() => {
     if (uri && !isCurrent && !storeIsLoading) {
-      play(uri, title, artifactId, chatId).catch(console.error);
+        // Prepend BASE_URL if relative path
+        const fullUri = uri.startsWith('/') ? `${BASE_URL}${uri}` : uri;
+        play(fullUri, title, artifactId, chatId).catch(console.error);
     }
   }, [uri]); // Dependência apenas do uri para evitar loops
 
@@ -74,7 +77,8 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
       }
       // Caso contrário, tenta reproduzir (mesmo que já seja o atual)
       if (uri) {
-        await play(uri, title, artifactId, chatId);
+        const fullUri = uri.startsWith('/') ? `${BASE_URL}${uri}` : uri;
+        await play(fullUri, title, artifactId, chatId);
       }
     } catch (error) {
       console.error('Playback toggle error:', error);

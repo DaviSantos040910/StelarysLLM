@@ -163,8 +163,8 @@ export default function StudioGalleryScreen() {
         }
     };
 
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const data = await studioService.getArtifacts(chatId || '0');
             setArtifacts(data);
@@ -182,15 +182,31 @@ export default function StudioGalleryScreen() {
         } catch (e) {
             console.error(e);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            loadData(true);
         }, [chatId])
     );
+
+    // Polling effect for processing artifacts
+    React.useEffect(() => {
+        const hasProcessing = artifacts.some(a => a.status === 'processing');
+        let interval: NodeJS.Timeout;
+
+        if (hasProcessing) {
+            interval = setInterval(() => {
+                loadData(false);
+            }, 5000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [artifacts]);
 
     const filteredData = activeFilter === 'ALL'
         ? artifacts

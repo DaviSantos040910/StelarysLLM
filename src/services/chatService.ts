@@ -105,7 +105,12 @@ export const chatService = {
                if (data === '[DONE]') break;
                try {
                  const parsed = JSON.parse(data);
-                 if (parsed.content) onChunk(parsed.content);
+                 if (parsed.type === 'chunk' && parsed.text) {
+                     onChunk(parsed.text);
+                 } else if (parsed.content) {
+                     // Fallback for legacy or different implementations
+                     onChunk(parsed.content);
+                 }
                } catch (e) {}
              }
           }
@@ -119,7 +124,11 @@ export const chatService = {
                if (data !== '[DONE]') {
                  try {
                    const parsed = JSON.parse(data);
-                   if (parsed.content) onChunk(parsed.content);
+                   if (parsed.type === 'chunk' && parsed.text) {
+                       onChunk(parsed.text);
+                   } else if (parsed.content) {
+                       onChunk(parsed.content);
+                   }
                  } catch (e) {}
                }
              }
