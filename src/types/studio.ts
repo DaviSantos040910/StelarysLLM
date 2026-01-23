@@ -64,3 +64,22 @@ export interface ArtifactGenerationOptions {
     // Removed includeChatHistory
     targetDuration?: 'Short' | 'Medium' | 'Long';
 }
+
+// --- Library / Study Spaces ---
+
+export interface StudySpace {
+    id: number;
+    title: string;
+    description?: string;
+    cover_image?: string;
+    sources: ContextSource[]; // Reusing ContextSource or creating specific?
+    bots: any[]; // Bot type from botService
+    created_at: string;
+}
+
+export interface CreateSpaceParams {
+    title: string;
+    description?: string;
+    source_ids?: number[];
+    bot_ids?: number[];
+}
