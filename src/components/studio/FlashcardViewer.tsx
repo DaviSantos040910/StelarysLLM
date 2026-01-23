@@ -33,9 +33,11 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
     const spinVal = interpolate(spin.value, [0, 1], [0, 180]);
     return {
       transform: [
+        { perspective: 2000 },
         { rotateY: `${spinVal}deg` }
       ],
       opacity: spin.value < 0.5 ? 1 : 0,
+      backfaceVisibility: 'hidden',
       zIndex: spin.value < 0.5 ? 1 : 0,
     };
   });
@@ -44,9 +46,11 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
     const spinVal = interpolate(spin.value, [0, 1], [180, 360]);
     return {
       transform: [
+        { perspective: 2000 },
         { rotateY: `${spinVal}deg` }
       ],
       opacity: spin.value < 0.5 ? 0 : 1,
+      backfaceVisibility: 'hidden',
       zIndex: spin.value < 0.5 ? 0 : 1,
     };
   });
