@@ -37,8 +37,8 @@ interface KnowledgeActionSheetProps {
 
 // Feature Flags - Desabilita features que ainda não estão prontas no backend
 const FEATURE_FLAGS = {
-  enablePresentations: false, // SLIDE
-  enableSpreadsheets: false,  // SPREADSHEET
+  enablePresentations: true, // SLIDE
+  enableSpreadsheets: true,  // SPREADSHEET
 };
 
 // Updated Generators
@@ -67,17 +67,38 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   const [configVisible, setConfigVisible] = useState(false);
   const [selectedArtifactType, setSelectedArtifactType] = useState<ArtifactType | null>(null);
 
+  const fetchArtifacts = async (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      try {
+          const data = await studioService.getArtifacts(chatId);
+          setArtifacts(data.slice(0, 5)); // Show only recent few
+      } catch (e) {
+          console.error("Failed to load artifacts", e);
+      } finally {
+          if (showLoading) setLoading(false);
+      }
+  };
+
   // Load recent artifacts
   useEffect(() => {
-    setLoading(true);
-    studioService.getArtifacts(chatId).then(data => {
-      setArtifacts(data.slice(0, 5)); // Show only recent few
-      setLoading(false);
-    }).catch(e => {
-      console.error("Failed to load artifacts", e);
-      setLoading(false);
-    });
+    fetchArtifacts(true);
   }, [chatId]);
+
+  // Polling for processing artifacts
+  useEffect(() => {
+      const hasProcessing = artifacts.some(a => a.status === 'processing');
+      let interval: NodeJS.Timeout;
+
+      if (hasProcessing) {
+          interval = setInterval(() => {
+              fetchArtifacts(false);
+          }, 3000);
+      }
+
+      return () => {
+          if (interval) clearInterval(interval);
+      };
+  }, [artifacts]);
 
   const handlePressGenerator = (gen: typeof GENERATORS[0]) => {
     // Open configuration modal for ALL types
@@ -100,7 +121,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
       id: tempId,
       chat: parseInt(chatId, 10) || 0,
       type: gen.id,
-      title: gen.label,
+      title: 'Gerando...',
       status: 'processing',
       created_at: new Date().toISOString()
     };
@@ -110,9 +131,15 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
     try {
       // Call Service
+      // Note: Backend now generates the title.
       const created = await studioService.generateArtifact(chatId, gen.id, gen.label, options);
 
-      // Success: Replace optimistic item with real one
+      // Wait for next polling cycle to update or update immediately if returned?
+      // studioService.generateArtifact usually returns the Created (Processing) artifact or the result if synchronous (unlikely).
+      // Since it's async thread, it returns Processing state.
+      // We rely on polling to flip it to Ready.
+      // But we update the ID here so key matches.
+
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setArtifacts(prev => prev.map(a => a.id === tempId ? created : a));
 
@@ -133,6 +160,14 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     });
   };
 
+  const handleOpenArtifact = (item: KnowledgeArtifact) => {
+      onClose?.();
+      router.push({
+          pathname: '/studio/gallery',
+          params: { chatId, openArtifactId: item.id.toString() }
+      });
+  };
+
   const ArtifactItem = ({ item }: { item: KnowledgeArtifact }) => {
     // Usa ALL_GENERATORS para encontrar o tipo correto, mesmo que esteja oculto
     const gen = ALL_GENERATORS.find(g => g.id === item.type) || ALL_GENERATORS[0];
@@ -142,21 +177,27 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
       <Animated.View
         layout={Layout.springify()}
         entering={FadeIn}
-        className={`mr-3 items-center justify-center p-3 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] relative overflow-hidden`}
+        className="mr-3"
       >
-        <View className="mb-2 opacity-80">
-          <Icon color={gen.color} size={28} />
-        </View>
+          <Pressable
+            onPress={() => handleOpenArtifact(item)}
+            disabled={item.status === 'processing'}
+            className={`items-center justify-center p-3 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] relative overflow-hidden active:opacity-60`}
+          >
+            <View className="mb-2 opacity-80">
+              <Icon color={gen.color} size={28} />
+            </View>
 
-        {item.status === 'processing' && (
-          <View className="absolute inset-0 items-center justify-center bg-space-dark/60 z-10">
-            <ActivityIndicator color="#fff" size="small" />
-          </View>
-        )}
+            {item.status === 'processing' && (
+              <View className="absolute inset-0 items-center justify-center bg-space-dark/60 z-10">
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
 
-        <Text className="text-starlight text-[10px] text-center font-medium leading-tight" numberOfLines={2}>
-          {item.title}
-        </Text>
+            <Text className="text-starlight text-[10px] text-center font-medium leading-tight" numberOfLines={2}>
+              {item.title}
+            </Text>
+        </Pressable>
       </Animated.View>
     );
   };

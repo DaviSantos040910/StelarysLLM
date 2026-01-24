@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { QuizQuestion } from '../../types/studio';
-import { CheckCircle2, XCircle, ChevronRight } from 'lucide-react-native';
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { CheckCircle2, XCircle, ChevronRight, HelpCircle, ChevronUp, ChevronDown, Lightbulb } from 'lucide-react-native';
+import Animated, { FadeIn, ZoomIn, Layout } from 'react-native-reanimated';
 
 interface Props {
   data: QuizQuestion[];
@@ -15,6 +15,7 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   // Safety check for empty data
   if (!data || data.length === 0) {
@@ -31,6 +32,7 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
     if (isAnswered) return;
     setSelectedOption(index);
     setIsAnswered(true);
+    setShowHint(false); // Reset hint state
     if (index === currentQuestion.correctAnswerIndex) {
         setScore(prev => prev + 1);
     }
@@ -41,13 +43,13 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
         setCurrentIndex(prev => prev + 1);
         setSelectedOption(null);
         setIsAnswered(false);
+        setShowHint(false);
     } else {
         setShowResult(true);
     }
   };
 
   if (showResult) {
-      // Replaced absolute positioning with standard Flexbox container to respect parent layout/modal headers
       return (
           <View className="flex-1 bg-space-dark items-center justify-center p-6">
               <Animated.View entering={ZoomIn} className="w-full bg-space-light p-8 rounded-3xl border border-white/10 items-center shadow-xl">
@@ -72,7 +74,7 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
   return (
     <View className="flex-1 bg-space-dark pt-24">
       {/* Scrollable Content Container */}
-      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 120 }}>
           {/* Header Stats */}
           <View className="flex-row justify-between mb-8 items-center">
               <Text className="text-gray-400 font-medium text-base">Questão {currentIndex + 1} de {data.length}</Text>
@@ -125,6 +127,42 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
                       );
                   })}
               </View>
+
+              {/* Dica (Hint) - Only show if not answered and hint exists */}
+              {!isAnswered && currentQuestion.hint && (
+                  <Animated.View layout={Layout.springify()} className="mt-6">
+                      <Pressable
+                          onPress={() => setShowHint(!showHint)}
+                          className="flex-row items-center self-start bg-white/5 px-4 py-2 rounded-full border border-white/10 active:bg-white/10"
+                      >
+                          <Text className="text-gray-300 font-bold mr-2">Dica</Text>
+                          {showHint ? <ChevronUp size={16} color="#94a3b8" /> : <ChevronDown size={16} color="#94a3b8" />}
+                      </Pressable>
+
+                      {showHint && (
+                          <Animated.View entering={FadeIn} className="mt-3 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex-row">
+                              <Lightbulb size={20} color="#818cf8" style={{ marginTop: 2 }} />
+                              <Text className="text-indigo-200 ml-3 flex-1 leading-5">
+                                  {currentQuestion.hint}
+                              </Text>
+                          </Animated.View>
+                      )}
+                  </Animated.View>
+              )}
+
+              {/* Explanation - Show after answering */}
+              {isAnswered && currentQuestion.explanation && (
+                  <Animated.View entering={FadeIn} className="mt-8 p-5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+                      <View className="flex-row items-center mb-2">
+                          <BookOpen size={20} color="#60a5fa" />
+                          <Text className="text-blue-400 font-bold ml-2">Explicação</Text>
+                      </View>
+                      <Text className="text-blue-100 leading-6">
+                          {currentQuestion.explanation}
+                      </Text>
+                  </Animated.View>
+              )}
+
           </Animated.View>
       </ScrollView>
 

@@ -16,6 +16,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="library"
+        options={{
+          title: 'Biblioteca',
+        }}
+      />
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',

@@ -28,6 +28,8 @@ export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswerIndex: number;
+  explanation?: string;
+  hint?: string;
 }
 
 export interface FlashcardItem {
@@ -61,7 +63,7 @@ export interface ArtifactGenerationOptions {
     difficulty?: 'Easy' | 'Medium' | 'Hard';
     sourceIds?: string[];
     customInstructions?: string;
-    // Removed includeChatHistory
+    includeChatHistory?: boolean;
     targetDuration?: 'Short' | 'Medium' | 'Long';
 }
 

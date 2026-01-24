@@ -1,6 +1,6 @@
-import { BookOpen, ChevronDown, FileText, Layers, X } from 'lucide-react-native';
+import { BookOpen, ChevronDown, FileText, Layers, X, MessageSquare } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Switch, Text, TextInput, View, Alert } from 'react-native';
 import { ArtifactGenerationOptions, ArtifactType } from '../../types/studio';
 import { SourceSelector } from './SourceSelector';
 
@@ -43,6 +43,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
     const [duration, setDuration] = useState<'Short' | 'Medium' | 'Long'>('Medium');
     const [customInstructions, setCustomInstructions] = useState('');
     const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+    const [includeChatHistory, setIncludeChatHistory] = useState(false);
 
     // UI State: Wizard Mode (Config vs Source Selection)
     const [viewMode, setViewMode] = useState<'config' | 'sources'>('config');
@@ -71,14 +72,25 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
         return val;
     };
 
+    const isValid = () => {
+        // Validation: Must select source OR history. Instructions alone are NOT enough.
+        return selectedSourceIds.length > 0 || includeChatHistory;
+    };
+
     const handleGenerate = () => {
+        if (!isValid()) {
+            Alert.alert("Atenção", "Selecione pelo menos uma fonte de conteúdo ou o histórico do chat.");
+            return;
+        }
+
         onGenerate({
-            // Default to 1 for Podcast if not specified (backend might handle it, but safer to send)
+            // Default to 1 for Podcast if not specified
             quantity: artifactType === 'PODCAST' ? 1 : getQuantityValue(quantityOption),
             difficulty,
             targetDuration: artifactType === 'PODCAST' ? duration : undefined,
             customInstructions,
-            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined
+            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
+            includeChatHistory
         });
         onClose();
     };
@@ -109,7 +121,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                         onSelectionChange={setSelectedSourceIds}
                     />
                 ) : (
-                    <View className="bg-space-light rounded-t-3xl border-t border-white/10 p-6 pb-10 max-h-[85%]">
+                    <View className="bg-space-light rounded-t-3xl border-t border-white/10 p-6 pb-10 max-h-[90%]">
 
                         {/* Header */}
                         <View className="flex-row justify-between items-center mb-6">
@@ -191,28 +203,44 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             </View>
 
                             {/* 3. Sources */}
-                            <Text className="text-starlight font-bold mb-3">Fontes ({selectedSourceIds.length})</Text>
+                            <Text className="text-starlight font-bold mb-3">Fontes de Conteúdo</Text>
                             <Pressable
                                 onPress={() => setViewMode('sources')}
-                                className="flex-row items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mb-6 active:bg-white/10"
+                                className="flex-row items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mb-3 active:bg-white/10"
                             >
                                 <View className="flex-row items-center flex-1">
                                     <Layers size={20} color="#818cf8" />
                                     <Text className="text-gray-300 ml-3" numberOfLines={1}>
                                         {selectedSourceIds.length === 0
-                                            ? "Todas as fontes disponíveis"
+                                            ? "Selecionar arquivos/fontes..."
                                             : `${selectedSourceIds.length} fontes selecionadas`}
                                     </Text>
                                 </View>
                                 <ChevronDown size={20} color="#64748b" />
                             </Pressable>
 
+                            {/* Chat History Toggle */}
+                            <View className="flex-row items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mb-6">
+                                <View className="flex-row items-center flex-1">
+                                    <MessageSquare size={20} color="#c084fc" />
+                                    <Text className="text-gray-300 ml-3">
+                                        Incluir contexto da conversa
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={includeChatHistory}
+                                    onValueChange={setIncludeChatHistory}
+                                    trackColor={{ false: "#334155", true: "#818cf8" }}
+                                    thumbColor={includeChatHistory ? "#ffffff" : "#94a3b8"}
+                                />
+                            </View>
+
                             {/* 4. Instructions */}
-                            <Text className="text-starlight font-bold mb-3">Comando</Text>
+                            <Text className="text-starlight font-bold mb-3">Comando (Opcional)</Text>
                             <TextInput
                                 value={customInstructions}
                                 onChangeText={setCustomInstructions}
-                                placeholder="Em quais aspectos os hosts de I..."
+                                placeholder="Ex: Foque nos conceitos avançados de..."
                                 placeholderTextColor="#64748b"
                                 multiline
                                 className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 min-h-[100px] mb-6"
@@ -222,7 +250,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             {/* Action Button */}
                             <Pressable
                                 onPress={handleGenerate}
-                                className="bg-cosmic-purple py-4 rounded-2xl items-center shadow-lg shadow-indigo-500/30 active:opacity-90 mb-6"
+                                className={`py-4 rounded-2xl items-center shadow-lg mb-6 ${isValid() ? 'bg-cosmic-purple shadow-indigo-500/30' : 'bg-gray-700 opacity-50'}`}
                             >
                                 <Text className="text-white font-bold text-lg">Gerar</Text>
                             </Pressable>
