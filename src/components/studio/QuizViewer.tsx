@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { QuizQuestion } from '../../types/studio';
-import { CheckCircle2, XCircle, ChevronRight, HelpCircle, ChevronUp, ChevronDown, Lightbulb } from 'lucide-react-native';
+import { CheckCircle2, XCircle, ChevronRight, HelpCircle, ChevronUp, ChevronDown, Lightbulb, BookOpen } from 'lucide-react-native';
 import Animated, { FadeIn, ZoomIn, Layout } from 'react-native-reanimated';
 
 interface Props {

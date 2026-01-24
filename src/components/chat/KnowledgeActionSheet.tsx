@@ -37,8 +37,8 @@ interface KnowledgeActionSheetProps {
 
 // Feature Flags - Desabilita features que ainda não estão prontas no backend
 const FEATURE_FLAGS = {
-  enablePresentations: true, // SLIDE
-  enableSpreadsheets: true,  // SPREADSHEET
+  enablePresentations: false, // SLIDE
+  enableSpreadsheets: false,  // SPREADSHEET
 };
 
 // Updated Generators
