@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, ListRenderItem, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, ListRenderItem, Platform, Pressable, View, Alert } from 'react-native';
 import Animated, { runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +15,7 @@ import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionS
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
+import { chatService } from '../../src/services/chatService'; // Direct service for sources
 import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
 
@@ -25,7 +26,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const chatId = id as string;
 
-    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat } = useChatStore();
+    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, addSystemMessage } = useChatStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
 
@@ -33,7 +34,7 @@ export default function ChatScreen() {
     const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
     const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false);
 
-    // Staged Attachments State
+    // Staged Attachments State (Legacy support + Audio)
     const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
     const flatListRef = useRef<FlatList>(null);
@@ -131,20 +132,9 @@ export default function ChatScreen() {
             setStagedAttachments([]);
         }
 
-        // Upload Staged Attachments first (Sequential for now)
+        // Upload Staged Attachments (Legacy logic for direct attachments)
         for (const att of stagedAttachments) {
-            if (att.type === 'youtube') {
-                // For youtube/links, we might just append to text or send as separate message
-                // Currently backend uploadFile expects a file.
-                // We'll append URL to text if it's a link, or if logic changes later.
-                // For now, let's just append to text for simplicity if it's a link
-                if (att.url) {
-                    // If text is empty, send just the link. If text exists, append.
-                    const linkMsg = `[YouTube](${att.url})`;
-                    await sendMessage(chatId, linkMsg);
-                }
-            } else if (att.uri) {
-                // File Upload
+             if (att.uri) {
                 await uploadFile(chatId, {
                     uri: att.uri,
                     name: att.name || 'file',
@@ -162,47 +152,39 @@ export default function ChatScreen() {
     };
 
     const handleAudioRecorded = async (uri: string, duration: number) => {
-        // Direct upload for audio recorder (UX decision: don't stage voice notes usually)
+        // Direct upload for audio recorder
         const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
         await uploadFile(chatId, file);
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     };
 
-    // Sheet Option Handler
-    const handleAttachmentOption = async (option: string, data?: any) => {
+    // Instant Source Add (New Logic)
+    const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
         setIsAttachmentSheetVisible(false);
+        try {
+            // Show optimistic loading? or just toast.
+            // We can add a "system message" saying "Uploading..." then update it.
+            // For now, simpler: Just wait and notify.
 
-        if (option === 'youtube' && data?.url) {
-            setStagedAttachments(prev => [...prev, { type: 'youtube', url: data.url, name: 'YouTube Video' }]);
-            return;
-        }
+            const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+            const source = await chatService.addChatSource(chatId, file, backendType);
 
-        let results;
-        if (option === 'files') {
-            results = await pickDocument();
-        } else if (option === 'audio') {
-            // Maybe open recorder? Or pick audio file?
-            // pickDocument handles audio mime types now too.
-            results = await pickDocument(); // Reusing document picker for audio files
-        }
-
-        if (results) {
-            const newAttachments: StagedAttachment[] = results.map(file => ({
-                type: 'document',
-                uri: file.uri,
-                name: file.name,
-                mimeType: file.type
-            }));
-            setStagedAttachments(prev => [...prev, ...newAttachments]);
+            // Inject System Message locally
+            if (addSystemMessage) {
+                addSystemMessage(`📎 Fonte adicionada ao contexto: ${source.title}`);
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Erro", "Falha ao adicionar fonte.");
         }
     };
 
-    // Direct Icon Handlers
     const handleDirectAttachment = async (type: 'image' | 'camera') => {
         let results;
         if (type === 'image') results = await pickImage();
         else if (type === 'camera') results = await takePhoto();
 
+        // Direct image/camera still behaves as message attachment (legacy behavior usually desired for images)
         if (results) {
             const newAttachments: StagedAttachment[] = results.map(file => ({
                 type: 'image',
@@ -251,7 +233,7 @@ export default function ChatScreen() {
                 botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
                 animatedStyle={headerAnimatedStyle}
                 onNewChat={() => setIsKnowledgeSheetVisible(true)}
-                onMenu={() => { }}
+                onMenu={() => router.push({ pathname: '/chat/manage-sources', params: { chatId } })}
             />
 
             {/* Messages Area */}
@@ -318,7 +300,12 @@ export default function ChatScreen() {
             <AttachmentSheet
                 visible={isAttachmentSheetVisible}
                 onClose={() => setIsAttachmentSheetVisible(false)}
-                onSelectOption={handleAttachmentOption}
+                // We now use onSelect which handles both file/url and type
+                // The AttachmentSheet component signature must match
+                onSelect={(file, type) => handleAddSource(file, type)}
+                // Fallback for options if needed?
+                // Actually AttachmentSheet usually exposes onSelectOption for logic.
+                // We need to check if AttachmentSheet supports onSelect direct.
             />
 
             {/* Render KnowledgeActionSheet when visible */}

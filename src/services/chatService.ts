@@ -9,6 +9,15 @@ interface PaginatedResponse<T> {
     results: T[];
 }
 
+export interface ChatSource {
+    id: number;
+    title: string;
+    source_type: 'FILE' | 'URL' | 'YOUTUBE';
+    extracted_text?: string;
+    created_at: string;
+    url?: string;
+}
+
 export const chatService = {
   getMessages: async (chatId: string | number): Promise<Message[]> => {
     const response = await client.get<PaginatedResponse<Message>>(`/api/v1/chats/${chatId}/messages/`);
@@ -47,6 +56,7 @@ export const chatService = {
     return response.data;
   },
 
+  // Legacy (Message Attachments)
   uploadFile: async (chatId: string | number, file: any) => {
     const formData = new FormData();
     formData.append('attachment', {
@@ -63,6 +73,44 @@ export const chatService = {
     });
     return response.data;
   },
+
+  // === Chat Source Management (New) ===
+
+  getChatSources: async (chatId: string): Promise<ChatSource[]> => {
+    const response = await client.get<ChatSource[]>(`/api/v1/chats/${chatId}/sources/`);
+    return response.data;
+  },
+
+  addChatSource: async (chatId: string, fileOrUrl: any, type: 'FILE' | 'URL' | 'YOUTUBE'): Promise<ChatSource> => {
+      const formData = new FormData();
+
+      formData.append('title', fileOrUrl.name || 'Nova Fonte');
+      formData.append('source_type', type);
+
+      if (type === 'FILE') {
+          formData.append('file', {
+              uri: fileOrUrl.uri,
+              name: fileOrUrl.name,
+              type: fileOrUrl.mimeType || 'application/octet-stream',
+          } as any);
+      } else {
+          formData.append('url', fileOrUrl.uri || fileOrUrl);
+          // If URL, title might be missing, use URL as fallback title
+          if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
+      }
+
+      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData, {
+          headers: {
+              'Content-Type': 'multipart/form-data',
+          },
+      });
+      return response.data;
+  },
+
+  removeChatSource: async (chatId: string, sourceId: number): Promise<void> => {
+      await client.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
+  },
+
 
   sendMessageStream: async (
     chatId: string | number,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, LayoutAnimation, Platform, UIManager, Modal, TextInput } from 'react-native';
 import { FileText, Music, Globe, Youtube, ChevronUp, ChevronDown, X, Link } from 'lucide-react-native';
 import Animated, { SlideInDown, SlideOutDown, FadeIn, FadeOut } from 'react-native-reanimated';
+import { useAttachmentPicker } from '../../hooks/useAttachmentPicker';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -10,7 +11,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface AttachmentSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSelectOption: (option: string, data?: any) => void;
+  // Make these optional to support old signature if needed, or update call sites
+  onSelectOption?: (option: string, data?: any) => void;
+  onSelect?: (fileOrUrl: any, type: 'file' | 'url' | 'youtube') => void;
 }
 
 const MODELS = [
@@ -19,7 +22,7 @@ const MODELS = [
   { id: 'claude-3-5', name: 'Claude 3.5' },
 ];
 
-export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClose, onSelectOption }) => {
+export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClose, onSelectOption, onSelect }) => {
   const [selectedModel, setSelectedModel] = useState(MODELS[0]);
   const [isModelListOpen, setIsModelListOpen] = useState(false);
 
@@ -28,8 +31,10 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
   const [inputType, setInputType] = useState<'youtube' | 'website'>('youtube');
   const [url, setUrl] = useState('');
 
+  // Use hook for file picking
+  const { pickDocument } = useAttachmentPicker();
+
   const handleUrlSelect = (type: 'youtube' | 'website') => {
-      // Instead of immediate close, show input
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setInputType(type);
       setShowUrlInput(true);
@@ -37,9 +42,35 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
 
   const handleUrlConfirm = () => {
       if (url.trim()) {
-          onSelectOption(inputType, { url: url.trim(), type: inputType });
+          const type = inputType === 'youtube' ? 'youtube' : 'url';
+          if (onSelect) {
+              onSelect({ uri: url.trim(), name: url.trim() }, type);
+          } else if (onSelectOption) {
+              // Fallback
+               onSelectOption(inputType, { url: url.trim(), type: inputType });
+          }
           setUrl('');
           setShowUrlInput(false);
+      }
+  };
+
+  const handleFileSelect = async (type: 'file' | 'audio') => {
+      // Pick document (supports all types basically)
+      const results = await pickDocument();
+      if (results && results.length > 0) {
+          const file = results[0]; // Take first for now
+          if (onSelect) {
+              onSelect(file, 'file');
+          } else if (onSelectOption) {
+               // Backward compat logic would be messy here as `onSelectOption` was doing the picking logic inside the parent usually?
+               // Actually in ChatScreen `onSelectOption` was calling picker itself.
+               // BUT here we want to centralize picking if `onSelect` is present.
+               // Let's assume if onSelect is NOT present, we delegate back to onSelectOption string trigger.
+               onSelectOption(type === 'file' ? 'files' : 'audio');
+          }
+      } else if (!results && onSelectOption) {
+           // If user cancelled picker or error, and using old flow:
+           onSelectOption(type === 'file' ? 'files' : 'audio');
       }
   };
 
@@ -126,13 +157,13 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                             icon={FileText}
                             label="Arquivos"
                             color="#60a5fa"
-                            onPress={() => onSelectOption('files')}
+                            onPress={() => handleFileSelect('file')}
                         />
                         <MediaButton
                             icon={Music}
                             label="Áudio"
                             color="#f472b6"
-                            onPress={() => onSelectOption('audio')}
+                            onPress={() => handleFileSelect('audio')}
                         />
                         <MediaButton
                             icon={Globe}
