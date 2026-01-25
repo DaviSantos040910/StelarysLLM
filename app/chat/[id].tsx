@@ -7,7 +7,7 @@ import Animated, { runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useShare
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
-import { ChatInput, StagedAttachment } from '../../src/components/chat/ChatInput'; // Import StagedAttachment
+import { ChatInput, StagedAttachment } from '../../src/components/chat/ChatInput';
 import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
@@ -15,7 +15,7 @@ import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionS
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
-import { chatService } from '../../src/services/chatService'; // Direct service for sources
+import { chatService } from '../../src/services/chatService';
 import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
 
@@ -24,6 +24,8 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
 export default function ChatScreen() {
     const { id, botId, botName, botAvatar, suggestion1, suggestion2, suggestion3 } = useLocalSearchParams();
     const router = useRouter();
+    // chatId can change when we create a new chat, but typically param is fixed.
+    // If we replace route, component remounts with new ID.
     const chatId = id as string;
 
     const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, addSystemMessage } = useChatStore();
@@ -34,7 +36,6 @@ export default function ChatScreen() {
     const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
     const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false);
 
-    // Staged Attachments State (Legacy support + Audio)
     const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
     const flatListRef = useRef<FlatList>(null);
@@ -126,13 +127,11 @@ export default function ChatScreen() {
     const handleSend = async (text: string = inputText) => {
         if (!text.trim() && stagedAttachments.length === 0) return;
 
-        // Clear input immediately
         if (text === inputText) {
             setInputText('');
             setStagedAttachments([]);
         }
 
-        // Upload Staged Attachments (Legacy logic for direct attachments)
         for (const att of stagedAttachments) {
              if (att.uri) {
                 await uploadFile(chatId, {
@@ -143,7 +142,6 @@ export default function ChatScreen() {
             }
         }
 
-        // Send Text Message
         if (text.trim()) {
             await sendMessage(chatId, text);
         }
@@ -152,24 +150,17 @@ export default function ChatScreen() {
     };
 
     const handleAudioRecorded = async (uri: string, duration: number) => {
-        // Direct upload for audio recorder
         const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
         await uploadFile(chatId, file);
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     };
 
-    // Instant Source Add (New Logic)
     const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
         setIsAttachmentSheetVisible(false);
         try {
-            // Show optimistic loading? or just toast.
-            // We can add a "system message" saying "Uploading..." then update it.
-            // For now, simpler: Just wait and notify.
-
             const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
             const source = await chatService.addChatSource(chatId, file, backendType);
 
-            // Inject System Message locally
             if (addSystemMessage) {
                 addSystemMessage(`📎 Fonte adicionada ao contexto: ${source.title}`);
             }
@@ -184,7 +175,6 @@ export default function ChatScreen() {
         if (type === 'image') results = await pickImage();
         else if (type === 'camera') results = await takePhoto();
 
-        // Direct image/camera still behaves as message attachment (legacy behavior usually desired for images)
         if (results) {
             const newAttachments: StagedAttachment[] = results.map(file => ({
                 type: 'image',
@@ -214,6 +204,45 @@ export default function ChatScreen() {
         );
     };
 
+    // Menu Actions Handler
+    const handleMenuAction = async (action: string) => {
+        if (action === 'manage_sources') {
+            router.push({ pathname: '/chat/manage-sources', params: { chatId } });
+        } else if (action === 'history') {
+            router.push({ pathname: '/chat/history', params: { botId: botId as string, currentChatId: chatId } });
+        } else if (action === 'new_chat') {
+            Alert.alert(
+                "Novo Chat",
+                "Deseja iniciar uma nova conversa? A conversa atual será salva no histórico.",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                        text: "Confirmar",
+                        onPress: async () => {
+                            try {
+                                const { new_chat_id } = await chatService.archiveChat(chatId);
+                                // Replace current screen with new chat screen to reset state
+                                router.replace({
+                                    pathname: `/chat/${new_chat_id}`,
+                                    params: {
+                                        botId,
+                                        botName,
+                                        botAvatar,
+                                        suggestion1,
+                                        suggestion2,
+                                        suggestion3
+                                    }
+                                });
+                            } catch (e) {
+                                Alert.alert("Erro", "Falha ao criar novo chat.");
+                            }
+                        }
+                    }
+                ]
+            );
+        }
+    };
+
     const getSuggestions = () => {
         const bot = currentChat?.bot;
         const suggestions = [];
@@ -227,13 +256,13 @@ export default function ChatScreen() {
         <SafeAreaView className="flex-1 bg-space-dark" edges={['top', 'bottom']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            {/* Floating Header */}
+            {/* Floating Header with Menu Action Handler */}
             <FloatingTutorCard
                 botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
                 botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
                 animatedStyle={headerAnimatedStyle}
                 onNewChat={() => setIsKnowledgeSheetVisible(true)}
-                onMenu={() => router.push({ pathname: '/chat/manage-sources', params: { chatId } })}
+                onMenu={handleMenuAction}
             />
 
             {/* Messages Area */}
@@ -300,12 +329,7 @@ export default function ChatScreen() {
             <AttachmentSheet
                 visible={isAttachmentSheetVisible}
                 onClose={() => setIsAttachmentSheetVisible(false)}
-                // We now use onSelect which handles both file/url and type
-                // The AttachmentSheet component signature must match
                 onSelect={(file, type) => handleAddSource(file, type)}
-                // Fallback for options if needed?
-                // Actually AttachmentSheet usually exposes onSelectOption for logic.
-                // We need to check if AttachmentSheet supports onSelect direct.
             />
 
             {/* Render KnowledgeActionSheet when visible */}

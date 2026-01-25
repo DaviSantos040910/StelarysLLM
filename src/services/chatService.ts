@@ -111,6 +111,22 @@ export const chatService = {
       await client.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
   },
 
+  // === Chat Management & History ===
+
+  archiveChat: async (chatId: string): Promise<{ new_chat_id: number }> => {
+      const response = await client.post<{ new_chat_id: number }>(`/api/v1/chats/${chatId}/archive/`);
+      return response.data;
+  },
+
+  setActiveChat: async (chatId: string): Promise<ChatListItem> => {
+      const response = await client.post<ChatListItem>(`/api/v1/chats/${chatId}/set-active/`);
+      return response.data;
+  },
+
+  getArchivedChats: async (botId: string): Promise<ChatListItem[]> => {
+      const response = await client.get<ChatListItem[]>(`/api/v1/chats/archived/bot/${botId}/`);
+      return response.data;
+  },
 
   sendMessageStream: async (
     chatId: string | number,
