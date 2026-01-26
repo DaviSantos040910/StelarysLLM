@@ -35,6 +35,7 @@ export default function CreateBotScreen() {
     const [description, setDescription] = useState('');
     const [prompt, setPrompt] = useState('');
     const [allowWebSearch, setAllowWebSearch] = useState(false);
+    const [strictContext, setStrictContext] = useState(false);
     const [themeColor, setThemeColor] = useState(THEME_COLORS[0]);
 
     // Selectors State
@@ -78,6 +79,7 @@ export default function CreateBotScreen() {
             setDescription(bot.description || '');
             setPrompt(bot.prompt || '');
             setAllowWebSearch(bot.allow_web_search);
+            setStrictContext(bot.strict_context || false);
             if (bot.theme_color) setThemeColor(bot.theme_color);
 
             if (bot.avatar_url) setAvatar({ uri: bot.avatar_url });
@@ -132,6 +134,7 @@ export default function CreateBotScreen() {
                     prompt,
                     theme_color: themeColor,
                     allow_web_search: allowWebSearch,
+                    strict_context: strictContext,
                     publicity: 'Public',
                     avatar: avatar?.uri?.startsWith('http') ? undefined : avatar, // Only send if changed (local uri)
                     background_image: bgImage?.uri?.startsWith('http') ? undefined : bgImage,
@@ -147,6 +150,7 @@ export default function CreateBotScreen() {
                     prompt,
                     theme_color: themeColor,
                     allow_web_search: allowWebSearch,
+                    strict_context: strictContext,
                     publicity: 'Public',
                     avatar,
                     background_image: bgImage,
@@ -291,8 +295,30 @@ export default function CreateBotScreen() {
                             </View>
                             <Switch
                                 value={allowWebSearch}
-                                onValueChange={setAllowWebSearch}
+                                onValueChange={(val) => {
+                                    setAllowWebSearch(val);
+                                    if (val) setStrictContext(false);
+                                }}
                                 trackColor={{ false: "#334155", true: "#3b82f6" }}
+                                thumbColor="#ffffff"
+                            />
+                        </View>
+
+                        <View className="flex-row items-center justify-between mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                            <View className="flex-row items-center flex-1 mr-4">
+                                <FolderOpen size={20} color="#eab308" />
+                                <View className="ml-3">
+                                    <Text className="text-starlight font-bold">Apenas Fontes</Text>
+                                    <Text className="text-gray-500 text-xs">Responder estritamente com base nos arquivos enviados</Text>
+                                </View>
+                            </View>
+                            <Switch
+                                value={strictContext}
+                                onValueChange={(val) => {
+                                    setStrictContext(val);
+                                    if (val) setAllowWebSearch(false);
+                                }}
+                                trackColor={{ false: "#334155", true: "#eab308" }}
                                 thumbColor="#ffffff"
                             />
                         </View>

@@ -7,6 +7,7 @@ export interface CreateBotData {
     prompt: string;
     theme_color: string;
     allow_web_search: boolean;
+    strict_context: boolean; // Added strict_context
     avatar?: any;
     background_image?: any;
     category_ids?: string[];
@@ -32,6 +33,7 @@ export const botService = {
       formData.append('prompt', data.prompt);
       formData.append('theme_color', data.theme_color);
       formData.append('allow_web_search', String(data.allow_web_search));
+      formData.append('strict_context', String(data.strict_context));
       formData.append('publicity', data.publicity);
 
       if (data.description) formData.append('description', data.description);
@@ -60,7 +62,8 @@ export const botService = {
           } as any);
       }
 
-      const response = await client.post('/api/v1/bots/my-bots/', formData, {
+      // Fixed: URL should be /api/v1/bots/ (POST), not /my-bots/ which was removed or legacy
+      const response = await client.post('/api/v1/bots/', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;
@@ -77,6 +80,7 @@ export const botService = {
       if (data.prompt) formData.append('prompt', data.prompt);
       if (data.theme_color) formData.append('theme_color', data.theme_color);
       if (data.allow_web_search !== undefined) formData.append('allow_web_search', String(data.allow_web_search));
+      if (data.strict_context !== undefined) formData.append('strict_context', String(data.strict_context));
       if (data.publicity) formData.append('publicity', data.publicity);
       if (data.description) formData.append('description', data.description);
 
