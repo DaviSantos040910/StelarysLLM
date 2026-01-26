@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ViewStyle, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, MoreVertical, MessageSquarePlus, RefreshCw, History, FileText, X } from 'lucide-react-native';
+import { ArrowLeft, MoreVertical, MessageSquarePlus, RefreshCw, History, FileText, X, Settings } from 'lucide-react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { UserAvatar } from '../UserAvatar';
 
 interface FloatingTutorCardProps {
   botName: string;
   botAvatar: string;
+  createdByMe?: boolean;
   onBack?: () => void;
   onNewChat?: () => void;
   onMenu?: (action: string) => void;
@@ -17,6 +18,7 @@ interface FloatingTutorCardProps {
 export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
   botName,
   botAvatar,
+  createdByMe,
   onBack,
   onNewChat,
   onMenu,
@@ -104,6 +106,16 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
                             <X color="#94a3b8" size={20} />
                         </Pressable>
                     </View>
+
+                    {createdByMe && (
+                        <MenuItem
+                            icon={Settings}
+                            label="Editar Tutor"
+                            desc="Alterar configurações do assistente"
+                            onPress={() => handleMenuAction('edit_bot')}
+                            color="#eab308"
+                        />
+                    )}
 
                     <MenuItem
                         icon={RefreshCw}

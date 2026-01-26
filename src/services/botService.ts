@@ -64,5 +64,49 @@ export const botService = {
           headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;
+  },
+
+  async getBot(botId: string): Promise<any> {
+      const response = await client.get(`/api/v1/bots/${botId}/`);
+      return response.data;
+  },
+
+  async updateBot(botId: string, data: Partial<CreateBotData>): Promise<any> {
+      const formData = new FormData();
+      if (data.name) formData.append('name', data.name);
+      if (data.prompt) formData.append('prompt', data.prompt);
+      if (data.theme_color) formData.append('theme_color', data.theme_color);
+      if (data.allow_web_search !== undefined) formData.append('allow_web_search', String(data.allow_web_search));
+      if (data.publicity) formData.append('publicity', data.publicity);
+      if (data.description) formData.append('description', data.description);
+
+      if (data.category_ids) {
+          data.category_ids.forEach(id => formData.append('category_ids', id));
+      }
+
+      if (data.study_space_ids) {
+          data.study_space_ids.forEach(id => formData.append('study_space_ids', String(id)));
+      }
+
+      if (data.avatar && data.avatar.uri) {
+          formData.append('avatar_url', {
+              uri: data.avatar.uri,
+              name: data.avatar.name || 'avatar.jpg',
+              type: data.avatar.mimeType || 'image/jpeg',
+          } as any);
+      }
+
+      if (data.background_image && data.background_image.uri) {
+          formData.append('background_image', {
+              uri: data.background_image.uri,
+              name: data.background_image.name || 'background.jpg',
+              type: data.background_image.mimeType || 'image/jpeg',
+          } as any);
+      }
+
+      const response = await client.patch(`/api/v1/bots/${botId}/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
   }
 };

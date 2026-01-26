@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { Copy, ThumbsUp, Volume2, RefreshCw, FileText, BookOpen } from 'lucide-react-native';
+import { Copy, ThumbsUp, ThumbsDown, Volume2, RefreshCw, FileText, BookOpen } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Message } from '../../types/chat';
@@ -11,24 +11,26 @@ interface ChatMessageItemProps {
   message: Message;
   isLastMessage: boolean;
   onCopy?: (text: string) => void;
-  onLike?: (id: string) => void;
-  onRetry?: (id: string) => void;
+  onFeedback?: (id: string, feedback: 'like' | 'dislike' | null) => void;
+  onRegenerate?: (id: string) => void;
   onTTS?: (id: string, text: string) => void;
   onSuggestionPress?: (text: string) => void;
   botName?: string;
   botAvatar?: string;
+  themeColor?: string;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     message,
     isLastMessage,
     onCopy,
-    onLike,
-    onRetry,
+    onFeedback,
+    onRegenerate,
     onTTS,
     onSuggestionPress,
     botName,
-    botAvatar
+    botAvatar,
+    themeColor = '#818cf8'
 }) => {
   const router = useRouter();
   const isUser = message.role === 'user';
@@ -53,6 +55,16 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             botAvatar
         }
     });
+  };
+
+  const handleLike = () => {
+      const newFeedback = message.feedback === 'like' ? null : 'like';
+      onFeedback?.(message.id, newFeedback);
+  };
+
+  const handleDislike = () => {
+      const newFeedback = message.feedback === 'dislike' ? null : 'dislike';
+      onFeedback?.(message.id, newFeedback);
   };
 
   // Content rendering logic
@@ -135,7 +147,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           {/* Actions */}
           {!isStreaming && (message.content?.length > 0 || message.attachment_url) && (
               <View className="flex-col pl-1 mt-2">
-                  <View className="flex-row items-center space-x-4 mb-3">
+                  <View className="flex-row items-center space-x-2 mb-3">
                       {message.content?.length > 0 && (
                         <>
                             <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
@@ -149,17 +161,33 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         </>
                       )}
 
-                      <Pressable onPress={() => onLike?.(message.id as string)} className="p-2">
-                          <ThumbsUp size={16} color="#94a3b8" />
+                      {/* Feedback Buttons */}
+                      <Pressable onPress={handleLike} className="p-2">
+                          <ThumbsUp
+                            size={16}
+                            color={message.feedback === 'like' ? themeColor : "#94a3b8"}
+                            fill={message.feedback === 'like' ? themeColor : "none"}
+                          />
                       </Pressable>
+                      <Pressable onPress={handleDislike} className="p-2">
+                          <ThumbsDown
+                            size={16}
+                            color={message.feedback === 'dislike' ? "#ef4444" : "#94a3b8"}
+                            fill={message.feedback === 'dislike' ? "#ef4444" : "none"}
+                          />
+                      </Pressable>
+
                       {message.content?.length > 0 && (
                         <Pressable onPress={() => onTTS?.(message.id as string, message.content)} className="p-2">
                             <Volume2 size={16} color="#94a3b8" />
                         </Pressable>
                       )}
-                      <Pressable onPress={() => onRetry?.(message.id as string)} className="p-2">
-                          <RefreshCw size={16} color="#94a3b8" />
-                      </Pressable>
+
+                      {isLastMessage && (
+                        <Pressable onPress={() => onRegenerate?.(message.id as string)} className="p-2">
+                            <RefreshCw size={16} color="#94a3b8" />
+                        </Pressable>
+                      )}
                   </View>
 
                   {/* Suggestions Chips (Mini) */}

@@ -7,7 +7,7 @@ export type Message = {
   content: string;
   created_at: string; // Add timestamp
   // Optional fields that might be used on the frontend
-  liked?: boolean;
+  feedback?: 'like' | 'dislike' | null; // Updated from liked?: boolean
   rewriting?: boolean;
   audioUri?: string | null;
   suggestions?: string[];
@@ -25,10 +25,13 @@ export type Bot = {
   name: string;
   description: string;
   avatar_url?: string | null;
+  theme_color?: string; // Added
+  background_image?: string | null; // Added
   is_official?: boolean;
   suggestion1?: string;
   suggestion2?: string;
   suggestion3?: string;
+  createdByMe?: boolean; // Added based on backend response
 };
 
 // Represents an item in the main chat list screen.
@@ -43,7 +46,7 @@ export type ChatListItem = {
 // Represents the initial data needed when opening a chat screen.
 export type ChatBootstrap = {
   conversationId: string;
-  bot: { name: string; handle: string; avatarUrl?: string };
+  bot: { name: string; handle: string; avatarUrl?: string; createdByMe?: boolean; theme_color?: string; background_image?: string | null };
   welcome: string;
   suggestions: string[];
 };

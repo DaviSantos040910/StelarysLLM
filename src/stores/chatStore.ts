@@ -15,6 +15,8 @@ interface ChatState {
   loadMessages: (chatId: string | number) => Promise<void>;
   loadMoreMessages: (chatId: string | number) => Promise<void>;
   sendMessage: (chatId: string | number, text: string) => Promise<void>;
+  regenerateMessage: (chatId: string | number) => Promise<void>;
+  updateMessage: (messageId: string, updates: Partial<Message>) => void;
   addMessage: (message: Message) => void;
   uploadFile: (chatId: string | number, file: any) => Promise<void>;
   setCurrentChat: (chat: ChatListItem) => void;
@@ -57,6 +59,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (message) => {
     const currentMessages = get().messages || [];
     set({ messages: [message, ...currentMessages] });
+  },
+
+  updateMessage: (messageId, updates) => {
+      set((state) => ({
+          messages: state.messages.map((m) =>
+              m.id === messageId ? { ...m, ...updates } : m
+          )
+      }));
+  },
+
+  regenerateMessage: async (chatId) => {
+      const { messages } = get();
+      // Find the last user message to keep context correct locally if needed,
+      // but backend handles logic. We mainly need to remove the last assistant message locally.
+      const lastMsg = messages[0];
+      if (lastMsg?.role !== 'assistant') return; // Can only regenerate if last was assistant
+
+      set({ isStreaming: true }); // Show loading state
+
+      // Optimistically remove the last assistant message
+      set((state) => ({
+          messages: state.messages.slice(1) // Remove the first item (last message)
+      }));
+
+      try {
+          const newMessages = await chatService.regenerateMessage(chatId);
+          // Backend returns array of new messages (usually one assistant message)
+          set((state) => ({
+              messages: [...newMessages.reverse(), ...state.messages],
+              isStreaming: false
+          }));
+      } catch (e) {
+          console.error(e);
+          set({ error: 'Failed to regenerate message', isStreaming: false });
+          // Optionally restore previous message?
+          // For now, simpler to just leave it (user can try again or send new message)
+          // Or reload messages to sync state.
+          get().loadMessages(chatId);
+      }
   },
 
   sendMessage: async (chatId, text) => {

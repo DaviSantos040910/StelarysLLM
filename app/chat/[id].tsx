@@ -26,7 +26,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const chatId = id as string;
 
-    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, addSystemMessage } = useChatStore();
+    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, addSystemMessage, updateMessage, regenerateMessage } = useChatStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
 
@@ -209,6 +209,21 @@ export default function ChatScreen() {
     const handleCopy = async (text: string) => { await Clipboard.setStringAsync(text); };
     const scrollToBottom = () => { flatListRef.current?.scrollToOffset({ offset: 0, animated: true }); };
 
+    const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike' | null) => {
+        // Optimistic update
+        updateMessage(messageId, { feedback });
+        try {
+            await chatService.sendFeedback(chatId, messageId, feedback);
+        } catch (error) {
+            console.error("Failed to send feedback", error);
+            // Revert on error if needed, but low priority
+        }
+    };
+
+    const handleRegenerate = async () => {
+        await regenerateMessage(chatId);
+    };
+
     const renderItem: ListRenderItem<Message> = ({ item, index }) => {
         return (
             <ChatMessageItem
@@ -216,6 +231,8 @@ export default function ChatScreen() {
                 isLastMessage={index === 0}
                 onCopy={handleCopy}
                 onSuggestionPress={handleSend}
+                onFeedback={handleFeedback}
+                onRegenerate={handleRegenerate}
                 // Pass theme color to message item if needed for bubbles
                 themeColor={themeColor}
             />
@@ -226,6 +243,8 @@ export default function ChatScreen() {
     const handleMenuAction = async (action: string) => {
         if (action === 'manage_sources') {
             router.push({ pathname: '/chat/manage-sources', params: { chatId } });
+        } else if (action === 'edit_bot') {
+            router.push({ pathname: '/bots/create', params: { botId: botId as string } });
         } else if (action === 'history') {
             router.push({ pathname: '/chat/history', params: { botId: botId as string, currentChatId: chatId } });
         } else if (action === 'new_chat') {
@@ -306,6 +325,7 @@ export default function ChatScreen() {
                 <FloatingTutorCard
                     botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
                     botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
+                    createdByMe={currentChat?.bot?.createdByMe}
                     animatedStyle={headerAnimatedStyle}
                     onNewChat={() => setIsKnowledgeSheetVisible(true)}
                     onMenu={handleMenuAction}

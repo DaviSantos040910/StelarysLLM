@@ -1,8 +1,7 @@
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Camera, Check, ChevronRight, Globe, Image as ImageIcon, Palette, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Camera, Check, Globe, Image as ImageIcon, Palette, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
@@ -25,6 +24,10 @@ const THEME_COLORS = [
 
 export default function CreateBotScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const botId = params.botId as string;
+    const isEditMode = !!botId;
+
     const { pickImage } = useAttachmentPicker();
 
     // Data State
@@ -49,10 +52,12 @@ export default function CreateBotScreen() {
 
     useEffect(() => {
         loadOptions();
-    }, []);
+        if (isEditMode) {
+            loadBotData();
+        }
+    }, [botId]);
 
     const loadOptions = async () => {
-        setIsLoading(true);
         try {
             const [cats, userSpaces] = await Promise.all([
                 exploreService.getCategories(),
@@ -62,6 +67,29 @@ export default function CreateBotScreen() {
             setSpaces(userSpaces);
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const loadBotData = async () => {
+        setIsLoading(true);
+        try {
+            const bot = await botService.getBot(botId);
+            setName(bot.name);
+            setDescription(bot.description || '');
+            setPrompt(bot.prompt || '');
+            setAllowWebSearch(bot.allow_web_search);
+            if (bot.theme_color) setThemeColor(bot.theme_color);
+
+            if (bot.avatar_url) setAvatar({ uri: bot.avatar_url });
+            if (bot.background_image) setBgImage({ uri: bot.background_image });
+
+            if (bot.categories) {
+                setSelectedCategories(bot.categories.map((c: any) => c.id));
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Erro", "Falha ao carregar dados do tutor.");
+            router.back();
         } finally {
             setIsLoading(false);
         }
@@ -74,7 +102,7 @@ export default function CreateBotScreen() {
 
     const handlePickBg = async () => {
         const result = await pickImage();
-        if (result && result[0]) setBgImage(result[0]);
+        if (result && result[0]) setBgImage({ uri: result[0].uri, name: result[0].name, mimeType: result[0].mimeType });
     };
 
     const toggleCategory = (id: string) => {
@@ -97,45 +125,62 @@ export default function CreateBotScreen() {
 
         setIsSubmitting(true);
         try {
-            const newBot = await botService.createBot({
-                name,
-                description,
-                prompt,
-                theme_color: themeColor,
-                allow_web_search: allowWebSearch,
-                publicity: 'Public', // Default for now
-                avatar,
-                background_image: bgImage,
-                category_ids: selectedCategories,
-                study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
-            });
+            if (isEditMode) {
+                await botService.updateBot(botId, {
+                    name,
+                    description,
+                    prompt,
+                    theme_color: themeColor,
+                    allow_web_search: allowWebSearch,
+                    publicity: 'Public',
+                    avatar: avatar?.uri?.startsWith('http') ? undefined : avatar, // Only send if changed (local uri)
+                    background_image: bgImage?.uri?.startsWith('http') ? undefined : bgImage,
+                    category_ids: selectedCategories,
+                    study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
+                });
+                Alert.alert("Sucesso", "Tutor atualizado com sucesso!");
+                router.back(); // Go back to chat
+            } else {
+                const newBot = await botService.createBot({
+                    name,
+                    description,
+                    prompt,
+                    theme_color: themeColor,
+                    allow_web_search: allowWebSearch,
+                    publicity: 'Public',
+                    avatar,
+                    background_image: bgImage,
+                    category_ids: selectedCategories,
+                    study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
+                });
 
-            // Redirect to the new chat
-            router.replace({
-                pathname: `/chat/${new_chat_id}`, // Backend logic returns the created bot, need to bootstrap chat?
-                // Wait, createBot returns the Bot object. We need to bootstrap a chat.
-            });
+                const bootstrap = await botService.getChatBootstrap(newBot.id);
 
-            // Correction: botService.createBot returns the Bot object.
-            // We need to fetch the bootstrap chat ID for this bot.
-            const bootstrap = await botService.getChatBootstrap(newBot.id);
-
-            router.replace({
-                pathname: `/chat/${bootstrap.conversationId}`,
-                params: {
-                    botId: newBot.id,
-                    botName: newBot.name,
-                    botAvatar: newBot.avatar_url
-                }
-            });
+                router.replace({
+                    pathname: `/chat/${bootstrap.conversationId}`,
+                    params: {
+                        botId: newBot.id,
+                        botName: newBot.name,
+                        botAvatar: newBot.avatar_url
+                    }
+                });
+            }
 
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao criar o tutor.");
+            Alert.alert("Erro", "Falha ao salvar o tutor.");
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    if (isLoading) {
+        return (
+            <View className="flex-1 bg-space-dark items-center justify-center">
+                <ActivityIndicator size="large" color="#818cf8" />
+            </View>
+        );
+    }
 
     return (
         <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
@@ -144,13 +189,13 @@ export default function CreateBotScreen() {
                 <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
                     <ArrowLeft color="#fff" size={24} />
                 </Pressable>
-                <Text className="text-starlight text-xl font-bold">Criar Novo Tutor</Text>
+                <Text className="text-starlight text-xl font-bold">{isEditMode ? 'Editar Tutor' : 'Criar Novo Tutor'}</Text>
                 <Pressable
                     onPress={handleSubmit}
                     disabled={isSubmitting}
                     className={`px-4 py-2 rounded-full ${isSubmitting ? 'bg-gray-700' : 'bg-cosmic-purple'}`}
                 >
-                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-bold">Criar</Text>}
+                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-bold">{isEditMode ? 'Salvar' : 'Criar'}</Text>}
                 </Pressable>
             </View>
 
