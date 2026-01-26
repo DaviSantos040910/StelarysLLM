@@ -199,9 +199,9 @@ export default function CreateBotScreen() {
                 </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
                 {/* 1. Identity Section (Avatar & Cover) */}
-                <View className="items-center mb-8 relative">
+                <View className="items-center mb-6">
                     {/* Cover Image Area */}
                     <Pressable
                         onPress={handlePickBg}
@@ -220,10 +220,10 @@ export default function CreateBotScreen() {
                         </View>
                     </Pressable>
 
-                    {/* Avatar - Overlapping Cover */}
+                    {/* Avatar - Overlapping Cover (Negative Margin Layout for better touch handling) */}
                     <Pressable
                         onPress={handlePickAvatar}
-                        className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark absolute -bottom-14 items-center justify-center overflow-hidden"
+                        className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark -mt-14 items-center justify-center overflow-hidden z-10"
                     >
                         {avatar ? (
                             <Image source={{ uri: avatar.uri }} className="w-full h-full" />
@@ -238,13 +238,11 @@ export default function CreateBotScreen() {
                     </Pressable>
                 </View>
 
-                {/* Spacer for Avatar overlap */}
-                <View className="h-16" />
-
-                <View className="px-6 space-y-6">
+                {/* Form Content */}
+                <View className="px-6 space-y-8">
                     {/* Basic Info */}
                     <View>
-                        <Text className="text-gray-400 font-bold mb-2">Nome do Tutor</Text>
+                        <Text className="text-gray-400 font-bold mb-3">Nome do Tutor</Text>
                         <TextInput
                             value={name}
                             onChangeText={setName}
@@ -255,7 +253,7 @@ export default function CreateBotScreen() {
                     </View>
 
                     <View>
-                        <Text className="text-gray-400 font-bold mb-2">Descrição (Opcional)</Text>
+                        <Text className="text-gray-400 font-bold mb-3">Descrição (Opcional)</Text>
                         <TextInput
                             value={description}
                             onChangeText={setDescription}
@@ -267,12 +265,12 @@ export default function CreateBotScreen() {
 
                     {/* Intelligence */}
                     <View>
-                        <View className="flex-row items-center mb-2">
+                        <View className="flex-row items-center mb-4">
                             <Sparkles size={16} color="#fbbf24" className="mr-2" />
                             <Text className="text-starlight font-bold text-lg">Inteligência</Text>
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-2">Instruções do Sistema (Prompt)</Text>
+                        <Text className="text-gray-400 font-bold mb-3">Instruções do Sistema (Prompt)</Text>
                         <TextInput
                             value={prompt}
                             onChangeText={setPrompt}
@@ -307,7 +305,7 @@ export default function CreateBotScreen() {
                             <Text className="text-starlight font-bold text-lg">Aparência</Text>
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-3">Cor do Tema</Text>
+                        <Text className="text-gray-400 font-bold mb-4">Cor do Tema</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                             {THEME_COLORS.map(color => (
                                 <Pressable
@@ -329,8 +327,8 @@ export default function CreateBotScreen() {
                             <Text className="text-starlight font-bold text-lg">Organização</Text>
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-3">Categorias (Máx 3)</Text>
-                        <View className="flex-row flex-wrap gap-2 mb-6">
+                        <Text className="text-gray-400 font-bold mb-4">Categorias (Máx 3)</Text>
+                        <View className="flex-row flex-wrap gap-2 mb-8">
                             {categories.map(cat => {
                                 const isSelected = selectedCategories.includes(cat.id);
                                 return (
@@ -345,7 +343,7 @@ export default function CreateBotScreen() {
                             })}
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-3">Vincular Espaço de Estudo (Opcional)</Text>
+                        <Text className="text-gray-400 font-bold mb-4">Vincular Espaço de Estudo (Opcional)</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <Pressable
                                 onPress={() => setSelectedSpaceId(null)}
