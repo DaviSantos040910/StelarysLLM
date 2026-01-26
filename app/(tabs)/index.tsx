@@ -94,7 +94,7 @@ export default function ChatListScreen() {
       <TouchableOpacity
         style={{ bottom: 96 + miniPlayerHeight }}
         className="absolute right-6 bg-cosmic-purple w-14 h-14 rounded-full justify-center items-center shadow-lg shadow-indigo-500/50 active:scale-95 transition-transform"
-        onPress={() => router.push('/(tabs)/explore')}
+        onPress={() => router.push('/bots/create')}
       >
         <Plus color="white" size={28} />
       </TouchableOpacity>
