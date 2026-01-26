@@ -22,6 +22,8 @@ interface ChatState {
   setCurrentChat: (chat: ChatListItem) => void;
 }
 
+const generateLocalId = () => `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   currentChat: null,
@@ -37,7 +39,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true, error: null, page: 1, hasMore: true });
     try {
       const messages = await chatService.getMessages(chatId);
-      set({ messages: Array.isArray(messages) ? messages : [], isLoading: false });
+      const processedMessages = (Array.isArray(messages) ? messages : []).map(m => ({
+          ...m,
+          localId: m.id.toString() // Stable localId for backend messages
+      }));
+      set({ messages: processedMessages, isLoading: false });
     } catch (error) {
       set({ error: 'Failed to load messages', isLoading: false });
     }
@@ -58,7 +64,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   addMessage: (message) => {
     const currentMessages = get().messages || [];
-    set({ messages: [message, ...currentMessages] });
+    const msgWithLocal = { ...message, localId: message.localId || generateLocalId() };
+    set({ messages: [msgWithLocal, ...currentMessages] });
   },
 
   updateMessage: (messageId, updates) => {
@@ -71,38 +78,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   regenerateMessage: async (chatId) => {
       const { messages } = get();
-      // Find the last user message to keep context correct locally if needed,
-      // but backend handles logic. We mainly need to remove the last assistant message locally.
       const lastMsg = messages[0];
-      if (lastMsg?.role !== 'assistant') return; // Can only regenerate if last was assistant
+      if (lastMsg?.role !== 'assistant') return;
 
-      set({ isStreaming: true }); // Show loading state
+      set({ isStreaming: true });
 
-      // Optimistically remove the last assistant message
       set((state) => ({
-          messages: state.messages.slice(1) // Remove the first item (last message)
+          messages: state.messages.slice(1)
       }));
 
       try {
           const newMessages = await chatService.regenerateMessage(chatId);
-          // Backend returns array of new messages (usually one assistant message)
+          const processedNew = newMessages.map(m => ({ ...m, localId: m.id.toString() }));
+
           set((state) => ({
-              messages: [...newMessages.reverse(), ...state.messages],
+              messages: [...processedNew.reverse(), ...state.messages],
               isStreaming: false
           }));
       } catch (e) {
           console.error(e);
           set({ error: 'Failed to regenerate message', isStreaming: false });
-          // Optionally restore previous message?
-          // For now, simpler to just leave it (user can try again or send new message)
-          // Or reload messages to sync state.
           get().loadMessages(chatId);
       }
   },
 
   sendMessage: async (chatId, text) => {
+    const userLocalId = generateLocalId();
     const userMsg: Message = {
       id: `temp-${Date.now()}`,
+      localId: userLocalId,
       role: 'user',
       content: text,
       created_at: new Date().toISOString(),
@@ -116,9 +120,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isStreaming: true
     });
 
+    const aiLocalId = generateLocalId();
     const aiMsgId = `temp-stream-${Date.now()}`;
     const aiMsg: Message = {
       id: aiMsgId,
+      localId: aiLocalId,
       role: 'assistant',
       content: '',
       created_at: new Date().toISOString(),
@@ -136,28 +142,39 @@ export const useChatStore = create<ChatState>((set, get) => ({
           onChunk: (chunk) => {
             set((state) => ({
                 messages: state.messages.map((m) =>
-                  m.id === aiMsgId ? { ...m, content: m.content + chunk } : m
+                  m.localId === aiLocalId ? { ...m, content: m.content + chunk } : m
                 )
             }));
           },
           onFinish: (meta) => {
              set((state) => ({
                 isStreaming: false,
-                messages: state.messages.map((m) =>
-                    m.id === aiMsgId ? {
-                        ...m,
-                        status: 'sent',
-                        id: meta.message_id || m.id,
-                        suggestions: meta.suggestions || m.suggestions
-                    } :
-                    m.id === userMsg.id ? { ...m, status: 'sent', id: meta.user_message_id || m.id } : m
-                )
+                messages: state.messages.map((m) => {
+                    if (m.localId === aiLocalId) {
+                        return {
+                            ...m,
+                            status: 'sent',
+                            id: meta.message_id || m.id,
+                            suggestions: meta.suggestions || m.suggestions
+                        };
+                    }
+                    if (m.localId === userLocalId) {
+                        return {
+                            ...m,
+                            status: 'sent',
+                            id: meta.user_message_id || m.id
+                        };
+                    }
+                    return m;
+                })
              }));
           },
           onError: (err) => {
               set({ error: 'Failed to send message', isStreaming: false });
               set((state) => ({
-                  messages: state.messages.map(m => m.id === userMsg.id || m.id === aiMsgId ? { ...m, status: 'error' } : m)
+                  messages: state.messages.map(m =>
+                      m.localId === userLocalId || m.localId === aiLocalId ? { ...m, status: 'error' } : m
+                  )
               }));
           }
       }
@@ -165,13 +182,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   uploadFile: async (chatId, file) => {
-     // Optimistic Update
+     const userLocalId = generateLocalId();
+     const aiLocalId = generateLocalId();
+
      const tempUserMsgId = `temp-audio-${Date.now()}`;
      const tempBotMsgId = `temp-bot-${Date.now()}`;
      const isAudio = file.type?.startsWith('audio/') || file.mimeType?.startsWith('audio/');
 
      const userMsg: Message = {
          id: tempUserMsgId,
+         localId: userLocalId,
          role: 'user',
          content: '',
          attachment_url: file.uri,
@@ -183,6 +203,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
      const botMsg: Message = {
          id: tempBotMsgId,
+         localId: aiLocalId,
          role: 'assistant',
          content: '',
          created_at: new Date().toISOString(),
@@ -204,58 +225,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
        }
 
        if (Array.isArray(response)) {
-          // Replace temp messages with real ones
           const realUserMsg = response.find(m => m.role === 'user');
           const realBotMsg = response.find(m => m.role === 'assistant');
 
           set((state) => ({
               messages: state.messages.map(m => {
-                  if (m.id === tempUserMsgId && realUserMsg) return realUserMsg;
-                  if (m.id === tempBotMsgId && realBotMsg) return realBotMsg;
-                  if (m.id === tempBotMsgId && !realBotMsg) return { ...m, status: 'error', content: 'No response received.' }; // Fallback
+                  if (m.localId === userLocalId && realUserMsg) return { ...realUserMsg, localId: userLocalId };
+                  if (m.localId === aiLocalId && realBotMsg) return { ...realBotMsg, localId: aiLocalId };
+                  if (m.localId === aiLocalId && !realBotMsg) return { ...m, status: 'error', content: 'No response received.' };
                   return m;
               }),
               isStreaming: false
           }));
        } else {
-           // Fallback if response is not array (e.g. standard file upload returning list of created messages)
-           // If we uploaded a file but not voice message, backend might return list of created messages.
-           // Let's assume it returns created messages.
-           // We'll replace user message and remove bot placeholder if no bot message returned.
            set((state) => ({
-               messages: state.messages.filter(m => m.id !== tempBotMsgId), // Remove bot placeholder if not voice
+               messages: state.messages.filter(m => m.localId !== aiLocalId),
                isStreaming: false
            }));
-           // Then prepend real messages? No, we should replace if possible.
-           // Standard upload returns created messages.
-           // Let's just reload messages or prepend them?
-           // For non-voice, we typically don't get an immediate bot reply in the upload response unless triggered.
-           // But `uploadFile` returns `response.data`.
-           // Ideally we match by content/filename, but difficult.
-           // Simplest: Filter out temp user msg and add response.
-
-           // Actually, if it's not voice, we didn't add a bot placeholder in the instruction?
-           // The instruction said "When a user sends audio".
-           // But `uploadFile` handles both.
-           // Let's refine: Only add bot placeholder if audio.
-
-           // Re-evaluating based on "sendVoiceMessage" returning [UserMsg, BotMsg].
-           // "uploadFile" returns list of created messages (UserMsg with attachment).
-
-           // If it was standard file upload, we probably want to keep the user message we added optimistically?
-           // But real message has server ID.
-           // Let's stick to the plan: update/replace.
-
-           // For non-audio file, we remove the temp user msg and add the real one.
-           // And remove temp bot msg (since we shouldn't have added it if not audio, or remove it now).
        }
      } catch (e) {
        console.error(e);
        set((state) => ({
            error: 'Failed to upload file',
            isStreaming: false,
-           messages: state.messages.filter(m => m.id !== tempBotMsgId).map(m =>
-               m.id === tempUserMsgId ? { ...m, status: 'error' } : m
+           messages: state.messages.filter(m => m.localId !== aiLocalId).map(m =>
+               m.localId === userLocalId ? { ...m, status: 'error' } : m
            )
        }));
      }

@@ -143,10 +143,9 @@ export default function ChatScreen() {
     const handleSend = async (text: string = inputText) => {
         if (!text.trim() && stagedAttachments.length === 0) return;
 
-        if (text === inputText) {
-            setInputText('');
-            setStagedAttachments([]);
-        }
+        // Clear UI immediately to prevent double sends or sticking text
+        setInputText('');
+        setStagedAttachments([]);
 
         for (const att of stagedAttachments) {
              if (att.uri) {
@@ -343,7 +342,7 @@ export default function ChatScreen() {
                             botName={currentChat?.bot?.name || (botName as string) || ''}
                             description={currentChat?.bot?.description || ''}
                             suggestions={getSuggestions()}
-                            onSuggestionPress={(text) => { setInputText(text); handleSend(text); }}
+                            onSuggestionPress={(text) => handleSend(text)}
                         />
                     </View>
                 ) : (
@@ -351,7 +350,7 @@ export default function ChatScreen() {
                         <AnimatedFlatList
                             ref={flatListRef}
                             data={messages}
-                            keyExtractor={(item) => (item as Message).id.toString()}
+                            keyExtractor={(item) => (item as Message).localId || (item as Message).id.toString()}
                             renderItem={renderItem as any}
                             inverted
                             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }}
