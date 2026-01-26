@@ -2,7 +2,7 @@
 
 // Represents a single message in a conversation.
 export type Message = {
-  id: string;
+  id: string | number; // Updated to allow number (backend ID) or string (frontend temp ID)
   role: 'user' | 'assistant';
   content: string;
   created_at: string; // Add timestamp
