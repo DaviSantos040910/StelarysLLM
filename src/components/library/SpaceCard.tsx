@@ -29,8 +29,8 @@ export const SpaceCard: React.FC<Props> = ({ space, onPress }) => {
             </View>
 
             <View className="p-4 flex-row justify-between">
-                <Text className="text-gray-400 text-xs font-medium">{space.sources.length} fontes</Text>
-                <Text className="text-gray-400 text-xs font-medium">{space.bots.length} tutores</Text>
+                <Text className="text-gray-400 text-xs font-medium">{space.sources?.length || 0} fontes</Text>
+                <Text className="text-gray-400 text-xs font-medium">{space.bots?.length || 0} tutores</Text>
             </View>
         </Pressable>
     );

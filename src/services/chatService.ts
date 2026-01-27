@@ -95,15 +95,34 @@ export const chatService = {
     return response.data;
   },
 
-  // Note: addChatSource/removeChatSource might need updates if backend API changed,
-  // but keeping them as is for now unless specified otherwise in backend.
-  // The provided backend code shows `ContextSourcesView` only for GET.
-  // Creation seems to happen via `ChatMessageAttachmentView`.
-  // I will comment these out if they are not supported or leave them if they use other endpoints.
-  // The backend code provided DOES NOT have specific add/remove source endpoints in `chat/urls.py`
-  // other than `attach/` for files.
+  addChatSource: async (chatId: string, fileOrUrl: any, type: 'FILE' | 'URL' | 'YOUTUBE'): Promise<ChatSource> => {
+      const formData = new FormData();
 
-  // addChatSource: ... (Keeping existing logic if it relies on other endpoints, but warning: Backend doesn't show explicit source management endpoints yet)
+      formData.append('title', fileOrUrl.name || 'Nova Fonte');
+      formData.append('source_type', type);
+
+      if (type === 'FILE') {
+          formData.append('file', {
+              uri: fileOrUrl.uri,
+              name: fileOrUrl.name,
+              type: fileOrUrl.mimeType || 'application/octet-stream',
+          } as any);
+      } else {
+          formData.append('url', fileOrUrl.uri || fileOrUrl);
+          if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
+      }
+
+      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData, {
+          headers: {
+              'Content-Type': 'multipart/form-data',
+          },
+      });
+      return response.data;
+  },
+
+  removeChatSource: async (chatId: string, sourceId: number): Promise<void> => {
+      await client.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
+  },
 
   // === Chat Management & History ===
 
