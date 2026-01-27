@@ -223,7 +223,7 @@ export default function ChatScreen() {
         await regenerateMessage(chatId);
     };
 
-    const renderItem: ListRenderItem<Message> = ({ item, index }) => {
+    const renderItem: ListRenderItem<Message> = React.useCallback(({ item, index }) => {
         return (
             <ChatMessageItem
                 message={item}
@@ -232,11 +232,12 @@ export default function ChatScreen() {
                 onSuggestionPress={handleSend}
                 onFeedback={handleFeedback}
                 onRegenerate={handleRegenerate}
-                // Pass theme color to message item if needed for bubbles
                 themeColor={themeColor}
             />
         );
-    };
+    }, [themeColor]);
+
+    const keyExtractor = React.useCallback((item: Message) => item.localId || item.id.toString(), []);
 
     // Menu Actions Handler
     const handleMenuAction = async (action: string) => {
@@ -350,9 +351,10 @@ export default function ChatScreen() {
                         <AnimatedFlatList
                             ref={flatListRef}
                             data={messages}
-                            keyExtractor={(item) => (item as Message).localId || (item as Message).id.toString()}
+                            keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
+                            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 10 }}
                             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
