@@ -9,6 +9,7 @@ interface ChatWelcomeProps {
   description: string;
   suggestions: string[];
   onSuggestionPress: (suggestion: string) => void;
+  showSuggestions?: boolean;
 }
 
 export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
@@ -17,9 +18,10 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   description,
   suggestions,
   onSuggestionPress,
+  showSuggestions = true,
 }) => {
   return (
-    <View className="flex-1 px-4 pt-10">
+    <View className="flex-1 px-4 pt-10 pb-8">
       {/* Hero Section */}
       <View className="items-center mb-8">
         <View className="bg-space-light p-4 rounded-full border border-white/5 shadow-lg shadow-black/20 mb-4">
@@ -32,7 +34,7 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
       </View>
 
       {/* Suggestions */}
-      {suggestions.length > 0 && (
+      {showSuggestions && suggestions.length > 0 && (
         <View className="w-full">
           <Text className="text-gray-500 text-sm font-bold uppercase mb-4 ml-1">
             Conversation Starters

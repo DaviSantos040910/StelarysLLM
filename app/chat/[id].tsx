@@ -308,22 +308,12 @@ export default function ChatScreen() {
                 />
 
                 {/* Messages Area */}
-                {isLoading && messages.length === 0 ? (
-                    <View className="flex-1 justify-center items-center">
-                        <ActivityIndicator color={themeColor} size="large" />
-                    </View>
-                ) : messages.length === 0 ? (
-                    <View className="flex-1 pt-24">
-                        <ChatWelcome
-                            botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
-                            botName={currentChat?.bot?.name || (botName as string) || ''}
-                            description={currentChat?.bot?.description || ''}
-                            suggestions={getSuggestions()}
-                            onSuggestionPress={(text) => handleSend(text)}
-                        />
-                    </View>
-                ) : (
-                    <View className="flex-1">
+                <View className="flex-1">
+                    {isLoading && messages.length === 0 ? (
+                        <View className="flex-1 justify-center items-center">
+                            <ActivityIndicator color={themeColor} size="large" />
+                        </View>
+                    ) : (
                         <AnimatedFlatList
                             ref={flatListRef}
                             data={messages}
@@ -335,17 +325,28 @@ export default function ChatScreen() {
                             scrollEventThrottle={16}
                             onEndReached={() => loadMoreMessages(chatId)}
                             onEndReachedThreshold={0.5}
+                            ListFooterComponent={
+                                <ChatWelcome
+                                    botAvatar={currentChat?.bot?.avatar_url || (botAvatar as string)}
+                                    botName={currentChat?.bot?.name || (botName as string) || ''}
+                                    description={currentChat?.bot?.description || ''}
+                                    suggestions={getSuggestions()}
+                                    onSuggestionPress={(text) => handleSend(text)}
+                                    showSuggestions={messages.length === 0}
+                                />
+                            }
                         />
-                        {showScrollDown && (
-                            <Pressable
-                                onPress={scrollToBottom}
-                                className="absolute bottom-4 right-4 bg-space-light p-3 rounded-full border border-white/10 shadow-lg"
-                            >
-                                <ChevronDown color={themeColor} size={24} />
-                            </Pressable>
-                        )}
-                    </View>
-                )}
+                    )}
+
+                    {showScrollDown && (
+                        <Pressable
+                            onPress={scrollToBottom}
+                            className="absolute bottom-4 right-4 bg-space-light p-3 rounded-full border border-white/10 shadow-lg"
+                        >
+                            <ChevronDown color={themeColor} size={24} />
+                        </Pressable>
+                    )}
+                </View>
 
                 {/* Input Area */}
                 <KeyboardAvoidingView
