@@ -1,7 +1,7 @@
 import { Bot, Check, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
-import { botService } from '../../services/botService';
+import { exploreService } from '../../services/exploreService';
 
 interface Props {
     visible: boolean;
@@ -22,7 +22,7 @@ export const BotSelector: React.FC<Props> = ({ visible, onClose, onSelect, exclu
     const loadBots = async () => {
         setLoading(true);
         try {
-            const data = await botService.getBots();
+            const data = await exploreService.searchBots('');
             setBots(data);
         } catch (e) {
             console.error(e);

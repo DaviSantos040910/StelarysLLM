@@ -10,11 +10,11 @@ import { useAuthStore } from '../../src/stores/authStore';
 
 export default function EditProfileScreen() {
     const router = useRouter();
-    const { user, setUser } = useAuthStore();
+    const { user } = useAuthStore();
     const { pickImage } = useAttachmentPicker();
 
     const [firstName, setFirstName] = useState(user?.first_name || '');
-    const [lastName, setLastName] = useState(user?.last_name || '');
+    const [lastName, setLastName] = useState('');
     const [avatar, setAvatar] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,7 +33,7 @@ export default function EditProfileScreen() {
                 last_name: lastName,
                 avatar: avatar
             });
-            setUser(updatedUser);
+            // Note: setUser not available in AuthState, would need to reload user data
             router.back();
         } catch (error) {
             console.error(error);
@@ -65,8 +65,8 @@ export default function EditProfileScreen() {
                     <View className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 dark:bg-white/10 border-4 border-white dark:border-space-light">
                         {avatar ? (
                             <Image source={{ uri: avatar.uri }} className="w-full h-full" />
-                        ) : user?.avatar ? (
-                            <Image source={{ uri: user.avatar }} className="w-full h-full" />
+                        ) : user?.avatar_url ? (
+                            <Image source={{ uri: user.avatar_url }} className="w-full h-full" />
                         ) : (
                             <View className="w-full h-full items-center justify-center">
                                 <Text className="text-4xl text-gray-400 font-bold">

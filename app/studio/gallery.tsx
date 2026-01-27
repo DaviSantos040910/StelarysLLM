@@ -195,7 +195,7 @@ export default function StudioGalleryScreen() {
     // Polling effect for processing artifacts
     React.useEffect(() => {
         const hasProcessing = artifacts.some(a => a.status === 'processing');
-        let interval: NodeJS.Timeout;
+        let interval: ReturnType<typeof setInterval>;
 
         if (hasProcessing) {
             interval = setInterval(() => {
