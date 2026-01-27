@@ -32,7 +32,7 @@ export default function ChatScreen() {
 
     // Scroll Stability Refs
     const scrollY = useRef(0);
-    const contentHeight = useRef(0);
+    const lastNewestLocalId = useRef<string | undefined>(undefined);
 
     // Sheet Visibility States
     const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
@@ -144,6 +144,18 @@ export default function ChatScreen() {
             }).catch(console.error);
         }
     }, [chatId, botId]);
+
+    // Smart Auto-Scroll: Only scroll to bottom if a NEW message arrives (user or bot).
+    // Ignores updates to existing messages (streaming, status changes) to prevent UX jumping.
+    useEffect(() => {
+        const newestMsg = messages[0];
+        if (!newestMsg) return;
+
+        if (newestMsg.localId !== lastNewestLocalId.current) {
+             flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+             lastNewestLocalId.current = newestMsg.localId;
+        }
+    }, [messages]);
 
     const handleSend = async (text: string = inputText) => {
         if (!text.trim() && stagedAttachments.length === 0) return;
@@ -359,23 +371,6 @@ export default function ChatScreen() {
                             keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
-                            onContentSizeChange={(w, h) => {
-                                const previousHeight = contentHeight.current;
-                                contentHeight.current = h;
-
-                                // Fix scroll jump when reading history/streaming response
-                                // If user is scrolled up (scrollY > 50) and content grows,
-                                // we need to shift scroll to maintain visual position relative to text.
-                                if (previousHeight > 0 && scrollY.current > 50) {
-                                    const delta = h - previousHeight;
-                                    if (delta > 0) {
-                                        flatListRef.current?.scrollToOffset({
-                                            offset: scrollY.current + delta,
-                                            animated: false
-                                        });
-                                    }
-                                }
-                            }}
                             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
