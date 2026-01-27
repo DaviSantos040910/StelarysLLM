@@ -104,7 +104,7 @@ export default function CreateBotScreen() {
 
     const handlePickBg = async () => {
         const result = await pickImage();
-        if (result && result[0]) setBgImage({ uri: result[0].uri, name: result[0].name, mimeType: result[0].mimeType });
+        if (result && result[0]) setBgImage({ uri: result[0].uri, name: result[0].name, mimeType: result[0].type });
     };
 
     const toggleCategory = (id: string) => {
@@ -229,16 +229,24 @@ export default function CreateBotScreen() {
                         onPress={handlePickAvatar}
                         className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark -mt-14 items-center justify-center overflow-hidden z-10"
                     >
-                        {avatar ? (
-                            <Image source={{ uri: avatar.uri }} className="w-full h-full" />
-                        ) : (
-                            <View className="w-full h-full items-center justify-center bg-white/10">
-                                <Sparkles size={32} color="#94a3b8" />
-                            </View>
+                        {({ pressed }) => (
+                            <>
+                                {avatar ? (
+                                    <Image source={{ uri: avatar.uri }} className="w-full h-full" />
+                                ) : (
+                                    <View className="w-full h-full items-center justify-center bg-white/10">
+                                        <Sparkles size={32} color="#94a3b8" />
+                                    </View>
+                                )}
+                                <View
+                                    className="absolute inset-0 bg-black/30 items-center justify-center"
+                                    style={{ opacity: pressed ? 1 : 0 }}
+                                    pointerEvents="none"
+                                >
+                                    <Camera size={24} color="#fff" />
+                                </View>
+                            </>
                         )}
-                        <View className="absolute inset-0 bg-black/30 items-center justify-center opacity-0 active:opacity-100">
-                            <Camera size={24} color="#fff" />
-                        </View>
                     </Pressable>
                 </View>
 
