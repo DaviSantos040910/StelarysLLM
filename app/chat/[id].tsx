@@ -51,16 +51,7 @@ export default function ChatScreen() {
     const miniPlayerHeight = useMiniPlayerHeight();
 
     // Theme Customization
-    // Since currentChat.bot data might be stale or minimal from params, we might need detailed bot info.
-    // However, botService.getChatBootstrap usually returns minimal info unless updated.
-    // We assume backend returns theme info in getChatBootstrap response or we fetch bot details separately.
-    // For now, let's look at currentChat?.bot properties if we updated the type.
-    // If not, we might need to fetch it.
-    // The current `ChatListItem` type might not have `theme_color`. We should check `src/types/chat.ts`.
-    // Assuming backend sends it in `bot` object of `ChatBootstrap`.
-
-    const themeColor = (currentChat?.bot as any)?.theme_color || '#818cf8';
-    const backgroundImage = (currentChat?.bot as any)?.background_image;
+    const themeColor = '#818cf8'; // Default cosmic purple
 
     const handleScrollState = (offset: number) => {
         scrollY.current = offset;
@@ -132,12 +123,6 @@ export default function ChatScreen() {
                             suggestion1: data.suggestions?.[0],
                             suggestion2: data.suggestions?.[1],
                             suggestion3: data.suggestions?.[2],
-                            // Custom fields if backend sends them (we should update ChatBootstrap type eventually)
-                            // For now, assuming API returns them and we store loosely
-                            // @ts-ignore
-                            theme_color: data.bot.theme_color,
-                            // @ts-ignore
-                            background_image: data.bot.background_image
                         }
                     });
                 }
@@ -307,37 +292,11 @@ export default function ChatScreen() {
 
     // --- RENDER ---
 
-    // Background Container Logic
-    const BackgroundContainer = ({ children }: { children: React.ReactNode }) => {
-        if (backgroundImage) {
-            return (
-                <ImageBackground
-                    source={{ uri: backgroundImage }}
-                    style={{ flex: 1 }}
-                    resizeMode="cover"
-                >
-                    <View className="flex-1 bg-black/60">
-                        {children}
-                    </View>
-                </ImageBackground>
-            );
-        }
-
-        // If no image, use dark theme background with theme color hint
-        return (
-            <View className="flex-1 bg-space-dark" style={{ backgroundColor: '#020617' }}>
-                {/* Optional radial gradient effect or just solid color */}
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 300, backgroundColor: themeColor, opacity: 0.05 }} />
-                {children}
-            </View>
-        );
-    };
-
     return (
         <SafeAreaView className="flex-1 bg-space-dark" edges={['top', 'bottom']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <BackgroundContainer>
+            <View className="flex-1 bg-space-dark">
                 {/* Floating Header */}
                 <FloatingTutorCard
                     botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
@@ -405,11 +364,10 @@ export default function ChatScreen() {
                             disabled={isStreaming || isPickerLoading}
                             attachments={stagedAttachments}
                             onRemoveAttachment={handleRemoveAttachment}
-                            themeColor={themeColor}
                         />
                     </View>
                 </KeyboardAvoidingView>
-            </BackgroundContainer>
+            </View>
 
             <AttachmentSheet
                 visible={isAttachmentSheetVisible}
