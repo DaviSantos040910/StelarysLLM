@@ -1,187 +1,188 @@
 import { useRouter } from 'expo-router';
 import {
-    Bell,
-    FileText,
-    Globe,
-    HelpCircle,
-    Lock,
-    LogOut,
-    Moon,
-    Shield,
-    Trash2,
-    User
+  Bell,
+  CreditCard,
+  FileText,
+  HelpCircle,
+  Lock,
+  LogOut,
+  Moon,
+  Shield,
+  Trash2,
+  User,
+  Globe
 } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, ScrollView, View, Modal, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { ProfileHeader } from '../../src/components/profile/ProfileHeader';
 import { SettingsItem } from '../../src/components/profile/SettingsItem';
 import { SettingsSection } from '../../src/components/profile/SettingsSection';
-import { userService } from '../../src/services/userService';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useThemeStore } from '../../src/stores/themeStore';
+import { userService } from '../../src/services/userService';
 
 export default function ProfileScreen() {
-    const router = useRouter();
-    const { user, logout } = useAuthStore();
-    const { mode, setMode } = useThemeStore();
-    const { colorScheme, setColorScheme } = useColorScheme();
+  const router = useRouter();
+  const { user, logout, setUser } = useAuthStore();
+  const { mode, setMode } = useThemeStore();
+  const { colorScheme, setColorScheme } = useColorScheme();
 
-    const [themeModalVisible, setThemeModalVisible] = useState(false);
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
 
-    // Sync theme
-    useEffect(() => {
-        setColorScheme(mode);
-    }, [mode]);
+  // Sync theme
+  useEffect(() => {
+      setColorScheme(mode);
+  }, [mode]);
 
-    const handleLogout = async () => {
-        Alert.alert("Sair", "Tem certeza que deseja sair?", [
-            { text: "Cancelar", style: "cancel" },
-            { text: "Sair", style: "destructive", onPress: logout }
-        ]);
-    };
+  const handleLogout = async () => {
+    Alert.alert("Sair", "Tem certeza que deseja sair?", [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Sair", style: "destructive", onPress: logout }
+    ]);
+  };
 
-    const handleDeleteAccount = async () => {
-        Alert.alert(
-            "Excluir Conta",
-            "Esta ação é irreversível. Todos os seus dados serão perdidos. Tem certeza?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Excluir",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await userService.deleteAccount();
-                            logout();
-                        } catch (e) {
-                            Alert.alert("Erro", "Falha ao excluir conta.");
-                        }
-                    }
-                }
-            ]
-        );
-    };
+  const handleDeleteAccount = async () => {
+      Alert.alert(
+          "Excluir Conta",
+          "Esta ação é irreversível. Todos os seus dados serão perdidos. Tem certeza?",
+          [
+              { text: "Cancelar", style: "cancel" },
+              {
+                  text: "Excluir",
+                  style: "destructive",
+                  onPress: async () => {
+                      try {
+                          await userService.deleteAccount();
+                          logout();
+                      } catch (e) {
+                          Alert.alert("Erro", "Falha ao excluir conta.");
+                      }
+                  }
+              }
+          ]
+      );
+  };
 
-    const handleChangeTheme = (newMode: 'light' | 'dark' | 'system') => {
-        setMode(newMode);
-        setThemeModalVisible(false);
-    };
+  const handleChangeTheme = (newMode: 'light' | 'dark' | 'system') => {
+      setMode(newMode);
+      setThemeModalVisible(false);
+  };
 
-    const getThemeLabel = () => {
-        if (mode === 'system') return 'Sistema';
-        if (mode === 'dark') return 'Escuro';
-        return 'Claro';
-    };
+  const getThemeLabel = () => {
+      if (mode === 'system') return 'Sistema';
+      if (mode === 'dark') return 'Escuro';
+      return 'Claro';
+  };
 
-    return (
-        <SafeAreaView className="flex-1 bg-gray-50 dark:bg-space-dark" edges={['top']}>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-space-dark" edges={['top']}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
 
-                <ProfileHeader
-                    user={user}
-                    onEditPress={() => router.push('/profile/edit')}
-                />
+        <ProfileHeader
+            user={user}
+            onEditPress={() => router.push('/profile/edit')}
+        />
 
-                <SettingsSection title="Preferências">
-                    <SettingsItem
-                        icon={Moon}
-                        label="Tema"
-                        value={getThemeLabel()}
-                        onPress={() => setThemeModalVisible(true)}
-                        color="#818cf8"
-                    />
-                    {/* Placeholder for Language */}
-                    <SettingsItem
-                        icon={Globe}
-                        label="Idioma"
-                        value="Português"
-                        onPress={() => { }}
-                        color="#34d399"
-                    />
-                </SettingsSection>
+        <SettingsSection title="Preferências">
+            <SettingsItem
+                icon={Moon}
+                label="Tema"
+                value={getThemeLabel()}
+                onPress={() => setThemeModalVisible(true)}
+                color="#818cf8"
+            />
+            {/* Placeholder for Language */}
+            <SettingsItem
+                icon={Globe}
+                label="Idioma"
+                value="Português"
+                onPress={() => {}}
+                color="#34d399"
+            />
+        </SettingsSection>
 
-                <SettingsSection title="Conta">
-                    <SettingsItem
-                        icon={User}
-                        label="Editar Perfil"
-                        onPress={() => router.push('/profile/edit')}
-                    />
-                    <SettingsItem
-                        icon={Lock}
-                        label="Segurança"
-                        onPress={() => router.push('/profile/security')}
-                    />
-                    <SettingsItem
-                        icon={Bell}
-                        label="Notificações"
-                        isSwitch
-                        switchValue={true} // Mock for now
-                        onSwitchChange={() => { }}
-                    />
-                </SettingsSection>
+        <SettingsSection title="Conta">
+            <SettingsItem
+                icon={User}
+                label="Editar Perfil"
+                onPress={() => router.push('/profile/edit')}
+            />
+            <SettingsItem
+                icon={Lock}
+                label="Segurança"
+                onPress={() => router.push('/profile/security')}
+            />
+            <SettingsItem
+                icon={Bell}
+                label="Notificações"
+                isSwitch
+                switchValue={true} // Mock for now
+                onSwitchChange={() => {}}
+            />
+        </SettingsSection>
 
-                <SettingsSection title="Suporte">
-                    <SettingsItem
-                        icon={HelpCircle}
-                        label="Ajuda e Suporte"
-                        onPress={() => Alert.alert("Suporte", "Entre em contato: suporte@stelarys.com")}
-                    />
-                    <SettingsItem
-                        icon={Shield}
-                        label="Política de Privacidade"
-                        onPress={() => { }}
-                    />
-                    <SettingsItem
-                        icon={FileText}
-                        label="Termos de Uso"
-                        onPress={() => { }}
-                    />
-                </SettingsSection>
+        <SettingsSection title="Suporte">
+            <SettingsItem
+                icon={HelpCircle}
+                label="Ajuda e Suporte"
+                onPress={() => Alert.alert("Suporte", "Entre em contato: suporte@stelarys.com")}
+            />
+            <SettingsItem
+                icon={Shield}
+                label="Política de Privacidade"
+                onPress={() => {}}
+            />
+            <SettingsItem
+                icon={FileText}
+                label="Termos de Uso"
+                onPress={() => {}}
+            />
+        </SettingsSection>
 
-                <SettingsSection title="Zona de Perigo">
-                    <SettingsItem
-                        icon={LogOut}
-                        label="Sair"
-                        onPress={handleLogout}
-                        danger
-                    />
-                    <SettingsItem
-                        icon={Trash2}
-                        label="Excluir Conta"
-                        onPress={handleDeleteAccount}
-                        danger
-                    />
-                </SettingsSection>
+        <SettingsSection title="Zona de Perigo">
+            <SettingsItem
+                icon={LogOut}
+                label="Sair"
+                onPress={handleLogout}
+                danger
+            />
+            <SettingsItem
+                icon={Trash2}
+                label="Excluir Conta"
+                onPress={handleDeleteAccount}
+                danger
+            />
+        </SettingsSection>
 
-            </ScrollView>
+      </ScrollView>
 
-            {/* Theme Modal */}
-            <Modal
-                visible={themeModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setThemeModalVisible(false)}
-            >
-                <Pressable className="flex-1 bg-black/60 justify-center px-6" onPress={() => setThemeModalVisible(false)}>
-                    <View className="bg-white dark:bg-space-light rounded-2xl p-6">
-                        <Text className="text-lg font-bold text-gray-900 dark:text-starlight mb-4">Escolha um tema</Text>
+      {/* Theme Modal */}
+      <Modal
+        visible={themeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setThemeModalVisible(false)}
+      >
+          <Pressable className="flex-1 bg-black/60 justify-center px-6" onPress={() => setThemeModalVisible(false)}>
+              <View className="bg-white dark:bg-space-light rounded-2xl p-6">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-starlight mb-4">Escolha um tema</Text>
 
-                        <Pressable onPress={() => handleChangeTheme('light')} className="py-4 border-b border-gray-100 dark:border-white/5">
-                            <Text className="text-base text-gray-700 dark:text-gray-300">Claro</Text>
-                        </Pressable>
-                        <Pressable onPress={() => handleChangeTheme('dark')} className="py-4 border-b border-gray-100 dark:border-white/5">
-                            <Text className="text-base text-gray-700 dark:text-gray-300">Escuro</Text>
-                        </Pressable>
-                        <Pressable onPress={() => handleChangeTheme('system')} className="py-4">
-                            <Text className="text-base text-gray-700 dark:text-gray-300">Automático (Sistema)</Text>
-                        </Pressable>
-                    </View>
-                </Pressable>
-            </Modal>
+                  <Pressable onPress={() => handleChangeTheme('light')} className="py-4 border-b border-gray-100 dark:border-white/5">
+                      <Text className="text-base text-gray-700 dark:text-gray-300">Claro</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleChangeTheme('dark')} className="py-4 border-b border-gray-100 dark:border-white/5">
+                      <Text className="text-base text-gray-700 dark:text-gray-300">Escuro</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleChangeTheme('system')} className="py-4">
+                      <Text className="text-base text-gray-700 dark:text-gray-300">Automático (Sistema)</Text>
+                  </Pressable>
+              </View>
+          </Pressable>
+      </Modal>
 
-        </SafeAreaView>
-    );
+    </SafeAreaView>
+  );
 }

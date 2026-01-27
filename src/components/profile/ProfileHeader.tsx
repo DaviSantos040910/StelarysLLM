@@ -1,7 +1,7 @@
-import { Edit2 } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
-import { User } from '../../types';
+import { View, Text, Image, Pressable, ViewStyle } from 'react-native';
+import { Edit2, Camera } from 'lucide-react-native';
+import { User } from '../../types/auth';
 
 interface ProfileHeaderProps {
     user: User | null;
@@ -13,8 +13,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditPress 
         <View className="items-center py-8">
             <Pressable onPress={onEditPress} className="relative">
                 <View className="w-28 h-28 rounded-full border-4 border-space-light dark:border-space-dark overflow-hidden bg-gray-200 dark:bg-white/10">
-                    {user?.avatar_url ? (
-                        <Image source={{ uri: user.avatar_url }} className="w-full h-full" resizeMode="cover" />
+                    {user?.avatar ? (
+                        <Image source={{ uri: user.avatar }} className="w-full h-full" resizeMode="cover" />
                     ) : (
                         <View className="w-full h-full items-center justify-center">
                             <Text className="text-4xl text-gray-400 dark:text-gray-500 font-bold">
@@ -30,7 +30,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditPress 
 
             <View className="mt-4 items-center">
                 <Text className="text-2xl font-bold text-gray-900 dark:text-starlight">
-                    {user?.first_name || user?.username}
+                    {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.username}
                 </Text>
                 <Text className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                     {user?.email}

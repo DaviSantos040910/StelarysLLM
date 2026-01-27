@@ -68,15 +68,15 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   const [selectedArtifactType, setSelectedArtifactType] = useState<ArtifactType | null>(null);
 
   const fetchArtifacts = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    try {
-      const data = await studioService.getArtifacts(chatId);
-      setArtifacts(data.slice(0, 5)); // Show only recent few
-    } catch (e) {
-      console.error("Failed to load artifacts", e);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
+      if (showLoading) setLoading(true);
+      try {
+          const data = await studioService.getArtifacts(chatId);
+          setArtifacts(data.slice(0, 5)); // Show only recent few
+      } catch (e) {
+          console.error("Failed to load artifacts", e);
+      } finally {
+          if (showLoading) setLoading(false);
+      }
   };
 
   // Load recent artifacts
@@ -86,18 +86,18 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
   // Polling for processing artifacts
   useEffect(() => {
-    const hasProcessing = artifacts.some(a => a.status === 'processing');
-    let interval: ReturnType<typeof setInterval>;
+      const hasProcessing = artifacts.some(a => a.status === 'processing');
+      let interval: NodeJS.Timeout;
 
-    if (hasProcessing) {
-      interval = setInterval(() => {
-        fetchArtifacts(false);
-      }, 3000);
-    }
+      if (hasProcessing) {
+          interval = setInterval(() => {
+              fetchArtifacts(false);
+          }, 3000);
+      }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+      return () => {
+          if (interval) clearInterval(interval);
+      };
   }, [artifacts]);
 
   const handlePressGenerator = (gen: typeof GENERATORS[0]) => {
@@ -110,7 +110,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     if (!selectedArtifactType) return;
     const gen = GENERATORS.find(g => g.id === selectedArtifactType);
     if (gen) {
-      executeGenerate(gen, options);
+        executeGenerate(gen, options);
     }
   };
 
@@ -161,11 +161,11 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   };
 
   const handleOpenArtifact = (item: KnowledgeArtifact) => {
-    onClose?.();
-    router.push({
-      pathname: '/studio/gallery',
-      params: { chatId, openArtifactId: item.id.toString() }
-    });
+      onClose?.();
+      router.push({
+          pathname: '/studio/gallery',
+          params: { chatId, openArtifactId: item.id.toString() }
+      });
   };
 
   const ArtifactItem = ({ item }: { item: KnowledgeArtifact }) => {
@@ -179,24 +179,24 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
         entering={FadeIn}
         className="mr-3"
       >
-        <Pressable
-          onPress={() => handleOpenArtifact(item)}
-          disabled={item.status === 'processing'}
-          className={`items-center justify-center p-3 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] relative overflow-hidden active:opacity-60`}
-        >
-          <View className="mb-2 opacity-80">
-            <Icon color={gen.color} size={28} />
-          </View>
-
-          {item.status === 'processing' && (
-            <View className="absolute inset-0 items-center justify-center bg-space-dark/60 z-10">
-              <ActivityIndicator color="#fff" size="small" />
+          <Pressable
+            onPress={() => handleOpenArtifact(item)}
+            disabled={item.status === 'processing'}
+            className={`items-center justify-center p-3 rounded-2xl bg-space-light border border-white/10 w-[100px] h-[100px] relative overflow-hidden active:opacity-60`}
+          >
+            <View className="mb-2 opacity-80">
+              <Icon color={gen.color} size={28} />
             </View>
-          )}
 
-          <Text className="text-starlight text-[10px] text-center font-medium leading-tight" numberOfLines={2}>
-            {item.title}
-          </Text>
+            {item.status === 'processing' && (
+              <View className="absolute inset-0 items-center justify-center bg-space-dark/60 z-10">
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
+
+            <Text className="text-starlight text-[10px] text-center font-medium leading-tight" numberOfLines={2}>
+              {item.title}
+            </Text>
         </Pressable>
       </Animated.View>
     );
@@ -255,13 +255,13 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
       {/* Configuration Modal */}
       {selectedArtifactType && (
-        <ArtifactConfigModal
-          visible={configVisible}
-          onClose={() => setConfigVisible(false)}
-          onGenerate={handleConfigConfirm}
-          artifactType={selectedArtifactType}
-          chatId={chatId}
-        />
+          <ArtifactConfigModal
+              visible={configVisible}
+              onClose={() => setConfigVisible(false)}
+              onGenerate={handleConfigConfirm}
+              artifactType={selectedArtifactType}
+              chatId={chatId}
+          />
       )}
     </>
   );

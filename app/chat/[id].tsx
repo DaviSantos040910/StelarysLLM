@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ImageBackground, KeyboardAvoidingView, ListRenderItem, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, ListRenderItem, Platform, Pressable, View, Alert, ImageBackground } from 'react-native';
 import Animated, { runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,9 +26,13 @@ export default function ChatScreen() {
     const router = useRouter();
     const chatId = id as string;
 
-    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, updateMessage, regenerateMessage } = useChatStore();
+    const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, addSystemMessage, updateMessage, regenerateMessage } = useChatStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
+
+    // Scroll Stability Refs
+    const scrollY = useRef(0);
+    const contentHeight = useRef(0);
 
     // Sheet Visibility States
     const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
@@ -59,6 +63,7 @@ export default function ChatScreen() {
     const backgroundImage = (currentChat?.bot as any)?.background_image;
 
     const handleScrollState = (offset: number) => {
+        scrollY.current = offset;
         if (offset > 200) {
             setShowScrollDown(true);
         } else {
@@ -148,7 +153,7 @@ export default function ChatScreen() {
         setStagedAttachments([]);
 
         for (const att of stagedAttachments) {
-            if (att.uri) {
+             if (att.uri) {
                 await uploadFile(chatId, {
                     uri: att.uri,
                     name: att.name || 'file',
@@ -173,15 +178,12 @@ export default function ChatScreen() {
     const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
         setIsAttachmentSheetVisible(false);
         try {
-            // Upload file as attachment - addChatSource is not available in current backend
-            if (type === 'file' && file.uri) {
-                await uploadFile(chatId, {
-                    uri: file.uri,
-                    name: file.name || 'file',
-                    mimeType: file.mimeType || 'application/octet-stream'
-                });
+            const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+            const source = await chatService.addChatSource(chatId, file, backendType);
+
+            if (addSystemMessage) {
+                addSystemMessage(`📎 Fonte adicionada ao contexto: ${source.title}`);
             }
-            // For URL/YouTube types, we'd need a different endpoint if available
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Falha ao adicionar fonte.");
@@ -262,7 +264,7 @@ export default function ChatScreen() {
                             try {
                                 const { new_chat_id } = await chatService.archiveChat(chatId);
                                 router.replace({
-                                    pathname: `/chat/${new_chat_id}` as any,
+                                    pathname: `/chat/${new_chat_id}`,
                                     params: {
                                         botId,
                                         botName,
@@ -357,7 +359,23 @@ export default function ChatScreen() {
                             keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
-                            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 10 }}
+                            onContentSizeChange={(w, h) => {
+                                const previousHeight = contentHeight.current;
+                                contentHeight.current = h;
+
+                                // Fix scroll jump when reading history/streaming response
+                                // If user is scrolled up (scrollY > 50) and content grows,
+                                // we need to shift scroll to maintain visual position relative to text.
+                                if (previousHeight > 0 && scrollY.current > 50) {
+                                    const delta = h - previousHeight;
+                                    if (delta > 0) {
+                                        flatListRef.current?.scrollToOffset({
+                                            offset: scrollY.current + delta,
+                                            animated: false
+                                        });
+                                    }
+                                }
+                            }}
                             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 100 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
@@ -392,6 +410,7 @@ export default function ChatScreen() {
                             disabled={isStreaming || isPickerLoading}
                             attachments={stagedAttachments}
                             onRemoveAttachment={handleRemoveAttachment}
+                            themeColor={themeColor}
                         />
                     </View>
                 </KeyboardAvoidingView>

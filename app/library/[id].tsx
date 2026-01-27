@@ -1,14 +1,14 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, BookOpen, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, Bot as BotIcon, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { BotSelector } from '../../src/components/library/BotSelector';
-import { SourceSelector } from '../../src/components/studio/SourceSelector'; // Reused
 import { libraryService } from '../../src/services/libraryService';
 import { StudySpace } from '../../src/types/studio';
+import { SourceSelector } from '../../src/components/studio/SourceSelector'; // Reused
+import { BotSelector } from '../../src/components/library/BotSelector';
 
 export default function SpaceDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -209,7 +209,7 @@ export default function SpaceDetailScreen() {
             {isSourceSelectorVisible && (
                 <View className="absolute inset-0 bg-black/80 z-50 justify-end">
                     <SourceSelector
-                        chatId={id || ''}
+                        mode="global"
                         selectedIds={space.sources.map(s => s.id)}
                         onClose={() => setSourceSelectorVisible(false)}
                         onSelectionChange={(ids) => {

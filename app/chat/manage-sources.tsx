@@ -20,7 +20,6 @@ export default function ManageSourcesScreen() {
     }, [chatId]);
 
     const loadSources = async () => {
-        if (!chatId) return;
         try {
             setLoading(true);
             const data = await chatService.getChatSources(chatId);
@@ -44,10 +43,8 @@ export default function ManageSourcesScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // TODO: Backend endpoint for removeChatSource not available yet
-                            // await chatService.removeChatSource(chatId, sourceId);
+                            await chatService.removeChatSource(chatId, sourceId);
                             setSources(prev => prev.filter(s => s.id !== sourceId));
-                            Alert.alert('Aviso', 'Remoção de fontes ainda não está disponível no servidor.');
                         } catch (error) {
                             Alert.alert('Erro', 'Falha ao remover fonte.');
                         }
@@ -62,12 +59,12 @@ export default function ManageSourcesScreen() {
         setIsUploading(true);
 
         try {
-            // TODO: Backend endpoint for addChatSource not available yet
             // Map frontend types to backend enum
-            // const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
-            // const newSource = await chatService.addChatSource(chatId, fileOrUrl, backendType);
-            // setSources(prev => [newSource, ...prev]);
-            Alert.alert("Aviso", "Adicionar fontes ao contexto do chat ainda não está disponível.");
+            const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+
+            const newSource = await chatService.addChatSource(chatId, fileOrUrl, backendType);
+            setSources(prev => [newSource, ...prev]);
+            Alert.alert("Sucesso", "Fonte adicionada ao contexto do chat.");
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Falha ao adicionar fonte.");
@@ -112,7 +109,7 @@ export default function ManageSourcesScreen() {
                     renderItem={({ item }) => (
                         <View className="flex-row items-center bg-space-light p-4 rounded-xl mb-3 border border-white/5">
                             <View className="mr-4 bg-white/5 p-2 rounded-lg">
-                                {getIcon(item.source_type || '')}
+                                {getIcon(item.source_type)}
                             </View>
                             <View className="flex-1">
                                 <Text className="text-starlight font-bold" numberOfLines={1}>{item.title}</Text>
