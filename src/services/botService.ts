@@ -5,11 +5,9 @@ export interface CreateBotData {
     name: string;
     description?: string;
     prompt: string;
-    theme_color: string;
     allow_web_search: boolean;
     strict_context: boolean; // Added strict_context
     avatar?: any;
-    background_image?: any;
     category_ids?: string[];
     study_space_ids?: number[];
     publicity: 'Public' | 'Private' | 'Guests';
@@ -31,7 +29,6 @@ export const botService = {
       const formData = new FormData();
       formData.append('name', data.name);
       formData.append('prompt', data.prompt);
-      formData.append('theme_color', data.theme_color);
       formData.append('allow_web_search', String(data.allow_web_search));
       formData.append('strict_context', String(data.strict_context));
       formData.append('publicity', data.publicity);
@@ -51,14 +48,6 @@ export const botService = {
               uri: data.avatar.uri,
               name: data.avatar.name || 'avatar.jpg',
               type: data.avatar.mimeType || 'image/jpeg',
-          } as any);
-      }
-
-      if (data.background_image && data.background_image.uri) {
-          formData.append('background_image', {
-              uri: data.background_image.uri,
-              name: data.background_image.name || 'background.jpg',
-              type: data.background_image.mimeType || 'image/jpeg',
           } as any);
       }
 
@@ -87,7 +76,6 @@ export const botService = {
       const formData = new FormData();
       if (data.name) formData.append('name', data.name);
       if (data.prompt) formData.append('prompt', data.prompt);
-      if (data.theme_color) formData.append('theme_color', data.theme_color);
       if (data.allow_web_search !== undefined) formData.append('allow_web_search', String(data.allow_web_search));
       if (data.strict_context !== undefined) formData.append('strict_context', String(data.strict_context));
       if (data.publicity) formData.append('publicity', data.publicity);
@@ -106,14 +94,6 @@ export const botService = {
               uri: data.avatar.uri,
               name: data.avatar.name || 'avatar.jpg',
               type: data.avatar.mimeType || 'image/jpeg',
-          } as any);
-      }
-
-      if (data.background_image && data.background_image.uri) {
-          formData.append('background_image', {
-              uri: data.background_image.uri,
-              name: data.background_image.name || 'background.jpg',
-              type: data.background_image.mimeType || 'image/jpeg',
           } as any);
       }
 
