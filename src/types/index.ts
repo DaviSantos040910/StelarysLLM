@@ -3,7 +3,9 @@ export interface User {
   username: string;
   email: string;
   first_name?: string;
+  last_name?: string;
   avatar_url?: string;
+  avatar?: string; // Some components access .avatar instead of .avatar_url
 }
 
 export interface Workspace { // Antigo "Bot"

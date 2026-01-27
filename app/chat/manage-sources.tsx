@@ -5,7 +5,8 @@ import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
-import { chatService, ChatSource } from '../../src/services/chatService';
+import { chatService } from '../../src/services/chatService';
+import { ChatSource } from '../../src/types/chat';
 
 export default function ManageSourcesScreen() {
     const router = useRouter();

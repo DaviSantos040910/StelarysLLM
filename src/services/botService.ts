@@ -74,6 +74,15 @@ export const botService = {
       return response.data;
   },
 
+  async getBots(params?: any): Promise<any[]> {
+    const response = await client.get('/api/v1/bots/', { params });
+    // Handle pagination if necessary
+    if (response.data && response.data.results) {
+        return response.data.results;
+    }
+    return response.data;
+  },
+
   async updateBot(botId: string, data: Partial<CreateBotData>): Promise<any> {
       const formData = new FormData();
       if (data.name) formData.append('name', data.name);

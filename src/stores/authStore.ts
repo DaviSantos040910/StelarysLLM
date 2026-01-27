@@ -15,6 +15,7 @@ interface AuthState {
   signup: (data: { username: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -85,5 +86,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  setUser: (user: User | null) => {
+    set({ user });
   },
 }));

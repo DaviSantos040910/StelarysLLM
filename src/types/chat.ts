@@ -73,3 +73,15 @@ export interface ChatContextValue {
   isTTSLoading: boolean;
   currentTTSMessageId: string | null;
 }
+
+export interface ChatSource {
+    id: number;
+    title: string;
+    name?: string;
+    type?: string;
+    source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
+    extracted_text?: string;
+    created_at?: string;
+    url?: string;
+    selected?: boolean;
+}

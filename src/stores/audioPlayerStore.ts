@@ -96,7 +96,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
             if (status.didJustFinish) {
               set({ isPlaying: false, position: 0 });
               // Reinicia posição para replay
-              get().sound?.setPositionAsync(0);
+              get().sound?.stopAsync();
             }
           }
         }

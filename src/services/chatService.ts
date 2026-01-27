@@ -1,20 +1,6 @@
 import client, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
-import { Message, ChatListItem, ChatSource } from '../types/chat'; // Ensure ChatSource is exported or defined here if not in types
-
-// If ChatSource is not in types/chat.ts, define it here temporarily or import it if I missed it
-// Based on previous read, it was defined in the service file.
-export interface ChatSource {
-    id: number;
-    title: string; // mapped from 'name' or similar
-    name?: string;
-    type?: string;
-    source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
-    extracted_text?: string;
-    created_at?: string;
-    url?: string;
-    selected?: boolean;
-}
+import { Message, ChatListItem, ChatSource } from '../types/chat';
 
 interface PaginatedResponse<T> {
     count: number;
