@@ -110,6 +110,35 @@ export const chatService = {
       await client.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
   },
 
+  // === TTS ===
+  getMessageTTS: async (chatId: string | number, messageId: string): Promise<string> => {
+      // Backend returns audio file directly/stream, so we construct the URL.
+      // But if we need auth headers, we might need a different approach or signed URL.
+      // Assuming JWT works with simple GET if we pass it, or we fetch blob.
+      // AudioPlayer usually takes a URI.
+      // If the backend endpoint is protected, we need to pass token.
+      // `useAudioPlayerStore` uses `Audio.Sound.createAsync({ uri })`.
+      // Expo Audio supports headers: `Audio.Sound.createAsync({ uri, headers: { Authorization: ... } })`.
+      // BUT `chatService` here is just helper.
+
+      // Let's return the full URL and handle headers in the Store if possible,
+      // or return a signed/public URL.
+      // Since it is protected, we might need to change `useAudioPlayerStore` to accept headers.
+      // OR, we can fetch the blob here and return a local URI.
+      // Fetching blob is safer for auth.
+
+      const response = await client.get(`/api/v1/chats/${chatId}/messages/${messageId}/tts/`, {
+          responseType: 'blob'
+      });
+
+      // Convert blob to local URI (platform specific)
+      // This is tricky in RN without FileReader/Blob fully working same as web.
+      // Better approach: Configure AudioPlayer to use headers.
+
+      // For now, let's just return the URL and we will patch AudioPlayerStore to use the client token.
+      return `${BASE_URL}/api/v1/chats/${chatId}/messages/${messageId}/tts/`;
+  },
+
   // === Chat Management & History ===
 
   archiveChat: async (chatId: string): Promise<{ new_chat_id: number }> => {

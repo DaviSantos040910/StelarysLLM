@@ -17,6 +17,7 @@ import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
 import { useChatStore } from '../../src/stores/chatStore';
+import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 import { ChatListItem, Message } from '../../src/types/chat';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
@@ -27,6 +28,7 @@ export default function ChatScreen() {
     const chatId = id as string;
 
     const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, updateMessage, regenerateMessage } = useChatStore();
+    const { play } = useAudioPlayerStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
 
@@ -224,6 +226,21 @@ export default function ChatScreen() {
         await regenerateMessage(chatId);
     };
 
+    const handleTTS = async (messageId: string, text: string) => {
+        try {
+            // Check if we already have the URL in the message object (optimistic or cached)
+            // If not, request it from backend
+            const ttsUrl = await chatService.getMessageTTS(chatId, messageId);
+            if (ttsUrl) {
+                // Play using global store, passing messageId as context ID to track active message
+                await play(ttsUrl, 'Voice Message', undefined, messageId);
+            }
+        } catch (error) {
+            console.error("TTS Error:", error);
+            Alert.alert("Erro", "Não foi possível reproduzir o áudio.");
+        }
+    };
+
     const renderItem: ListRenderItem<Message> = React.useCallback(({ item, index }) => {
         return (
             <ChatMessageItem
@@ -233,6 +250,7 @@ export default function ChatScreen() {
                 onSuggestionPress={handleSend}
                 onFeedback={handleFeedback}
                 onRegenerate={handleRegenerate}
+                onTTS={handleTTS}
                 themeColor={themeColor}
             />
         );

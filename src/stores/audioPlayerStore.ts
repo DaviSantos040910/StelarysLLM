@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import { create } from 'zustand';
+import { useAuthStore } from './authStore'; // Import auth store for headers
 
 interface AudioPlayerState {
   sound: Audio.Sound | null;
@@ -82,9 +83,13 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         playThroughEarpieceAndroid: false,
       });
 
+      // Get token for auth headers
+      const token = useAuthStore.getState().token;
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
       // 3. Race Condition com Timeout de 15s para evitar spinner eterno
       const loadPromise = Audio.Sound.createAsync(
-        { uri },
+        { uri, headers }, // Inject headers
         { shouldPlay: true, rate: get().rate, shouldCorrectPitch: true },
         (status) => {
           if (status.isLoaded) {
@@ -121,7 +126,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       console.error('Failed to play audio:', error);
       // Mantemos o currentUri para permitir "Tentar Novamente", mas paramos o loading
       set({ isLoading: false, isPlaying: false });
-      alert('Não foi possível reproduzir o áudio. Verifique sua conexão.');
+      // alert('Não foi possível reproduzir o áudio. Verifique sua conexão.'); // Remove alert to avoid spam if auto-playing next
     }
   },
 
@@ -184,7 +189,11 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       position: 0,
       duration: 0,
       isMinimized: false,
-      isLoading: false
+      isLoading: false,
+      // We do NOT clear chatId here if we want the "Stop" button to remain active
+      // but in "stopped" state. However, closing usually means "gone".
+      // Let's keep cleaning up to ensure fresh state.
+      chatId: null
     });
   }
 }));

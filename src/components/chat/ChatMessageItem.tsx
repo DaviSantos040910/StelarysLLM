@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { BookOpen, Copy, FileText, RefreshCw, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native';
+import { BookOpen, Copy, FileText, RefreshCw, ThumbsDown, ThumbsUp, Volume2, Square, Loader2 } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
+import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -36,6 +37,15 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const isUser = message.role === 'user';
     const isStreaming = message.status === 'sending' && !isUser;
 
+    // Use global audio store to track state
+    const { currentUri, isPlaying, pause, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
+
+    // Determine if THIS message is playing (we use message.id as the identifier passed to store's chatId/artifactId slot or logic)
+    // Actually, store uses `chatId` as a generic ID field sometimes, or we can check URI if we know it.
+    // Ideally, we pass message.id when playing.
+    const isThisMessagePlaying = playingMessageId === String(message.id) && isPlaying;
+    const isThisMessageLoading = playingMessageId === String(message.id) && isAudioLoading;
+
     // Audio detection logic: Extension or MimeType
     const isAudio = (message.attachment_type?.startsWith('audio') ||
         message.attachment_url?.endsWith('.m4a') ||
@@ -65,6 +75,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const handleDislike = () => {
         const newFeedback = message.feedback === 'dislike' ? null : 'dislike';
         onFeedback?.(String(message.id), newFeedback);
+    };
+
+    const handleTTSAction = () => {
+        if (isThisMessagePlaying) {
+            pause();
+        } else {
+            onTTS?.(String(message.id), message.content);
+        }
     };
 
     // Content rendering logic
@@ -177,8 +195,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         </Pressable>
 
                         {message.content?.length > 0 && (
-                            <Pressable onPress={() => onTTS?.(message.id as string, message.content)} className="p-2">
-                                <Volume2 size={16} color="#94a3b8" />
+                            <Pressable onPress={handleTTSAction} className="p-2">
+                                {isThisMessageLoading ? (
+                                    <Loader2 size={16} color={themeColor} className="animate-spin" />
+                                ) : isThisMessagePlaying ? (
+                                    <Square size={16} color={themeColor} fill={themeColor} />
+                                ) : (
+                                    <Volume2 size={16} color="#94a3b8" />
+                                )}
                             </Pressable>
                         )}
 
