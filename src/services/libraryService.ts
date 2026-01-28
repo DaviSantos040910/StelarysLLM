@@ -17,6 +17,31 @@ export const libraryService = {
         return response.data;
     },
 
+    async addSpaceSource(spaceId: number, fileOrUrl: any, type: 'FILE' | 'URL' | 'YOUTUBE'): Promise<any> {
+        const formData = new FormData();
+
+        formData.append('title', fileOrUrl.name || 'Nova Fonte');
+        formData.append('source_type', type);
+
+        if (type === 'FILE') {
+            formData.append('file', {
+                uri: fileOrUrl.uri,
+                name: fileOrUrl.name,
+                type: fileOrUrl.mimeType || 'application/octet-stream',
+            } as any);
+        } else {
+            formData.append('url', fileOrUrl.uri || fileOrUrl);
+            if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
+        }
+
+        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
     async addSource(spaceId: number, sourceId: number): Promise<void> {
         await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, { source_id: sourceId });
     },

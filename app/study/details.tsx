@@ -1,90 +1,81 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, Image, Modal, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { workspaceService } from '../../src/services/workspaceService';
-import { StudyFile } from '../../src/types';
-import { FileText, Trash2, ArrowLeft } from 'lucide-react-native';
+import { libraryService } from '../../src/services/libraryService';
+import { botService } from '../../src/services/botService';
+import { StudySpace } from '../../src/types/studio';
+import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 
 export default function StudyDetailsScreen() {
-  const { id } = useLocalSearchParams(); // This is the workspace/bot ID now, based on navigation from library
+  const { id } = useLocalSearchParams();
+  const spaceId = parseInt(id as string, 10);
   const router = useRouter();
-  const [files, setFiles] = useState<StudyFile[]>([]);
+
+  const [space, setSpace] = useState<StudySpace | null>(null);
+  const [files, setFiles] = useState<any[]>([]);
+  const [bots, setBots] = useState<any[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
+  const [isSheetVisible, setSheetVisible] = useState(false);
+
+  // Bot Linking State
+  const [isBotModalVisible, setIsBotModalVisible] = useState(false);
+  const [availableBots, setAvailableBots] = useState<any[]>([]);
+  const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
-    loadFiles();
+    loadSpace();
   }, [id]);
 
-  const loadFiles = async () => {
-    if (!id) return;
+  const loadSpace = async () => {
+    if (!spaceId) return;
     try {
       setIsLoading(true);
-      // Wait, in previous screens we used 'id' as chat ID in study/[id].
-      // But in library index.tsx, we pushed `/study/${item.id}` where item is Workspace.
-      // So [id] is the Workspace ID (bot ID).
-      // However, StudyChatScreen uses [id] as chat ID?
-      // Let's check app/study/[id].tsx.
-      // In app/study/[id].tsx: `const { messages, loadMessages } = useChatStore(); loadMessages(id);`
-      // `loadMessages` calls `chatService.getMessages(chatId)`.
-
-      // Wait. The library pushes to `/study/${item.id}` (Bot ID).
-      // But `StudyChatScreen` treats it as `chatId`?
-      // If I send Bot ID to `getMessages(chatId)`, it will fail if Bot ID != Chat ID.
-      // Backend: `ChatMessageListView` expects `chat_pk`.
-
-      // REVISION NEEDED:
-      // The Library screen pushes `/study/${item.id}` (Bot ID).
-      // The StudyChatScreen receives this ID.
-      // It should probably Bootstrap the chat FIRST using the Bot ID to get the Chat ID,
-      // OR the route should be `/study/bot/[botId]` and it bootstraps internally?
-
-      // In Task 5 (Create Study), we did: createWorkspace -> bootstrapChat -> uploadFile.
-      // So we have a Chat ID there.
-
-      // If the Library lists Workspaces (Bots), clicking one gives us Bot ID.
-      // `app/study/[id].tsx` currently assumes `id` is Chat ID?
-      // Let's look at `app/study/[id].tsx` again.
-      // It calls `loadMessages(id)`.
-
-      // ISSUE: Library passes Bot ID. Chat Screen needs Chat ID.
-      // We need to fix this flow.
-      // Easiest fix: `app/study/[id].tsx` should treat `id` as `botId`,
-      // then call `bootstrapChat(botId)` to get the `chatId`,
-      // then `loadMessages(chatId)`.
-
-      // HOWEVER, the current task is `app/study/details.tsx`.
-      // This screen is accessed from settings icon in Chat.
-      // If Chat Screen has `botId` or `chatId`, it should pass the `botId` to details.
-
-      // Let's assume `id` passed to this screen (details) is `botId` (Workspace ID).
-      // Or if it's accessed via `router.push('/study/details?id=...')`.
-
-      // For this file (details.tsx), let's assume `id` is the `botId` (Workspace ID).
-      const data = await workspaceService.getWorkspaceFiles(id as string);
-      setFiles(data);
+      const data = await libraryService.getSpace(spaceId);
+      setSpace(data);
+      setFiles(data.sources || []);
+      setBots(data.bots || []);
     } catch (e) {
-      console.log('Error loading files', e);
+      console.log('Error loading space', e);
+      Alert.alert("Erro", "Falha ao carregar detalhes do espaço.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteFile = async (fileId: number) => {
+  const handleAddSource = async (fileOrUrl: any, type: 'file' | 'url' | 'youtube') => {
+      setSheetVisible(false);
+      Alert.alert("Adicionando Fonte", "A fonte está sendo processada.");
+
+      try {
+          const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+          const newSource = await libraryService.addSpaceSource(spaceId, fileOrUrl, backendType);
+
+          setFiles(prev => [newSource, ...prev]);
+          Alert.alert("Sucesso", "Fonte adicionada ao espaço de estudo.");
+      } catch (error) {
+          console.error(error);
+          Alert.alert("Erro", "Falha ao adicionar fonte.");
+      }
+  };
+
+  const handleDeleteSource = async (sourceId: number) => {
     Alert.alert(
-      "Delete File",
-      "Are you sure you want to delete this file?",
+      "Remover Fonte",
+      "Tem certeza que deseja remover esta fonte?",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: "Delete",
+          text: "Remover",
           style: "destructive",
           onPress: async () => {
             try {
-              await workspaceService.deleteWorkspaceFile(id as string, fileId);
-              setFiles(prev => prev.filter(f => f.id !== fileId));
+              await libraryService.removeSource(spaceId, sourceId);
+              setFiles(prev => prev.filter(f => f.id !== sourceId));
             } catch (e) {
-              Alert.alert("Error", "Failed to delete file");
+              Alert.alert("Erro", "Falha ao remover fonte.");
             }
           }
         }
@@ -92,73 +83,207 @@ export default function StudyDetailsScreen() {
     );
   };
 
-  const handleDeleteStudy = async () => {
-    Alert.alert(
-      "Delete Study",
-      "Are you sure? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await workspaceService.deleteWorkspace(id as string);
-              router.replace('/(tabs)');
-            } catch (e) {
-              Alert.alert("Error", "Failed to delete study");
-            }
-          }
-        }
-      ]
-    );
+  const openLinkBotModal = async () => {
+      setIsBotModalVisible(true);
+      try {
+          const allBots = await botService.getBots();
+          // Filter out bots already linked
+          const linkedIds = new Set(bots.map(b => b.id));
+          const available = allBots.filter((b: any) => !linkedIds.has(b.id));
+          setAvailableBots(available);
+      } catch (error) {
+          Alert.alert("Erro", "Falha ao carregar tutores disponíveis.");
+      }
+  };
+
+  const handleLinkBot = async (botId: number) => {
+      setIsLinking(true);
+      try {
+          await libraryService.linkBot(spaceId, botId);
+          // Refresh list
+          loadSpace();
+          setIsBotModalVisible(false);
+          Alert.alert("Sucesso", "Tutor vinculado com sucesso!");
+      } catch (error) {
+          Alert.alert("Erro", "Falha ao vincular tutor.");
+      } finally {
+          setIsLinking(false);
+      }
+  };
+
+  const handleUnlinkBot = async (botId: number) => {
+      Alert.alert(
+          "Desvincular Tutor",
+          "Tem certeza que deseja remover este tutor do espaço?",
+          [
+              { text: "Cancelar", style: "cancel" },
+              {
+                  text: "Desvincular",
+                  style: "destructive",
+                  onPress: async () => {
+                      try {
+                          await libraryService.unlinkBot(spaceId, botId);
+                          setBots(prev => prev.filter(b => b.id !== botId));
+                      } catch (e) {
+                          Alert.alert("Erro", "Falha ao desvincular tutor.");
+                      }
+                  }
+              }
+          ]
+      );
+  };
+
+  const getIcon = (type: string) => {
+      switch (type) {
+          case 'YOUTUBE': return <Youtube color="#ef4444" size={24} />;
+          case 'URL': return <LinkIcon color="#3b82f6" size={24} />;
+          default: return <FileText color="#fbbf24" size={24} />;
+      }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-      <View className="flex-row items-center p-4 border-b border-gray-100">
-        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-           <ArrowLeft color="#374151" size={24} />
+    <SafeAreaView className="flex-1 bg-white dark:bg-space-dark" edges={['top']}>
+      <View className="flex-row items-center p-4 border-b border-gray-100 dark:border-white/10">
+        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2 rounded-full active:bg-gray-100 dark:active:bg-white/10">
+           <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
         </TouchableOpacity>
-        <Text className="font-bold text-lg text-gray-900">Study Details</Text>
+        <Text className="font-bold text-lg text-gray-900 dark:text-starlight">Detalhes do Espaço</Text>
       </View>
 
-      <View className="p-4 flex-1">
-        <Text className="text-lg font-bold mb-4 text-gray-800">Files</Text>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        <Text className="text-2xl font-bold mb-2 text-gray-900 dark:text-starlight">{space?.title}</Text>
+        <Text className="text-gray-500 dark:text-gray-400 mb-8">{space?.description || "Sem descrição"}</Text>
+
+        {/* Tutors Section */}
+        <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Tutores Vinculados</Text>
+            <TouchableOpacity onPress={openLinkBotModal} className="flex-row items-center">
+                <Plus size={20} color="#818cf8" />
+                <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
+            </TouchableOpacity>
+        </View>
+
+        {bots.length === 0 ? (
+            <Text className="text-gray-500 dark:text-gray-400 text-center py-4 mb-6 italic">Nenhum tutor vinculado.</Text>
+        ) : (
+            <View className="mb-8">
+                {bots.map((bot) => (
+                    <View key={bot.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                        <View className="flex-row items-center flex-1 mr-2">
+                            {bot.avatar_url ? (
+                                <Image source={{ uri: bot.avatar_url }} className="w-10 h-10 rounded-full mr-3" />
+                            ) : (
+                                <View className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 items-center justify-center mr-3">
+                                    <BotIcon size={20} color="#818cf8" />
+                                </View>
+                            )}
+                            <Text className="text-gray-900 dark:text-starlight font-medium text-base">{bot.name}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleUnlinkBot(bot.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
+                            <Trash2 size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+            </View>
+        )}
+
+        {/* Sources Section */}
+        <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Fontes de Estudo</Text>
+            <TouchableOpacity onPress={() => setSheetVisible(true)} className="flex-row items-center">
+                <Plus size={20} color="#818cf8" />
+                <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
+            </TouchableOpacity>
+        </View>
 
         {isLoading ? (
-          <ActivityIndicator color="#3b82f6" />
+          <ActivityIndicator color="#818cf8" />
         ) : (
-          <FlatList
-            data={files}
-            keyExtractor={(item) => item.id.toString()}
-            ListEmptyComponent={<Text className="text-gray-500">No files found.</Text>}
-            renderItem={({ item }) => (
-              <View className="flex-row items-center justify-between bg-gray-50 p-3 rounded-lg mb-2">
-                <View className="flex-row items-center flex-1 mr-2">
-                  <FileText size={20} color="#6B7280" />
-                  <View className="ml-3">
-                    <Text className="text-gray-900 font-medium" numberOfLines={1}>{item.file_name}</Text>
-                    <Text className="text-gray-400 text-xs">{item.file_type.toUpperCase()}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => handleDeleteFile(item.id)} className="p-2">
-                  <Trash2 size={20} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
+          <View>
+            {files.length === 0 ? (
+                <Text className="text-gray-500 dark:text-gray-400 text-center py-4 italic">Nenhuma fonte adicionada.</Text>
+            ) : (
+                files.map((item) => (
+                    <View key={item.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                        <View className="flex-row items-center flex-1 mr-2">
+                            <View className="bg-white dark:bg-white/10 p-2 rounded-lg mr-3">
+                                {getIcon(item.source_type)}
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-gray-900 dark:text-starlight font-medium" numberOfLines={1}>{item.title}</Text>
+                                <Text className="text-gray-400 text-xs">{item.source_type}</Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={() => handleDeleteSource(item.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
+                            <Trash2 size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))
             )}
-          />
+          </View>
         )}
-      </View>
+      </ScrollView>
 
-      <View className="p-4 border-t border-gray-100">
-        <TouchableOpacity
-          className="bg-red-50 p-4 rounded-lg items-center"
-          onPress={handleDeleteStudy}
-        >
-          <Text className="text-red-500 font-bold">Delete Study Space</Text>
-        </TouchableOpacity>
-      </View>
+      <AttachmentSheet
+        visible={isSheetVisible}
+        onClose={() => setSheetVisible(false)}
+        onSelect={(file, type) => handleAddSource(file, type)}
+      />
+
+      {/* Link Bot Modal */}
+      <Modal
+          visible={isBotModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsBotModalVisible(false)}
+      >
+          <View className="flex-1 bg-black/60 justify-end">
+              <View className="bg-white dark:bg-space-dark rounded-t-3xl h-[70%]">
+                  <View className="p-4 border-b border-gray-100 dark:border-white/10 flex-row justify-between items-center">
+                      <Text className="text-xl font-bold text-gray-900 dark:text-starlight">Vincular Tutor</Text>
+                      <TouchableOpacity onPress={() => setIsBotModalVisible(false)} className="p-2">
+                          <X size={24} color="#94a3b8" />
+                      </TouchableOpacity>
+                  </View>
+
+                  {isLinking ? (
+                      <View className="flex-1 justify-center items-center">
+                          <ActivityIndicator size="large" color="#818cf8" />
+                          <Text className="mt-4 text-gray-500">Vinculando...</Text>
+                      </View>
+                  ) : (
+                      <FlatList
+                          data={availableBots}
+                          keyExtractor={(item) => item.id.toString()}
+                          contentContainerStyle={{ padding: 16 }}
+                          ListEmptyComponent={
+                              <Text className="text-center text-gray-500 mt-10">
+                                  Nenhum tutor disponível para vincular.
+                              </Text>
+                          }
+                          renderItem={({ item }) => (
+                              <TouchableOpacity
+                                  onPress={() => handleLinkBot(item.id)}
+                                  className="flex-row items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl mb-3 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10"
+                              >
+                                  {item.avatar_url ? (
+                                      <Image source={{ uri: item.avatar_url }} className="w-12 h-12 rounded-full mr-4" />
+                                  ) : (
+                                      <View className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900 items-center justify-center mr-4">
+                                          <BotIcon size={24} color="#818cf8" />
+                                      </View>
+                                  )}
+                                  <View>
+                                      <Text className="text-lg font-bold text-gray-900 dark:text-starlight">{item.name}</Text>
+                                      <Text className="text-gray-500 dark:text-gray-400 text-sm" numberOfLines={1}>{item.description || "Sem descrição"}</Text>
+                                  </View>
+                              </TouchableOpacity>
+                          )}
+                      />
+                  )}
+              </View>
+          </View>
+      </Modal>
     </SafeAreaView>
   );
 }
