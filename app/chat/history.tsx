@@ -53,7 +53,7 @@ export default function ChatHistoryScreen() {
                             // Navigate back to chat screen with the restored ID
                             // Use replace to avoid stacking multiple chat screens
                             router.replace({
-                                pathname: `/chat/${chatId}`,
+                                pathname: `/chat/${chatId}` as any,
                                 params: { botId }
                             });
                         } catch (error) {
@@ -91,7 +91,7 @@ export default function ChatHistoryScreen() {
                         </View>
                     }
                     renderItem={({ item }) => {
-                        const dateStr = formatDistanceToNowStrict(new Date(item.last_message_at || item.created_at || Date.now()), { addSuffix: true, locale: ptBR });
+                        const dateStr = formatDistanceToNowStrict(new Date(item.last_message_at || Date.now()), { addSuffix: true, locale: ptBR });
 
                         return (
                             <Pressable

@@ -110,7 +110,7 @@ export default function ManageSourcesScreen() {
                     renderItem={({ item }) => (
                         <View className="flex-row items-center bg-space-light p-4 rounded-xl mb-3 border border-white/5">
                             <View className="mr-4 bg-white/5 p-2 rounded-lg">
-                                {getIcon(item.source_type)}
+                                {getIcon(item.source_type || '')}
                             </View>
                             <View className="flex-1">
                                 <Text className="text-starlight font-bold" numberOfLines={1}>{item.title}</Text>
