@@ -17,8 +17,6 @@ interface ChatInputProps {
   onChangeText: (text: string) => void;
   onSend: () => void;
   onPlusPress: () => void;
-  onGalleryPress: () => void;
-  onCameraPress: () => void;
   onAudioRecorded: (uri: string, duration: number) => void;
   disabled?: boolean;
   allowAttachments?: boolean;
@@ -33,8 +31,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onChangeText,
   onSend,
   onPlusPress,
-  onGalleryPress,
-  onCameraPress,
   onAudioRecorded,
   disabled,
   allowAttachments = true,
@@ -127,7 +123,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           color = "#f87171";
           label = "YouTube Link";
       } else if (att.type === 'image') {
-          // If image, we could show thumbnail, but let's stick to icon + name for now to match style
           IconComp = ImageIcon;
           color = "#c084fc";
       } else if (att.mimeType?.includes('zip')) {
@@ -160,7 +155,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <View className={cardContainerClass}>
                 {isRecording ? (
                     // Recording UI
-                    <View className="flex-row items-center justify-between h-[120px]">
+                    <View className="flex-row items-center justify-between h-[60px]">
                         <Pressable
                             onPress={cancelRecording}
                             className="p-3 bg-red-500/10 rounded-full"
@@ -169,14 +164,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             <Trash2 color="#ef4444" size={24} />
                         </Pressable>
 
-                        <View className="flex-1 items-center justify-center space-y-2">
+                        <View className="flex-1 items-center justify-center space-y-1">
                             <Animated.View
-                                style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', marginBottom: 4 }, animatedDotStyle]}
+                                style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', marginBottom: 2 }, animatedDotStyle]}
                             />
-                            <Text className="text-starlight text-xl font-mono font-bold">
+                            <Text className="text-starlight text-lg font-mono font-bold">
                                 {formattedDuration}
                             </Text>
-                            <Text className="text-gray-400 text-xs">Gravando áudio...</Text>
                         </View>
 
                         <Pressable
@@ -189,7 +183,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     </View>
                 ) : (
                     // Standard Text Input UI
-                    <>
+                    <View>
                         {/* Attachments Preview Row */}
                         {attachments.length > 0 && (
                             <Animated.View entering={FadeIn} className="flex-row flex-wrap mb-2">
@@ -197,7 +191,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             </Animated.View>
                         )}
 
-                        <View className="flex-row">
+                        <View className="flex-row items-center">
+                            {/* Left: Attachment Button */}
+                            {allowAttachments && (
+                                <Pressable
+                                    onPress={onPlusPress}
+                                    disabled={disabled}
+                                    className="p-2 mr-2 bg-white/5 rounded-full"
+                                    accessibilityLabel="Abrir menu de anexos"
+                                >
+                                    <Paperclip color={iconColor} size={22} />
+                                </Pressable>
+                            )}
+
+                            {/* Center: Text Input */}
                             <TextInput
                                 placeholder="Peça ao Stelarys..."
                                 placeholderTextColor="#64748b"
@@ -206,55 +213,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 multiline
                                 editable={!disabled}
                                 onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
-                                className="text-starlight text-lg leading-6 min-h-[40px] max-h-[120px] mb-3 flex-1"
-                                style={{ textAlignVertical: 'top' }}
+                                className="text-starlight text-base leading-5 min-h-[40px] max-h-[120px] flex-1 mr-2 pt-2"
+                                style={{ textAlignVertical: 'center' }}
                             />
-                            {/* Expand Button (Absolute top-right relative to text area) */}
+
+                            {/* Expand Button (Small) */}
                             {showExpandButton && (
                                 <Pressable
                                     onPress={() => setIsExpanded(true)}
-                                    className="p-2 ml-2 self-start"
+                                    className="p-2 mr-1"
                                     accessibilityLabel="Expandir editor"
                                 >
-                                    <Maximize2 color="#64748b" size={18} />
+                                    <Maximize2 color="#64748b" size={16} />
                                 </Pressable>
                             )}
-                        </View>
-
-                        {/* Bottom: Icons Row */}
-                        <View className="flex-row justify-between items-center">
-                            {/* Left: Attachment Actions */}
-                            <View className="flex-row items-center gap-5">
-                                {/* Only show Paperclip if allowAttachments is true */}
-                                {allowAttachments && (
-                                    <Pressable
-                                        onPress={onPlusPress}
-                                        disabled={disabled}
-                                        className="p-2 -ml-2"
-                                        accessibilityLabel="Abrir menu de anexos"
-                                    >
-                                        <Paperclip color={iconColor} size={24} />
-                                    </Pressable>
-                                )}
-
-                                <Pressable
-                                    onPress={onGalleryPress}
-                                    disabled={disabled}
-                                    className="p-2"
-                                    accessibilityLabel="Escolher da galeria"
-                                >
-                                    <ImageIcon color={iconColor} size={24} />
-                                </Pressable>
-
-                                <Pressable
-                                    onPress={onCameraPress}
-                                    disabled={disabled}
-                                    className="p-2"
-                                    accessibilityLabel="Tirar foto"
-                                >
-                                    <Camera color={iconColor} size={24} />
-                                </Pressable>
-                            </View>
 
                             {/* Right: Mic or Send */}
                             <Pressable
@@ -272,7 +244,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 )}
                             </Pressable>
                         </View>
-                    </>
+                    </View>
                 )}
             </View>
         </View>
@@ -309,12 +281,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     />
 
                     {/* Footer: Actions */}
-                    <View className="h-[80px] flex-row items-center justify-between border-t border-white/10 mt-4">
-                         {/* Attachment buttons hidden in Expanded Mode per UX requirement */}
-                         <View className="flex-row gap-4">
-                            {/* Empty View to maintain flex-between structure if needed, or just nothing */}
-                         </View>
-
+                    <View className="h-[80px] flex-row items-center justify-end border-t border-white/10 mt-4">
                          <Pressable
                             onPress={handleSendPress}
                             className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-white/10'}`}

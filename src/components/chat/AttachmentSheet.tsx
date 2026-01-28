@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, LayoutAnimation, Platform, UIManager, Modal, TextInput } from 'react-native';
-import { FileText, Music, Globe, Youtube, ChevronUp, ChevronDown, X, Link } from 'lucide-react-native';
+import { FileText, Music, Globe, Youtube, ChevronUp, ChevronDown, X, Link, Image as ImageIcon, Camera } from 'lucide-react-native';
 import Animated, { SlideInDown, SlideOutDown, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useAttachmentPicker } from '../../hooks/useAttachmentPicker';
 
@@ -11,9 +11,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface AttachmentSheetProps {
   visible: boolean;
   onClose: () => void;
-  // Make these optional to support old signature if needed, or update call sites
   onSelectOption?: (option: string, data?: any) => void;
-  onSelect?: (fileOrUrl: any, type: 'file' | 'url' | 'youtube') => void;
+  onSelect?: (fileOrUrl: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => void;
 }
 
 const MODELS = [
@@ -32,7 +31,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
   const [url, setUrl] = useState('');
 
   // Use hook for file picking
-  const { pickDocument } = useAttachmentPicker();
+  const { pickDocument, pickImage, takePhoto } = useAttachmentPicker();
 
   const handleUrlSelect = (type: 'youtube' | 'website') => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -46,7 +45,6 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
           if (onSelect) {
               onSelect({ uri: url.trim(), name: url.trim() }, type);
           } else if (onSelectOption) {
-              // Fallback
                onSelectOption(inputType, { url: url.trim(), type: inputType });
           }
           setUrl('');
@@ -55,22 +53,38 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
   };
 
   const handleFileSelect = async (type: 'file' | 'audio') => {
-      // Pick document (supports all types basically)
       const results = await pickDocument();
       if (results && results.length > 0) {
-          const file = results[0]; // Take first for now
+          const file = results[0];
           if (onSelect) {
               onSelect(file, 'file');
           } else if (onSelectOption) {
-               // Backward compat logic would be messy here as `onSelectOption` was doing the picking logic inside the parent usually?
-               // Actually in ChatScreen `onSelectOption` was calling picker itself.
-               // BUT here we want to centralize picking if `onSelect` is present.
-               // Let's assume if onSelect is NOT present, we delegate back to onSelectOption string trigger.
                onSelectOption(type === 'file' ? 'files' : 'audio');
           }
       } else if (!results && onSelectOption) {
-           // If user cancelled picker or error, and using old flow:
            onSelectOption(type === 'file' ? 'files' : 'audio');
+      }
+  };
+
+  const handleImageSelect = async () => {
+      const results = await pickImage();
+      if (results && results.length > 0) {
+          const file = results[0]; // Take first
+          // Treat as 'file' for generic upload, or 'image' if specific handling needed
+          // The backend treats images as files basically, but frontend might want to know it's image source
+          if (onSelect) {
+              onSelect(file, 'image');
+          }
+      }
+  };
+
+  const handleCameraSelect = async () => {
+      const results = await takePhoto();
+      if (results && results.length > 0) {
+          const file = results[0];
+          if (onSelect) {
+              onSelect(file, 'camera'); // Pass as camera type to distinguish if needed, or just file
+          }
       }
   };
 
@@ -160,10 +174,16 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                             onPress={() => handleFileSelect('file')}
                         />
                         <MediaButton
-                            icon={Music}
-                            label="Áudio"
-                            color="#f472b6"
-                            onPress={() => handleFileSelect('audio')}
+                            icon={ImageIcon}
+                            label="Galeria"
+                            color="#c084fc"
+                            onPress={handleImageSelect}
+                        />
+                        <MediaButton
+                            icon={Camera}
+                            label="Câmera"
+                            color="#fbbf24"
+                            onPress={handleCameraSelect}
                         />
                         <MediaButton
                             icon={Globe}
@@ -176,6 +196,18 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                             label="YouTube"
                             color="#f87171"
                             onPress={() => handleUrlSelect('youtube')}
+                        />
+                        {/* Audio is less used or can be file, removing or moving to overflow if needed.
+                            Wait, user said "add options", not replace.
+                            Layout is grid. 6 items fit perfectly in 2 rows of 3, or 3 rows of 2.
+                            Current styling is w-[48%] -> 2 columns.
+                            So 3 rows.
+                        */}
+                        <MediaButton
+                            icon={Music}
+                            label="Áudio"
+                            color="#f472b6"
+                            onPress={() => handleFileSelect('audio')}
                         />
                     </View>
                 </View>
