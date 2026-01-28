@@ -174,14 +174,15 @@ export default function ChatScreen() {
 
     const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
         setIsAttachmentSheetVisible(false);
+        // Show immediate feedback
+        Alert.alert("Adicionando Fonte", "A fonte está sendo processada em segundo plano. Você pode continuar conversando.");
         try {
             const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
-            const source = await chatService.addChatSource(chatId, file, backendType);
-
-            Alert.alert("Sucesso", `Fonte adicionada: ${source.title}`);
+            await chatService.addChatSource(chatId, file, backendType);
+            // On success (silent or toast if we had one)
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao adicionar fonte.");
+            Alert.alert("Erro", "Falha ao processar fonte adicionada.");
         }
     };
 

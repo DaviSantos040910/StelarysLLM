@@ -84,4 +84,5 @@ export interface ChatSource {
     created_at?: string;
     url?: string;
     selected?: boolean;
+    status?: 'pending' | 'processed' | 'error'; // Added status
 }

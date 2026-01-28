@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, Youtube } from 'lucide-react-native';
+import { ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, Youtube, AlertTriangle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,7 +14,6 @@ export default function ManageSourcesScreen() {
     const [sources, setSources] = useState<ChatSource[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSheetVisible, setSheetVisible] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         loadSources();
@@ -24,7 +23,7 @@ export default function ManageSourcesScreen() {
         try {
             setLoading(true);
             const data = await chatService.getChatSources(chatId);
-            setSources(data);
+            setSources(data.map(s => ({ ...s, status: 'processed' })));
         } catch (error) {
             console.error('Failed to load sources:', error);
             Alert.alert('Erro', 'Não foi possível carregar as fontes.');
@@ -57,20 +56,38 @@ export default function ManageSourcesScreen() {
 
     const handleAddSource = async (fileOrUrl: any, type: 'file' | 'url' | 'youtube') => {
         setSheetVisible(false);
-        setIsUploading(true);
+        Alert.alert("Adicionando Fonte", "Sua fonte está sendo processada.");
+
+        // Create temporary source for optimistic UI
+        const tempId = Date.now();
+        const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+        const tempTitle = fileOrUrl.name || fileOrUrl.uri || "Nova Fonte";
+
+        const tempSource: ChatSource = {
+            id: tempId,
+            title: tempTitle,
+            source_type: backendType,
+            status: 'pending',
+            created_at: new Date().toISOString()
+        };
+
+        setSources(prev => [tempSource, ...prev]);
 
         try {
-            // Map frontend types to backend enum
-            const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
-
             const newSource = await chatService.addChatSource(chatId, fileOrUrl, backendType);
-            setSources(prev => [newSource, ...prev]);
-            Alert.alert("Sucesso", "Fonte adicionada ao contexto do chat.");
+
+            // Replace temp source with real one
+            setSources(prev => prev.map(s =>
+                s.id === tempId ? { ...newSource, status: 'processed' } : s
+            ));
+
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao adicionar fonte.");
-        } finally {
-            setIsUploading(false);
+            // Mark as error
+            setSources(prev => prev.map(s =>
+                s.id === tempId ? { ...s, status: 'error' } : s
+            ));
+            Alert.alert("Erro", "Falha ao processar a fonte.");
         }
     };
 
@@ -114,23 +131,33 @@ export default function ManageSourcesScreen() {
                             </View>
                             <View className="flex-1">
                                 <Text className="text-starlight font-bold" numberOfLines={1}>{item.title}</Text>
-                                <Text className="text-gray-500 text-xs mt-1">{item.source_type} • Adicionado recentemente</Text>
+                                <View className="flex-row items-center mt-1">
+                                    <Text className="text-gray-500 text-xs mr-2">{item.source_type}</Text>
+
+                                    {/* Status Indicator */}
+                                    {item.status === 'pending' && (
+                                        <View className="flex-row items-center">
+                                            <ActivityIndicator size="small" color="#818cf8" style={{ transform: [{ scale: 0.7 }] }} />
+                                            <Text className="text-indigo-400 text-xs ml-1">Processando...</Text>
+                                        </View>
+                                    )}
+                                    {item.status === 'error' && (
+                                        <View className="flex-row items-center">
+                                            <AlertTriangle size={12} color="#ef4444" />
+                                            <Text className="text-red-400 text-xs ml-1">Erro</Text>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
-                            <Pressable onPress={() => handleDelete(item.id)} className="p-2 bg-red-500/10 rounded-lg">
-                                <Trash2 size={20} color="#f87171" />
-                            </Pressable>
+
+                            {item.status !== 'pending' && (
+                                <Pressable onPress={() => handleDelete(item.id)} className="p-2 bg-red-500/10 rounded-lg">
+                                    <Trash2 size={20} color="#f87171" />
+                                </Pressable>
+                            )}
                         </View>
                     )}
                 />
-            )}
-
-            {isUploading && (
-                <View className="absolute inset-0 bg-black/60 justify-center items-center z-50">
-                    <View className="bg-space-light p-6 rounded-2xl items-center border border-white/10">
-                        <ActivityIndicator color="#818cf8" size="large" />
-                        <Text className="text-starlight font-bold mt-4">Adicionando ao contexto...</Text>
-                    </View>
-                </View>
             )}
 
             <View className="absolute bottom-6 right-6">
