@@ -1,5 +1,5 @@
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Check, Globe, Image as ImageIcon, Palette, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
+import { ArrowLeft, Camera, Globe, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,18 +9,6 @@ import { botService } from '../../src/services/botService';
 import { exploreService, Category } from '../../src/services/exploreService';
 import { libraryService } from '../../src/services/libraryService';
 import { StudySpace } from '../../src/types/studio';
-
-const THEME_COLORS = [
-    '#818cf8', // Indigo (Default)
-    '#ef4444', // Red
-    '#f97316', // Orange
-    '#eab308', // Yellow
-    '#22c55e', // Green
-    '#06b6d4', // Cyan
-    '#3b82f6', // Blue
-    '#a855f7', // Purple
-    '#ec4899', // Pink
-];
 
 export default function CreateBotScreen() {
     const router = useRouter();
@@ -36,11 +24,9 @@ export default function CreateBotScreen() {
     const [prompt, setPrompt] = useState('');
     const [allowWebSearch, setAllowWebSearch] = useState(false);
     const [strictContext, setStrictContext] = useState(false);
-    const [themeColor, setThemeColor] = useState(THEME_COLORS[0]);
 
     // Selectors State
     const [avatar, setAvatar] = useState<any>(null);
-    const [bgImage, setBgImage] = useState<any>(null);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
 
@@ -80,10 +66,8 @@ export default function CreateBotScreen() {
             setPrompt(bot.prompt || '');
             setAllowWebSearch(bot.allow_web_search);
             setStrictContext(bot.strict_context || false);
-            if (bot.theme_color) setThemeColor(bot.theme_color);
 
             if (bot.avatar_url) setAvatar({ uri: bot.avatar_url });
-            if (bot.background_image) setBgImage({ uri: bot.background_image });
 
             if (bot.categories) {
                 setSelectedCategories(bot.categories.map((c: any) => c.id));
@@ -100,11 +84,6 @@ export default function CreateBotScreen() {
     const handlePickAvatar = async () => {
         const result = await pickImage();
         if (result && result[0]) setAvatar(result[0]);
-    };
-
-    const handlePickBg = async () => {
-        const result = await pickImage();
-        if (result && result[0]) setBgImage({ uri: result[0].uri, name: result[0].name, mimeType: result[0].type });
     };
 
     const toggleCategory = (id: string) => {
@@ -132,12 +111,10 @@ export default function CreateBotScreen() {
                     name,
                     description,
                     prompt,
-                    theme_color: themeColor,
                     allow_web_search: allowWebSearch,
                     strict_context: strictContext,
                     publicity: 'Public',
                     avatar: avatar?.uri?.startsWith('http') ? undefined : avatar, // Only send if changed (local uri)
-                    background_image: bgImage?.uri?.startsWith('http') ? undefined : bgImage,
                     category_ids: selectedCategories,
                     study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
                 });
@@ -148,12 +125,10 @@ export default function CreateBotScreen() {
                     name,
                     description,
                     prompt,
-                    theme_color: themeColor,
                     allow_web_search: allowWebSearch,
                     strict_context: strictContext,
                     publicity: 'Public',
                     avatar,
-                    background_image: bgImage,
                     category_ids: selectedCategories,
                     study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
                 });
@@ -204,30 +179,12 @@ export default function CreateBotScreen() {
             </View>
 
             <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-                {/* 1. Identity Section (Avatar & Cover) */}
-                <View className="items-center mb-6">
-                    {/* Cover Image Area */}
-                    <Pressable
-                        onPress={handlePickBg}
-                        className="w-full h-48 bg-white/5 items-center justify-center relative overflow-hidden"
-                    >
-                        {bgImage ? (
-                            <Image source={{ uri: bgImage.uri }} className="w-full h-full opacity-60" resizeMode="cover" />
-                        ) : (
-                            <View className="items-center justify-center w-full h-full" style={{ backgroundColor: themeColor + '20' }}>
-                                <ImageIcon color={themeColor} size={32} opacity={0.5} />
-                                <Text className="text-gray-400 text-xs mt-2">Toque para adicionar capa</Text>
-                            </View>
-                        )}
-                        <View className="absolute bottom-2 right-2 bg-black/60 p-2 rounded-full">
-                            <Camera size={16} color="#fff" />
-                        </View>
-                    </Pressable>
-
-                    {/* Avatar - Overlapping Cover (Negative Margin Layout for better touch handling) */}
+                {/* 1. Identity Section (Avatar Only) */}
+                <View className="items-center mb-6 mt-6">
+                    {/* Avatar */}
                     <Pressable
                         onPress={handlePickAvatar}
-                        className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark -mt-14 items-center justify-center overflow-hidden z-10"
+                        className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark items-center justify-center overflow-hidden z-10"
                     >
                         {({ pressed }) => (
                             <>
@@ -248,6 +205,7 @@ export default function CreateBotScreen() {
                             </>
                         )}
                     </Pressable>
+                    <Text className="text-gray-400 text-xs mt-2">Toque para alterar a imagem</Text>
                 </View>
 
                 {/* Form Content */}
@@ -332,28 +290,6 @@ export default function CreateBotScreen() {
                         </View>
                     </View>
 
-                    {/* Appearance */}
-                    <View>
-                        <View className="flex-row items-center mb-4">
-                            <Palette size={16} color="#f472b6" className="mr-2" />
-                            <Text className="text-starlight font-bold text-lg">Aparência</Text>
-                        </View>
-
-                        <Text className="text-gray-400 font-bold mb-4">Cor do Tema</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                            {THEME_COLORS.map(color => (
-                                <Pressable
-                                    key={color}
-                                    onPress={() => setThemeColor(color)}
-                                    className={`w-12 h-12 rounded-full mr-4 items-center justify-center border-2 ${themeColor === color ? 'border-white' : 'border-transparent'}`}
-                                    style={{ backgroundColor: color }}
-                                >
-                                    {themeColor === color && <Check size={20} color="#fff" />}
-                                </Pressable>
-                            ))}
-                        </ScrollView>
-                    </View>
-
                     {/* Organization */}
                     <View>
                         <View className="flex-row items-center mb-4">
@@ -395,7 +331,7 @@ export default function CreateBotScreen() {
                                         onPress={() => setSelectedSpaceId(space.id)}
                                         className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${isSelected ? 'bg-white/10 border-white' : 'bg-white/5 border-white/10'}`}
                                     >
-                                        <FolderOpen size={24} color={isSelected ? themeColor : "#94a3b8"} />
+                                        <FolderOpen size={24} color={isSelected ? '#818cf8' : "#94a3b8"} />
                                         <Text className={`font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`} numberOfLines={2}>
                                             {space.title}
                                         </Text>
