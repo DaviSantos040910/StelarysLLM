@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { libraryService } from '../../src/services/libraryService';
 import { botService } from '../../src/services/botService';
 import { StudySpace } from '../../src/types/studio';
-import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X } from 'lucide-react-native';
+import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X, AlertTriangle } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 
@@ -35,7 +35,8 @@ export default function StudyDetailsScreen() {
       setIsLoading(true);
       const data = await libraryService.getSpace(spaceId);
       setSpace(data);
-      setFiles(data.sources || []);
+      // Map existing sources to processed status
+      setFiles(data.sources?.map((s: any) => ({ ...s, status: 'processed' })) || []);
       setBots(data.bots || []);
     } catch (e) {
       console.log('Error loading space', e);
@@ -49,14 +50,34 @@ export default function StudyDetailsScreen() {
       setSheetVisible(false);
       Alert.alert("Adicionando Fonte", "A fonte está sendo processada.");
 
+      // Create temporary source for optimistic UI
+      const tempId = Date.now();
+      const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+      const tempTitle = fileOrUrl.name || fileOrUrl.uri || "Nova Fonte";
+
+      const tempSource = {
+          id: tempId,
+          title: tempTitle,
+          source_type: backendType,
+          status: 'pending',
+          created_at: new Date().toISOString()
+      };
+
+      setFiles(prev => [tempSource, ...prev]);
+
       try {
-          const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
           const newSource = await libraryService.addSpaceSource(spaceId, fileOrUrl, backendType);
 
-          setFiles(prev => [newSource, ...prev]);
+          // Replace temp source with real one
+          setFiles(prev => prev.map(s =>
+              s.id === tempId ? { ...newSource, status: 'processed' } : s
+          ));
           Alert.alert("Sucesso", "Fonte adicionada ao espaço de estudo.");
       } catch (error) {
           console.error(error);
+          setFiles(prev => prev.map(s =>
+              s.id === tempId ? { ...s, status: 'error' } : s
+          ));
           Alert.alert("Erro", "Falha ao adicionar fonte.");
       }
   };
@@ -211,12 +232,32 @@ export default function StudyDetailsScreen() {
                             </View>
                             <View className="flex-1">
                                 <Text className="text-gray-900 dark:text-starlight font-medium" numberOfLines={1}>{item.title}</Text>
-                                <Text className="text-gray-400 text-xs">{item.source_type}</Text>
+
+                                <View className="flex-row items-center mt-1">
+                                    <Text className="text-gray-400 text-xs mr-2">{item.source_type}</Text>
+
+                                    {/* Status Indicator */}
+                                    {item.status === 'pending' && (
+                                        <View className="flex-row items-center">
+                                            <ActivityIndicator size="small" color="#818cf8" style={{ transform: [{ scale: 0.7 }] }} />
+                                            <Text className="text-indigo-400 text-xs ml-1">Processando...</Text>
+                                        </View>
+                                    )}
+                                    {item.status === 'error' && (
+                                        <View className="flex-row items-center">
+                                            <AlertTriangle size={12} color="#ef4444" />
+                                            <Text className="text-red-400 text-xs ml-1">Erro</Text>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
                         </View>
-                        <TouchableOpacity onPress={() => handleDeleteSource(item.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
-                            <Trash2 size={20} color="#EF4444" />
-                        </TouchableOpacity>
+
+                        {item.status !== 'pending' && (
+                            <TouchableOpacity onPress={() => handleDeleteSource(item.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
+                                <Trash2 size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ))
             )}
