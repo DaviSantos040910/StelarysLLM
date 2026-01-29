@@ -82,6 +82,7 @@ export interface StudySpace {
 export interface CreateSpaceParams {
     title: string;
     description?: string;
+    coverImage?: any; // Helper for frontend form
     source_ids?: number[];
     bot_ids?: number[];
 }

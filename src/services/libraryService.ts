@@ -8,8 +8,33 @@ export const libraryService = {
     },
 
     async createSpace(data: CreateSpaceParams): Promise<StudySpace> {
-        const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
-        return response.data;
+        if (data.coverImage) {
+            const formData = new FormData();
+            formData.append('title', data.title);
+            if (data.description) formData.append('description', data.description);
+
+            // Handle image
+            formData.append('cover_image', {
+                uri: data.coverImage.uri,
+                name: data.coverImage.fileName || 'cover.jpg',
+                type: data.coverImage.mimeType || 'image/jpeg',
+            } as any);
+
+            // Note: source_ids and bot_ids are not typically passed in the initial create modal,
+            // but if they were, they'd need to be appended individually for FormData.
+            if (data.source_ids) {
+                data.source_ids.forEach(id => formData.append('source_ids', id.toString()));
+            }
+            if (data.bot_ids) {
+                data.bot_ids.forEach(id => formData.append('bot_ids', id.toString()));
+            }
+
+            const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', formData);
+            return response.data;
+        } else {
+            const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
+            return response.data;
+        }
     },
 
     async getSpace(id: number): Promise<StudySpace> {

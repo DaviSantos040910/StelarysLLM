@@ -52,6 +52,7 @@ export default function StudyDetailsScreen() {
 
       // Create temporary source for optimistic UI
       const tempId = Date.now();
+      // Map 'image' and 'camera' to 'FILE' for backend
       const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
       const tempTitle = fileOrUrl.name || fileOrUrl.uri || "Nova Fonte";
 
@@ -172,6 +173,16 @@ export default function StudyDetailsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+
+        {/* Cover Image */}
+        {space?.cover_image && (
+            <Image
+                source={{ uri: space.cover_image }}
+                className="w-full h-48 rounded-xl mb-6 bg-gray-100 dark:bg-white/5"
+                resizeMode="cover"
+            />
+        )}
+
         <Text className="text-2xl font-bold mb-2 text-gray-900 dark:text-starlight">{space?.title}</Text>
         <Text className="text-gray-500 dark:text-gray-400 mb-8">{space?.description || "Sem descrição"}</Text>
 

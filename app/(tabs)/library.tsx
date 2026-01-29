@@ -45,7 +45,7 @@ export default function LibraryScreen() {
         s.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleCreateSpace = async (data: { title: string; description: string }) => {
+    const handleCreateSpace = async (data: { title: string; description: string; coverImage?: any }) => {
         try {
             const newSpace = await libraryService.createSpace(data);
             setSpaces([newSpace, ...spaces]);

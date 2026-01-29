@@ -1,25 +1,41 @@
-import { X } from 'lucide-react-native';
+import { X, Image as ImageIcon, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, Text, TextInput, View, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Props {
     visible: boolean;
     onClose: () => void;
-    onSubmit: (data: { title: string; description: string }) => Promise<void>;
+    onSubmit: (data: { title: string; description: string; coverImage?: any }) => Promise<void>;
 }
 
 export const CreateSpaceModal: React.FC<Props> = ({ visible, onClose, onSubmit }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setImage(result.assets[0]);
+        }
+    };
 
     const handleSubmit = async () => {
         if (!title.trim()) return;
         setLoading(true);
         try {
-            await onSubmit({ title, description });
+            await onSubmit({ title, description, coverImage: image });
             setTitle('');
             setDescription('');
+            setImage(null);
         } finally {
             setLoading(false);
         }
@@ -36,6 +52,29 @@ export const CreateSpaceModal: React.FC<Props> = ({ visible, onClose, onSubmit }
                         </Pressable>
                     </View>
 
+                    {/* Image Picker */}
+                    <Pressable
+                        onPress={pickImage}
+                        className="w-full h-32 bg-white/5 rounded-xl border border-white/10 mb-6 items-center justify-center overflow-hidden"
+                    >
+                        {image ? (
+                            <View className="w-full h-full relative">
+                                <Image source={{ uri: image.uri }} className="w-full h-full" resizeMode="cover" />
+                                <Pressable
+                                    onPress={(e) => { e.stopPropagation(); setImage(null); }}
+                                    className="absolute top-2 right-2 bg-black/50 p-2 rounded-full"
+                                >
+                                    <Trash2 size={16} color="#ef4444" />
+                                </Pressable>
+                            </View>
+                        ) : (
+                            <View className="items-center">
+                                <ImageIcon size={32} color="#64748b" />
+                                <Text className="text-gray-500 mt-2">Adicionar Capa</Text>
+                            </View>
+                        )}
+                    </Pressable>
+
                     <Text className="text-gray-400 font-medium mb-2">Nome do Espaço</Text>
                     <TextInput
                         className="bg-white/5 text-white p-4 rounded-xl border border-white/10 mb-4"
@@ -43,7 +82,6 @@ export const CreateSpaceModal: React.FC<Props> = ({ visible, onClose, onSubmit }
                         placeholderTextColor="#64748b"
                         value={title}
                         onChangeText={setTitle}
-                        autoFocus
                     />
 
                     <Text className="text-gray-400 font-medium mb-2">Descrição (Opcional)</Text>
