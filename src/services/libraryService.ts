@@ -34,11 +34,9 @@ export const libraryService = {
             if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
         }
 
-        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        // IMPORTANT: Do NOT set Content-Type manually for FormData.
+        // The networking library (Axios/fetch) will set it with the correct boundary.
+        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData);
         return response.data;
     },
 

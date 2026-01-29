@@ -37,11 +37,8 @@ export const chatService = {
     }
     formData.append('reply_with_audio', 'false');
 
-    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Remove Manual Content-Type
+    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData);
     return response.data;
   },
 
@@ -54,11 +51,8 @@ export const chatService = {
     } as any);
     formData.append('content', '');
 
-    const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Remove Manual Content-Type
+    const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData);
     return response.data;
   },
 
@@ -98,11 +92,8 @@ export const chatService = {
           if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
       }
 
-      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData, {
-          headers: {
-              'Content-Type': 'multipart/form-data',
-          },
-      });
+      // Remove Manual Content-Type
+      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData);
       return response.data;
   },
 
@@ -112,30 +103,7 @@ export const chatService = {
 
   // === TTS ===
   getMessageTTS: async (chatId: string | number, messageId: string): Promise<string> => {
-      // Backend returns audio file directly/stream, so we construct the URL.
-      // But if we need auth headers, we might need a different approach or signed URL.
-      // Assuming JWT works with simple GET if we pass it, or we fetch blob.
-      // AudioPlayer usually takes a URI.
-      // If the backend endpoint is protected, we need to pass token.
-      // `useAudioPlayerStore` uses `Audio.Sound.createAsync({ uri })`.
-      // Expo Audio supports headers: `Audio.Sound.createAsync({ uri, headers: { Authorization: ... } })`.
-      // BUT `chatService` here is just helper.
-
-      // Let's return the full URL and handle headers in the Store if possible,
-      // or return a signed/public URL.
-      // Since it is protected, we might need to change `useAudioPlayerStore` to accept headers.
-      // OR, we can fetch the blob here and return a local URI.
-      // Fetching blob is safer for auth.
-
-      const response = await client.get(`/api/v1/chats/${chatId}/messages/${messageId}/tts/`, {
-          responseType: 'blob'
-      });
-
-      // Convert blob to local URI (platform specific)
-      // This is tricky in RN without FileReader/Blob fully working same as web.
-      // Better approach: Configure AudioPlayer to use headers.
-
-      // For now, let's just return the URL and we will patch AudioPlayerStore to use the client token.
+      // Return full URL for AudioPlayerStore to consume with headers
       return `${BASE_URL}/api/v1/chats/${chatId}/messages/${messageId}/tts/`;
   },
 

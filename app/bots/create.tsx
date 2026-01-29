@@ -1,12 +1,12 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Camera, FolderOpen, Globe, Layers, Sparkles } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Camera, Globe, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { botService } from '../../src/services/botService';
-import { Category, exploreService } from '../../src/services/exploreService';
+import { exploreService, Category } from '../../src/services/exploreService';
 import { libraryService } from '../../src/services/libraryService';
 import { StudySpace } from '../../src/types/studio';
 
@@ -136,7 +136,7 @@ export default function CreateBotScreen() {
                 const bootstrap = await botService.getChatBootstrap(newBot.id);
 
                 router.replace({
-                    pathname: `/chat/${bootstrap.conversationId}` as any,
+                    pathname: `/chat/${bootstrap.conversationId}`,
                     params: {
                         botId: newBot.id,
                         botName: newBot.name,

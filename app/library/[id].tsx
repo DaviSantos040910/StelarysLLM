@@ -1,232 +1,330 @@
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, Image, Modal, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, BookOpen, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { BotSelector } from '../../src/components/library/BotSelector';
-import { SourceSelector } from '../../src/components/studio/SourceSelector'; // Reused
 import { libraryService } from '../../src/services/libraryService';
+import { botService } from '../../src/services/botService';
 import { StudySpace } from '../../src/types/studio';
+import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X, AlertTriangle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 
-export default function SpaceDetailScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
-    const router = useRouter();
+export default function StudyDetailsScreen() {
+  const { id } = useLocalSearchParams();
+  const spaceId = parseInt(id as string, 10);
+  const router = useRouter();
 
-    const [space, setSpace] = useState<StudySpace | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'SOURCES' | 'BOTS'>('SOURCES');
+  const [space, setSpace] = useState<StudySpace | null>(null);
+  const [files, setFiles] = useState<any[]>([]);
+  const [bots, setBots] = useState<any[]>([]);
 
-    // Modals
-    const [isSourceSelectorVisible, setSourceSelectorVisible] = useState(false);
-    const [isBotSelectorVisible, setBotSelectorVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSheetVisible, setSheetVisible] = useState(false);
 
-    const loadSpace = async () => {
-        try {
-            if (!id) return;
-            const data = await libraryService.getSpace(parseInt(id, 10));
-            setSpace(data);
-        } catch (error) {
-            console.error('Failed to load space details:', error);
-            Alert.alert('Erro', 'Não foi possível carregar o espaço.');
-            router.back();
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Bot Linking State
+  const [isBotModalVisible, setIsBotModalVisible] = useState(false);
+  const [availableBots, setAvailableBots] = useState<any[]>([]);
+  const [isLinking, setIsLinking] = useState(false);
 
-    useFocusEffect(
-        useCallback(() => {
-            loadSpace();
-        }, [id])
-    );
+  useEffect(() => {
+    loadSpace();
+  }, [id]);
 
-    const handleAddSources = async (sourceIds: string[]) => {
-        if (!space) return;
-        try {
-            // Add each selected source
-            for (const sid of sourceIds) {
-                const sIdNum = parseInt(sid, 10);
-                if (!isNaN(sIdNum)) {
-                    await libraryService.addSource(space.id, sIdNum);
-                }
-            }
-            await loadSpace(); // Refresh
-            setSourceSelectorVisible(false);
-        } catch (e) {
-            console.error(e);
-            Alert.alert('Erro', 'Falha ao adicionar fontes.');
-        }
-    };
-
-    const handleRemoveSource = async (sourceId: number) => {
-        if (!space) return;
-        try {
-            await libraryService.removeSource(space.id, sourceId);
-            setSpace(prev => prev ? ({
-                ...prev,
-                sources: prev.sources.filter(s => parseInt(s.id) !== sourceId)
-            }) : null);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleLinkBot = async (botId: number) => {
-        if (!space) return;
-        try {
-            await libraryService.linkBot(space.id, botId);
-            await loadSpace();
-            setBotSelectorVisible(false);
-        } catch (e) {
-            console.error(e);
-            Alert.alert('Erro', 'Falha ao vincular tutor.');
-        }
-    };
-
-    const handleUnlinkBot = async (botId: number) => {
-        if (!space) return;
-        try {
-            await libraryService.unlinkBot(space.id, botId);
-            setSpace(prev => prev ? ({
-                ...prev,
-                bots: prev.bots.filter(b => b.id !== botId)
-            }) : null);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const handleChatWithBot = (botId: number) => {
-        router.push({ pathname: '/chat/[id]', params: { id: 'new', botId: botId.toString(), spaceId: space?.id } });
-    };
-
-    if (loading || !space) {
-        return (
-            <View className="flex-1 bg-space-dark justify-center items-center">
-                <ActivityIndicator color="#818cf8" size="large" />
-            </View>
-        );
+  const loadSpace = async () => {
+    if (!spaceId) return;
+    try {
+      setIsLoading(true);
+      const data = await libraryService.getSpace(spaceId);
+      setSpace(data);
+      // Map existing sources to processed status
+      setFiles(data.sources?.map((s: any) => ({ ...s, status: 'processed' })) || []);
+      setBots(data.bots || []);
+    } catch (e) {
+      console.log('Error loading space', e);
+      Alert.alert("Erro", "Falha ao carregar detalhes do espaço.");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+  const handleAddSource = async (fileOrUrl: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
+      setSheetVisible(false);
+      Alert.alert("Adicionando Fonte", "A fonte está sendo processada.");
 
-            {/* Header */}
-            <View className="px-4 py-4 flex-row items-center justify-between border-b border-white/10">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
-                    <ArrowLeft color="#fff" size={24} />
-                </Pressable>
-                <Text className="text-starlight text-lg font-bold flex-1 ml-2" numberOfLines={1}>{space.title}</Text>
-                <Pressable className="p-2 rounded-full active:bg-white/10">
-                    <MoreVertical color="#fff" size={24} />
-                </Pressable>
-            </View>
+      // Create temporary source for optimistic UI
+      const tempId = Date.now();
+      const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
+      const tempTitle = fileOrUrl.name || fileOrUrl.uri || "Nova Fonte";
 
-            {/* Tabs */}
-            <View className="flex-row border-b border-white/10">
-                <Pressable
-                    onPress={() => setActiveTab('SOURCES')}
-                    className={`flex-1 py-4 items-center border-b-2 ${activeTab === 'SOURCES' ? 'border-cosmic-purple' : 'border-transparent'}`}
-                >
-                    <Text className={`font-bold ${activeTab === 'SOURCES' ? 'text-white' : 'text-gray-500'}`}>Fontes ({space.sources.length})</Text>
-                </Pressable>
-                <Pressable
-                    onPress={() => setActiveTab('BOTS')}
-                    className={`flex-1 py-4 items-center border-b-2 ${activeTab === 'BOTS' ? 'border-cosmic-purple' : 'border-transparent'}`}
-                >
-                    <Text className={`font-bold ${activeTab === 'BOTS' ? 'text-white' : 'text-gray-500'}`}>Tutores ({space.bots.length})</Text>
-                </Pressable>
-            </View>
+      const tempSource = {
+          id: tempId,
+          title: tempTitle,
+          source_type: backendType,
+          status: 'pending',
+          created_at: new Date().toISOString()
+      };
 
-            {/* List */}
-            {activeTab === 'SOURCES' ? (
-                <FlatList
-                    data={space.sources}
-                    keyExtractor={item => item.id.toString()}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                    renderItem={({ item }) => (
-                        <View className="flex-row items-center justify-between bg-white/5 p-4 rounded-xl mb-3 border border-white/5">
-                            <View className="flex-row items-center flex-1">
-                                <View className="bg-blue-500/20 p-2 rounded-lg mr-3">
-                                    <BookOpen size={20} color="#60a5fa" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-starlight font-medium" numberOfLines={1}>{item.name}</Text>
-                                    <Text className="text-gray-500 text-xs">Adicionado em {new Date().toLocaleDateString()}</Text>
-                                </View>
-                            </View>
-                            <Pressable onPress={() => handleRemoveSource(parseInt(item.id))} className="p-2">
-                                <Trash2 size={20} color="#ef4444" />
-                            </Pressable>
-                        </View>
-                    )}
-                    ListEmptyComponent={
-                        <Text className="text-gray-500 text-center mt-10">Nenhuma fonte vinculada.</Text>
-                    }
-                />
-            ) : (
-                <FlatList
-                    data={space.bots}
-                    keyExtractor={item => item.id.toString()}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                    renderItem={({ item }) => (
-                        <Pressable
-                            onPress={() => handleChatWithBot(item.id)}
-                            className="flex-row items-center justify-between bg-white/5 p-4 rounded-xl mb-3 border border-white/5 active:bg-white/10"
-                        >
-                            <View className="flex-row items-center flex-1">
-                                <Image
-                                    source={{ uri: item.avatar || 'https://via.placeholder.com/50' }}
-                                    className="w-10 h-10 rounded-full mr-3 bg-gray-600"
-                                />
-                                <View>
-                                    <Text className="text-starlight font-medium">{item.name}</Text>
-                                    <Text className="text-gray-500 text-xs" numberOfLines={1}>{item.description}</Text>
-                                </View>
-                            </View>
-                            <Pressable onPress={() => handleUnlinkBot(item.id)} className="p-2 ml-2">
-                                <Trash2 size={20} color="#64748b" />
-                            </Pressable>
-                        </Pressable>
-                    )}
-                    ListEmptyComponent={
-                        <Text className="text-gray-500 text-center mt-10">Nenhum tutor vinculado.</Text>
-                    }
-                />
-            )}
+      setFiles(prev => [tempSource, ...prev]);
 
-            {/* FAB */}
-            <Pressable
-                onPress={() => activeTab === 'SOURCES' ? setSourceSelectorVisible(true) : setBotSelectorVisible(true)}
-                className="absolute bottom-8 right-6 w-14 h-14 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50"
-            >
-                <Plus color="#fff" size={28} />
-            </Pressable>
+      try {
+          const newSource = await libraryService.addSpaceSource(spaceId, fileOrUrl, backendType);
 
-            {/* Modals */}
-            {isSourceSelectorVisible && (
-                <View className="absolute inset-0 bg-black/80 z-50 justify-end">
-                    <SourceSelector
-                        chatId={id || ''}
-                        selectedIds={space.sources.map(s => s.id)}
-                        onClose={() => setSourceSelectorVisible(false)}
-                        onSelectionChange={(ids) => {
-                            // Hack: SourceSelector calls onSelectionChange with ALL selected IDs.
-                            handleAddSources(ids);
-                        }}
-                    />
-                </View>
-            )}
+          // Replace temp source with real one
+          setFiles(prev => prev.map(s =>
+              s.id === tempId ? { ...newSource, status: 'processed' } : s
+          ));
+          Alert.alert("Sucesso", "Fonte adicionada ao espaço de estudo.");
+      } catch (error) {
+          console.error(error);
+          setFiles(prev => prev.map(s =>
+              s.id === tempId ? { ...s, status: 'error' } : s
+          ));
+          Alert.alert("Erro", "Falha ao adicionar fonte.");
+      }
+  };
 
-            <BotSelector
-                visible={isBotSelectorVisible}
-                onClose={() => setBotSelectorVisible(false)}
-                onSelect={handleLinkBot}
-                excludeIds={space.bots.map(b => b.id)}
-            />
-
-        </SafeAreaView>
+  const handleDeleteSource = async (sourceId: number) => {
+    Alert.alert(
+      "Remover Fonte",
+      "Tem certeza que deseja remover esta fonte?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await libraryService.removeSource(spaceId, sourceId);
+              setFiles(prev => prev.filter(f => f.id !== sourceId));
+            } catch (e) {
+              Alert.alert("Erro", "Falha ao remover fonte.");
+            }
+          }
+        }
+      ]
     );
+  };
+
+  const openLinkBotModal = async () => {
+      setIsBotModalVisible(true);
+      try {
+          const allBots = await botService.getBots();
+          // Filter out bots already linked
+          const linkedIds = new Set(bots.map(b => b.id));
+          const available = allBots.filter((b: any) => !linkedIds.has(b.id));
+          setAvailableBots(available);
+      } catch (error) {
+          Alert.alert("Erro", "Falha ao carregar tutores disponíveis.");
+      }
+  };
+
+  const handleLinkBot = async (botId: number) => {
+      setIsLinking(true);
+      try {
+          await libraryService.linkBot(spaceId, botId);
+          // Refresh list
+          loadSpace();
+          setIsBotModalVisible(false);
+          Alert.alert("Sucesso", "Tutor vinculado com sucesso!");
+      } catch (error) {
+          Alert.alert("Erro", "Falha ao vincular tutor.");
+      } finally {
+          setIsLinking(false);
+      }
+  };
+
+  const handleUnlinkBot = async (botId: number) => {
+      Alert.alert(
+          "Desvincular Tutor",
+          "Tem certeza que deseja remover este tutor do espaço?",
+          [
+              { text: "Cancelar", style: "cancel" },
+              {
+                  text: "Desvincular",
+                  style: "destructive",
+                  onPress: async () => {
+                      try {
+                          await libraryService.unlinkBot(spaceId, botId);
+                          setBots(prev => prev.filter(b => b.id !== botId));
+                      } catch (e) {
+                          Alert.alert("Erro", "Falha ao desvincular tutor.");
+                      }
+                  }
+              }
+          ]
+      );
+  };
+
+  const getIcon = (type: string) => {
+      switch (type) {
+          case 'YOUTUBE': return <Youtube color="#ef4444" size={24} />;
+          case 'URL': return <LinkIcon color="#3b82f6" size={24} />;
+          default: return <FileText color="#fbbf24" size={24} />;
+      }
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-white dark:bg-space-dark" edges={['top']}>
+      <View className="flex-row items-center p-4 border-b border-gray-100 dark:border-white/10">
+        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2 rounded-full active:bg-gray-100 dark:active:bg-white/10">
+           <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
+        </TouchableOpacity>
+        <Text className="font-bold text-lg text-gray-900 dark:text-starlight">Detalhes do Espaço</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        <Text className="text-2xl font-bold mb-2 text-gray-900 dark:text-starlight">{space?.title}</Text>
+        <Text className="text-gray-500 dark:text-gray-400 mb-8">{space?.description || "Sem descrição"}</Text>
+
+        {/* Tutors Section */}
+        <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Tutores Vinculados</Text>
+            <TouchableOpacity onPress={openLinkBotModal} className="flex-row items-center">
+                <Plus size={20} color="#818cf8" />
+                <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
+            </TouchableOpacity>
+        </View>
+
+        {bots.length === 0 ? (
+            <Text className="text-gray-500 dark:text-gray-400 text-center py-4 mb-6 italic">Nenhum tutor vinculado.</Text>
+        ) : (
+            <View className="mb-8">
+                {bots.map((bot) => (
+                    <View key={bot.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                        <View className="flex-row items-center flex-1 mr-2">
+                            {bot.avatar_url ? (
+                                <Image source={{ uri: bot.avatar_url }} className="w-10 h-10 rounded-full mr-3" />
+                            ) : (
+                                <View className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 items-center justify-center mr-3">
+                                    <BotIcon size={20} color="#818cf8" />
+                                </View>
+                            )}
+                            <Text className="text-gray-900 dark:text-starlight font-medium text-base">{bot.name}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleUnlinkBot(bot.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
+                            <Trash2 size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+            </View>
+        )}
+
+        {/* Sources Section */}
+        <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Fontes de Estudo</Text>
+            <TouchableOpacity onPress={() => setSheetVisible(true)} className="flex-row items-center">
+                <Plus size={20} color="#818cf8" />
+                <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
+            </TouchableOpacity>
+        </View>
+
+        {isLoading ? (
+          <ActivityIndicator color="#818cf8" />
+        ) : (
+          <View>
+            {files.length === 0 ? (
+                <Text className="text-gray-500 dark:text-gray-400 text-center py-4 italic">Nenhuma fonte adicionada.</Text>
+            ) : (
+                files.map((item) => (
+                    <View key={item.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                        <View className="flex-row items-center flex-1 mr-2">
+                            <View className="bg-white dark:bg-white/10 p-2 rounded-lg mr-3">
+                                {getIcon(item.source_type)}
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-gray-900 dark:text-starlight font-medium" numberOfLines={1}>{item.title}</Text>
+
+                                <View className="flex-row items-center mt-1">
+                                    <Text className="text-gray-400 text-xs mr-2">{item.source_type}</Text>
+
+                                    {/* Status Indicator */}
+                                    {item.status === 'pending' && (
+                                        <View className="flex-row items-center">
+                                            <ActivityIndicator size="small" color="#818cf8" style={{ transform: [{ scale: 0.7 }] }} />
+                                            <Text className="text-indigo-400 text-xs ml-1">Processando...</Text>
+                                        </View>
+                                    )}
+                                    {item.status === 'error' && (
+                                        <View className="flex-row items-center">
+                                            <AlertTriangle size={12} color="#ef4444" />
+                                            <Text className="text-red-400 text-xs ml-1">Erro</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+
+                        {item.status !== 'pending' && (
+                            <TouchableOpacity onPress={() => handleDeleteSource(item.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
+                                <Trash2 size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                ))
+            )}
+          </View>
+        )}
+      </ScrollView>
+
+      <AttachmentSheet
+        visible={isSheetVisible}
+        onClose={() => setSheetVisible(false)}
+        onSelect={(file, type) => handleAddSource(file, type)}
+      />
+
+      {/* Link Bot Modal */}
+      <Modal
+          visible={isBotModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsBotModalVisible(false)}
+      >
+          <View className="flex-1 bg-black/60 justify-end">
+              <View className="bg-white dark:bg-space-dark rounded-t-3xl h-[70%]">
+                  <View className="p-4 border-b border-gray-100 dark:border-white/10 flex-row justify-between items-center">
+                      <Text className="text-xl font-bold text-gray-900 dark:text-starlight">Vincular Tutor</Text>
+                      <TouchableOpacity onPress={() => setIsBotModalVisible(false)} className="p-2">
+                          <X size={24} color="#94a3b8" />
+                      </TouchableOpacity>
+                  </View>
+
+                  {isLinking ? (
+                      <View className="flex-1 justify-center items-center">
+                          <ActivityIndicator size="large" color="#818cf8" />
+                          <Text className="mt-4 text-gray-500">Vinculando...</Text>
+                      </View>
+                  ) : (
+                      <FlatList
+                          data={availableBots}
+                          keyExtractor={(item) => item.id.toString()}
+                          contentContainerStyle={{ padding: 16 }}
+                          ListEmptyComponent={
+                              <Text className="text-center text-gray-500 mt-10">
+                                  Nenhum tutor disponível para vincular.
+                              </Text>
+                          }
+                          renderItem={({ item }) => (
+                              <TouchableOpacity
+                                  onPress={() => handleLinkBot(item.id)}
+                                  className="flex-row items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl mb-3 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10"
+                              >
+                                  {item.avatar_url ? (
+                                      <Image source={{ uri: item.avatar_url }} className="w-12 h-12 rounded-full mr-4" />
+                                  ) : (
+                                      <View className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900 items-center justify-center mr-4">
+                                          <BotIcon size={24} color="#818cf8" />
+                                      </View>
+                                  )}
+                                  <View>
+                                      <Text className="text-lg font-bold text-gray-900 dark:text-starlight">{item.name}</Text>
+                                      <Text className="text-gray-500 dark:text-gray-400 text-sm" numberOfLines={1}>{item.description || "Sem descrição"}</Text>
+                                  </View>
+                              </TouchableOpacity>
+                          )}
+                      />
+                  )}
+              </View>
+          </View>
+      </Modal>
+    </SafeAreaView>
+  );
 }
