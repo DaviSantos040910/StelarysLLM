@@ -16,8 +16,8 @@ import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
-import { useChatStore } from '../../src/stores/chatStore';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
+import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
@@ -174,11 +174,12 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     };
 
-    const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
+    const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
         setIsAttachmentSheetVisible(false);
         // Show immediate feedback
         Alert.alert("Adicionando Fonte", "A fonte está sendo processada em segundo plano. Você pode continuar conversando.");
         try {
+            // Map image/camera types to FILE for backend
             const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
             await chatService.addChatSource(chatId, file, backendType);
             // On success (silent or toast if we had one)
@@ -376,8 +377,6 @@ export default function ChatScreen() {
                             onChangeText={setInputText}
                             onSend={() => handleSend()}
                             onPlusPress={() => setIsAttachmentSheetVisible(true)}
-                            onGalleryPress={() => handleDirectAttachment('image')}
-                            onCameraPress={() => handleDirectAttachment('camera')}
                             onAudioRecorded={handleAudioRecorded}
                             disabled={isStreaming || isPickerLoading}
                             attachments={stagedAttachments}
