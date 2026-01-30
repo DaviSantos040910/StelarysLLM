@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, Image, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, Image, Modal, ScrollView, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { libraryService } from '../../src/services/libraryService';
 import { botService } from '../../src/services/botService';
 import { StudySpace } from '../../src/types/studio';
-import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X, AlertTriangle } from 'lucide-react-native';
+import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X, AlertTriangle, Search } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 
@@ -24,6 +24,7 @@ export default function StudyDetailsScreen() {
   const [isBotModalVisible, setIsBotModalVisible] = useState(false);
   const [availableBots, setAvailableBots] = useState<any[]>([]);
   const [isLinking, setIsLinking] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadSpace();
@@ -107,6 +108,7 @@ export default function StudyDetailsScreen() {
 
   const openLinkBotModal = async () => {
       setIsBotModalVisible(true);
+      setSearchQuery(''); // Clear search on open
       try {
           const allBots = await botService.getBots();
           // Filter out bots already linked
@@ -162,6 +164,11 @@ export default function StudyDetailsScreen() {
           default: return <FileText color="#fbbf24" size={24} />;
       }
   };
+
+  const filteredAvailableBots = availableBots.filter(bot =>
+      bot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (bot.description && bot.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-space-dark" edges={['top']}>
@@ -290,12 +297,26 @@ export default function StudyDetailsScreen() {
           onRequestClose={() => setIsBotModalVisible(false)}
       >
           <View className="flex-1 bg-black/60 justify-end">
-              <View className="bg-white dark:bg-space-dark rounded-t-3xl h-[70%]">
+              <View className="bg-white dark:bg-space-dark rounded-t-3xl h-[80%]">
                   <View className="p-4 border-b border-gray-100 dark:border-white/10 flex-row justify-between items-center">
                       <Text className="text-xl font-bold text-gray-900 dark:text-starlight">Vincular Tutor</Text>
                       <TouchableOpacity onPress={() => setIsBotModalVisible(false)} className="p-2">
                           <X size={24} color="#94a3b8" />
                       </TouchableOpacity>
+                  </View>
+
+                  {/* Search Input */}
+                  <View className="px-4 py-2 border-b border-gray-100 dark:border-white/5">
+                      <View className="flex-row items-center bg-gray-100 dark:bg-white/5 px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10">
+                          <Search size={20} color="#94a3b8" />
+                          <TextInput
+                              className="flex-1 ml-3 text-gray-900 dark:text-starlight text-base"
+                              placeholder="Pesquisar tutores..."
+                              placeholderTextColor="#64748b"
+                              value={searchQuery}
+                              onChangeText={setSearchQuery}
+                          />
+                      </View>
                   </View>
 
                   {isLinking ? (
@@ -305,13 +326,17 @@ export default function StudyDetailsScreen() {
                       </View>
                   ) : (
                       <FlatList
-                          data={availableBots}
+                          data={filteredAvailableBots}
                           keyExtractor={(item) => item.id.toString()}
                           contentContainerStyle={{ padding: 16 }}
                           ListEmptyComponent={
-                              <Text className="text-center text-gray-500 mt-10">
-                                  Nenhum tutor disponível para vincular.
-                              </Text>
+                              <View className="items-center justify-center py-10">
+                                  <Text className="text-gray-500 text-center">
+                                      {availableBots.length === 0
+                                          ? "Nenhum tutor disponível para vincular."
+                                          : "Nenhum tutor encontrado."}
+                                  </Text>
+                              </View>
                           }
                           renderItem={({ item }) => (
                               <TouchableOpacity
@@ -325,7 +350,7 @@ export default function StudyDetailsScreen() {
                                           <BotIcon size={24} color="#818cf8" />
                                       </View>
                                   )}
-                                  <View>
+                                  <View className="flex-1">
                                       <Text className="text-lg font-bold text-gray-900 dark:text-starlight">{item.name}</Text>
                                       <Text className="text-gray-500 dark:text-gray-400 text-sm" numberOfLines={1}>{item.description || "Sem descrição"}</Text>
                                   </View>
