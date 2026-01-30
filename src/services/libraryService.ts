@@ -29,7 +29,10 @@ export const libraryService = {
                 data.bot_ids.forEach(id => formData.append('bot_ids', id.toString()));
             }
 
-            const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', formData);
+            const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                transformRequest: (data) => data // Prevent axios from stringifying FormData
+            });
             return response.data;
         } else {
             const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
@@ -59,9 +62,13 @@ export const libraryService = {
             if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
         }
 
-        // IMPORTANT: Do NOT set Content-Type manually for FormData.
-        // The networking library (Axios/fetch) will set it with the correct boundary.
-        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData);
+        // Explicitly override Content-Type to allow Axios to set the boundary correctly
+        // (Actually, usually leaving it undefined is best, but if default is app/json, we need to unset it or set to multipart/form-data)
+        // With Axios + React Native, setting 'Content-Type': 'multipart/form-data' usually triggers the correct boundary generation if data is FormData.
+        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+             transformRequest: (data) => data
+        });
         return response.data;
     },
 
