@@ -37,8 +37,11 @@ export const chatService = {
     }
     formData.append('reply_with_audio', 'false');
 
-    // Remove Manual Content-Type
-    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData);
+    // Explicitly unset Content-Type to allow boundary generation
+    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData, {
+        headers: { 'Content-Type': undefined },
+        transformRequest: (data) => data
+    });
     return response.data;
   },
 
@@ -51,8 +54,11 @@ export const chatService = {
     } as any);
     formData.append('content', '');
 
-    // Remove Manual Content-Type
-    const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData);
+    // Explicitly unset Content-Type to allow boundary generation
+    const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
+        headers: { 'Content-Type': undefined },
+        transformRequest: (data) => data
+    });
     return response.data;
   },
 
@@ -92,8 +98,11 @@ export const chatService = {
           if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
       }
 
-      // Remove Manual Content-Type
-      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData);
+      // Explicitly unset Content-Type to allow boundary generation
+      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData, {
+          headers: { 'Content-Type': undefined },
+          transformRequest: (data) => data
+      });
       return response.data;
   },
 

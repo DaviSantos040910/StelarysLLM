@@ -30,8 +30,8 @@ export const libraryService = {
             }
 
             const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                transformRequest: (data) => data // Prevent axios from stringifying FormData
+                headers: { 'Content-Type': undefined },
+                transformRequest: (data) => data
             });
             return response.data;
         } else {
@@ -62,11 +62,9 @@ export const libraryService = {
             if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
         }
 
-        // Explicitly override Content-Type to allow Axios to set the boundary correctly
-        // (Actually, usually leaving it undefined is best, but if default is app/json, we need to unset it or set to multipart/form-data)
-        // With Axios + React Native, setting 'Content-Type': 'multipart/form-data' usually triggers the correct boundary generation if data is FormData.
+        // Explicitly unset Content-Type to allow the engine to generate the multipart boundary
         const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': undefined },
              transformRequest: (data) => data
         });
         return response.data;
