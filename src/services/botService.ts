@@ -51,11 +51,14 @@ export const botService = {
           } as any);
       }
 
-      // Fixed: URL should be /api/v1/bots/ (POST), not /my-bots/ which was removed or legacy
-      const response = await client.post('/api/v1/bots/', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/`, {
+          method: 'POST',
+          headers: {
+              'Authorization': client.defaults.headers.common['Authorization'] as string || '',
+          },
+          body: formData as any,
       });
-      return response.data;
+      return await response.json();
   },
 
   async getBot(botId: string): Promise<any> {
@@ -97,9 +100,17 @@ export const botService = {
           } as any);
       }
 
-      const response = await client.patch(`/api/v1/bots/${botId}/`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/${botId}/`, {
+          method: 'PATCH',
+          headers: {
+              'Authorization': client.defaults.headers.common['Authorization'] as string || '',
+          },
+          body: formData as any,
       });
-      return response.data;
+      return await response.json();
+  },
+
+  async deleteBot(botId: string): Promise<void> {
+      await client.delete(`/api/v1/bots/${botId}/`);
   }
 };

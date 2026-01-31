@@ -1,5 +1,5 @@
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Globe, Sparkles, FolderOpen, Layers } from 'lucide-react-native';
+import { ArrowLeft, Camera, Globe, Sparkles, FolderOpen, Layers, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -96,6 +96,33 @@ export default function CreateBotScreen() {
             }
             setSelectedCategories(prev => [...prev, id]);
         }
+    };
+
+    const handleDelete = async () => {
+        Alert.alert(
+            "Excluir Tutor",
+            "Tem certeza que deseja excluir este tutor? Todas as conversas associadas serão perdidas.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Excluir",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsSubmitting(true);
+                        try {
+                            await botService.deleteBot(botId);
+                            Alert.alert("Sucesso", "Tutor excluído com sucesso.");
+                            router.replace('/(tabs)/');
+                        } catch (error) {
+                            console.error(error);
+                            Alert.alert("Erro", "Falha ao excluir o tutor.");
+                        } finally {
+                            setIsSubmitting(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleSubmit = async () => {
@@ -340,6 +367,17 @@ export default function CreateBotScreen() {
                             })}
                         </ScrollView>
                     </View>
+
+                    {/* Delete Button (Only in Edit Mode) */}
+                    {isEditMode && (
+                        <Pressable
+                            onPress={handleDelete}
+                            className="flex-row items-center justify-center p-4 bg-red-500/10 rounded-xl border border-red-500/30 mt-8 mb-4"
+                        >
+                            <Trash2 size={20} color="#ef4444" className="mr-2" />
+                            <Text className="text-red-500 font-bold text-lg">Apagar Tutor</Text>
+                        </Pressable>
+                    )}
 
                 </View>
             </ScrollView>
