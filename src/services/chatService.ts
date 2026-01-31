@@ -1,4 +1,4 @@
-import client, { BASE_URL } from '../api/client';
+import apiClient, { BASE_URL } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
 import { Message, ChatListItem, ChatSource } from '../types/chat';
 
@@ -9,10 +9,16 @@ interface PaginatedResponse<T> {
     results: T[];
 }
 
+const getHeaders = async () => {
+    const token = useAuthStore.getState().token;
+    return {
+        'Authorization': `Bearer ${token}`,
+    };
+};
+
 export const chatService = {
   getMessages: async (chatId: string | number): Promise<Message[]> => {
-    const response = await client.get<PaginatedResponse<Message>>(`/api/v1/chats/${chatId}/messages/`);
-    // Handle both array and paginated response for safety
+    const response = await apiClient.get<PaginatedResponse<Message>>(`/api/v1/chats/${chatId}/messages/`);
     if (Array.isArray(response.data)) {
         return response.data;
     }
@@ -20,7 +26,7 @@ export const chatService = {
   },
 
   getChatDetails: async (chatId: string | number): Promise<ChatListItem> => {
-    const response = await client.get<ChatListItem>(`/api/v1/chats/${chatId}/`);
+    const response = await apiClient.get<ChatListItem>(`/api/v1/chats/${chatId}/`);
     return response.data;
   },
 
@@ -29,7 +35,7 @@ export const chatService = {
     formData.append('audio', {
       uri: file.uri,
       name: file.name,
-      type: file.mimeType || 'audio/m4a',
+      type: file.mimeType || file.type || 'audio/m4a',
     } as any);
 
     if (file.duration) {
@@ -37,12 +43,17 @@ export const chatService = {
     }
     formData.append('reply_with_audio', 'false');
 
-    // Explicitly unset Content-Type to allow boundary generation
-    const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/voice-message/`, formData, {
-        headers: { 'Content-Type': undefined },
-        transformRequest: (data) => data
+    const headers = await getHeaders();
+    const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/voice-message/`, {
+        method: 'POST',
+        headers: {
+            ...headers,
+        },
+        body: formData as any,
     });
-    return response.data;
+
+    if (!response.ok) throw new Error('Failed to send voice message');
+    return await response.json();
   },
 
   uploadFile: async (chatId: string | number, file: any) => {
@@ -50,34 +61,39 @@ export const chatService = {
     formData.append('attachment', {
       uri: file.uri,
       name: file.name,
-      type: file.mimeType || 'application/octet-stream',
+      type: file.mimeType || file.type || 'application/octet-stream',
     } as any);
     formData.append('content', '');
 
-    // Explicitly unset Content-Type to allow boundary generation
-    const response = await client.post(`/api/v1/chats/${chatId}/messages/attach/`, formData, {
-        headers: { 'Content-Type': undefined },
-        transformRequest: (data) => data
+    const headers = await getHeaders();
+    const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/messages/attach/`, {
+        method: 'POST',
+        headers: {
+            ...headers,
+        },
+        body: formData as any,
     });
-    return response.data;
+
+    if (!response.ok) throw new Error('Failed to upload file');
+    return await response.json();
   },
 
   // === New Features: Feedback & Regenerate ===
 
   sendFeedback: async (chatId: string | number, messageId: string, feedback: 'like' | 'dislike' | null): Promise<{ feedback: string | null }> => {
-      const response = await client.post<{ feedback: string | null }>(`/api/v1/chats/${chatId}/messages/${messageId}/feedback/`, { feedback });
+      const response = await apiClient.post<{ feedback: string | null }>(`/api/v1/chats/${chatId}/messages/${messageId}/feedback/`, { feedback });
       return response.data;
   },
 
   regenerateMessage: async (chatId: string | number): Promise<Message[]> => {
-      const response = await client.post<Message[]>(`/api/v1/chats/${chatId}/regenerate/`, {});
+      const response = await apiClient.post<Message[]>(`/api/v1/chats/${chatId}/regenerate/`, {});
       return response.data;
   },
 
   // === Chat Source Management ===
 
   getChatSources: async (chatId: string): Promise<ChatSource[]> => {
-    const response = await client.get<ChatSource[]>(`/api/v1/chats/${chatId}/context-sources/`);
+    const response = await apiClient.get<ChatSource[]>(`/api/v1/chats/${chatId}/context-sources/`);
     return response.data;
   },
 
@@ -91,45 +107,49 @@ export const chatService = {
           formData.append('file', {
               uri: fileOrUrl.uri,
               name: fileOrUrl.name,
-              type: fileOrUrl.mimeType || 'application/octet-stream',
+              type: fileOrUrl.mimeType || fileOrUrl.type || 'application/octet-stream',
           } as any);
       } else {
           formData.append('url', fileOrUrl.uri || fileOrUrl);
           if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
       }
 
-      // Explicitly unset Content-Type to allow boundary generation
-      const response = await client.post<ChatSource>(`/api/v1/chats/${chatId}/sources/`, formData, {
-          headers: { 'Content-Type': undefined },
-          transformRequest: (data) => data
+      const headers = await getHeaders();
+      const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/sources/`, {
+          method: 'POST',
+          headers: {
+              ...headers,
+          },
+          body: formData as any,
       });
-      return response.data;
+
+      if (!response.ok) throw new Error('Failed to add chat source');
+      return await response.json();
   },
 
   removeChatSource: async (chatId: string, sourceId: number): Promise<void> => {
-      await client.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
+      await apiClient.delete(`/api/v1/chats/${chatId}/sources/${sourceId}/`);
   },
 
   // === TTS ===
   getMessageTTS: async (chatId: string | number, messageId: string): Promise<string> => {
-      // Return full URL for AudioPlayerStore to consume with headers
       return `${BASE_URL}/api/v1/chats/${chatId}/messages/${messageId}/tts/`;
   },
 
   // === Chat Management & History ===
 
   archiveChat: async (chatId: string): Promise<{ new_chat_id: number }> => {
-      const response = await client.post<{ new_chat_id: number }>(`/api/v1/chats/${chatId}/archive/`);
+      const response = await apiClient.post<{ new_chat_id: number }>(`/api/v1/chats/${chatId}/archive/`);
       return response.data;
   },
 
   setActiveChat: async (chatId: string): Promise<ChatListItem> => {
-      const response = await client.post<ChatListItem>(`/api/v1/chats/${chatId}/set-active/`);
+      const response = await apiClient.post<ChatListItem>(`/api/v1/chats/${chatId}/set-active/`);
       return response.data;
   },
 
   getArchivedChats: async (botId: string): Promise<ChatListItem[]> => {
-      const response = await client.get<ChatListItem[]>(`/api/v1/chats/archived/bot/${botId}/`);
+      const response = await apiClient.get<ChatListItem[]>(`/api/v1/chats/archived/bot/${botId}/`);
       return response.data;
   },
 
@@ -140,14 +160,14 @@ export const chatService = {
     onError: (error: any) => void,
     onComplete: () => void
   ) => {
-    const token = useAuthStore.getState().token;
+    const headers = await getHeaders();
 
     try {
       const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...headers,
         },
         body: JSON.stringify({ content }),
         // @ts-ignore

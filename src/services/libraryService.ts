@@ -1,5 +1,13 @@
-import apiClient from '../api/client';
+import apiClient, { BASE_URL } from '../api/client';
+import { useAuthStore } from '../stores/authStore';
 import { CreateSpaceParams, StudySpace } from '../types/studio';
+
+const getHeaders = async () => {
+    const token = useAuthStore.getState().token;
+    return {
+        'Authorization': `Bearer ${token}`,
+    };
+};
 
 export const libraryService = {
     async getSpaces(): Promise<StudySpace[]> {
@@ -16,12 +24,10 @@ export const libraryService = {
             // Handle image
             formData.append('cover_image', {
                 uri: data.coverImage.uri,
-                name: data.coverImage.fileName || 'cover.jpg',
-                type: data.coverImage.mimeType || 'image/jpeg',
+                name: data.coverImage.fileName || data.coverImage.name || 'cover.jpg',
+                type: data.coverImage.mimeType || data.coverImage.type || 'image/jpeg',
             } as any);
 
-            // Note: source_ids and bot_ids are not typically passed in the initial create modal,
-            // but if they were, they'd need to be appended individually for FormData.
             if (data.source_ids) {
                 data.source_ids.forEach(id => formData.append('source_ids', id.toString()));
             }
@@ -29,11 +35,18 @@ export const libraryService = {
                 data.bot_ids.forEach(id => formData.append('bot_ids', id.toString()));
             }
 
-            const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', formData, {
-                headers: { 'Content-Type': undefined },
-                transformRequest: (data) => data
+            const headers = await getHeaders();
+            const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    // Content-Type must be undefined for FormData
+                },
+                body: formData as any,
             });
-            return response.data;
+
+            if (!response.ok) throw new Error('Failed to create space');
+            return await response.json();
         } else {
             const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
             return response.data;
@@ -62,19 +75,30 @@ export const libraryService = {
             if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
         }
 
-        // Explicitly unset Content-Type to allow the engine to generate the multipart boundary
-        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add-source/`, formData, {
-            headers: { 'Content-Type': undefined },
-             transformRequest: (data) => data
+        const headers = await getHeaders();
+        const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/${spaceId}/add-source/`, {
+            method: 'POST',
+            headers: {
+                ...headers,
+            },
+            body: formData as any,
         });
-        return response.data;
+
+        if (!response.ok) {
+            const err = await response.text();
+            console.log('Add source error:', err);
+            throw new Error('Failed to add source');
+        }
+        return await response.json();
     },
 
     async addSource(spaceId: number, sourceId: number): Promise<void> {
+        // Use apiClient for JSON endpoints, ensure kebab-case
         await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add-source/`, { source_id: sourceId });
     },
 
     async removeSource(spaceId: number, sourceId: number): Promise<void> {
+        // Use apiClient for JSON endpoints, ensure kebab-case
         await apiClient.post(`/api/v1/studio/spaces/${spaceId}/remove-source/`, { source_id: sourceId });
     },
 
@@ -86,7 +110,6 @@ export const libraryService = {
         await apiClient.post(`/api/v1/studio/spaces/${spaceId}/unlink-bot/`, { bot_id: botId });
     },
 
-    // Manage Sources independently
     async getSources(): Promise<any[]> {
         const response = await apiClient.get('/api/v1/studio/sources/');
         return response.data;
