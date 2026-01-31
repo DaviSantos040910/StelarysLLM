@@ -18,6 +18,7 @@ export default function StudyDetailsScreen() {
   const [bots, setBots] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSheetVisible, setSheetVisible] = useState(false);
 
   // Bot Linking State
@@ -104,6 +105,31 @@ export default function StudyDetailsScreen() {
         }
       ]
     );
+  };
+
+  const handleDeleteSpace = async () => {
+      Alert.alert(
+          "Excluir Espaço",
+          "Tem certeza que deseja excluir este espaço de estudo? Esta ação não pode ser desfeita.",
+          [
+              { text: "Cancelar", style: "cancel" },
+              {
+                  text: "Excluir",
+                  style: "destructive",
+                  onPress: async () => {
+                      setIsDeleting(true);
+                      try {
+                          await libraryService.deleteSpace(spaceId);
+                          router.replace('/(tabs)/library');
+                      } catch (error) {
+                          console.error(error);
+                          Alert.alert("Erro", "Falha ao excluir o espaço.");
+                          setIsDeleting(false);
+                      }
+                  }
+              }
+          ]
+      );
   };
 
   const openLinkBotModal = async () => {
@@ -281,6 +307,25 @@ export default function StudyDetailsScreen() {
             )}
           </View>
         )}
+
+        {/* Delete Space Button */}
+        <View className="mt-8 mb-4">
+            <TouchableOpacity
+                onPress={handleDeleteSpace}
+                disabled={isDeleting}
+                className="flex-row items-center justify-center p-4 bg-red-500/10 rounded-xl border border-red-500/30"
+            >
+                {isDeleting ? (
+                    <ActivityIndicator color="#ef4444" />
+                ) : (
+                    <>
+                        <Trash2 size={20} color="#ef4444" className="mr-2" />
+                        <Text className="text-red-500 font-bold text-lg">Apagar Espaço de Estudo</Text>
+                    </>
+                )}
+            </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       <AttachmentSheet

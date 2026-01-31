@@ -58,6 +58,10 @@ export const libraryService = {
         return response.data;
     },
 
+    async deleteSpace(id: number): Promise<void> {
+        await apiClient.delete(`/api/v1/studio/spaces/${id}/`);
+    },
+
     async addSpaceSource(spaceId: number, fileOrUrl: any, type: 'FILE' | 'URL' | 'YOUTUBE'): Promise<any> {
         const formData = new FormData();
 
