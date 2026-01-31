@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, Youtube, AlertTriangle } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, Youtube } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,12 +54,13 @@ export default function ManageSourcesScreen() {
         );
     };
 
-    const handleAddSource = async (fileOrUrl: any, type: 'file' | 'url' | 'youtube') => {
+    const handleAddSource = async (fileOrUrl: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
         setSheetVisible(false);
         Alert.alert("Adicionando Fonte", "Sua fonte está sendo processada.");
 
         // Create temporary source for optimistic UI
         const tempId = Date.now();
+        // Map 'image' and 'camera' to 'FILE' since they are file uploads
         const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
         const tempTitle = fileOrUrl.name || fileOrUrl.uri || "Nova Fonte";
 
