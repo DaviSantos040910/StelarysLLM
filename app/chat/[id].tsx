@@ -174,7 +174,7 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     };
 
-    const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube') => {
+    const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
         setIsAttachmentSheetVisible(false);
         // Show immediate feedback
         Alert.alert("Adicionando Fonte", "A fonte está sendo processada em segundo plano. Você pode continuar conversando.");
