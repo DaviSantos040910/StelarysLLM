@@ -55,7 +55,7 @@ export const libraryService = {
             formData.append('file', {
                 uri: fileOrUrl.uri,
                 name: fileOrUrl.name,
-                type: fileOrUrl.mimeType || 'application/octet-stream',
+                type: fileOrUrl.mimeType || fileOrUrl.type || 'application/octet-stream',
             } as any);
         } else {
             formData.append('url', fileOrUrl.uri || fileOrUrl);
@@ -63,7 +63,7 @@ export const libraryService = {
         }
 
         // Explicitly unset Content-Type to allow the engine to generate the multipart boundary
-        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, formData, {
+        const response = await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add-source/`, formData, {
             headers: { 'Content-Type': undefined },
              transformRequest: (data) => data
         });
@@ -71,19 +71,19 @@ export const libraryService = {
     },
 
     async addSource(spaceId: number, sourceId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, { source_id: sourceId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add-source/`, { source_id: sourceId });
     },
 
     async removeSource(spaceId: number, sourceId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/remove_source/`, { source_id: sourceId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/remove-source/`, { source_id: sourceId });
     },
 
     async linkBot(spaceId: number, botId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/link_bot/`, { bot_id: botId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/link-bot/`, { bot_id: botId });
     },
 
     async unlinkBot(spaceId: number, botId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/unlink_bot/`, { bot_id: botId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/unlink-bot/`, { bot_id: botId });
     },
 
     // Manage Sources independently
