@@ -76,7 +76,7 @@ export const libraryService = {
         }
 
         const headers = await getHeaders();
-        const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/${spaceId}/add-source/`, {
+        const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/${spaceId}/add_source/`, {
             method: 'POST',
             headers: {
                 ...headers,
@@ -93,21 +93,19 @@ export const libraryService = {
     },
 
     async addSource(spaceId: number, sourceId: number): Promise<void> {
-        // Use apiClient for JSON endpoints, ensure kebab-case
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add-source/`, { source_id: sourceId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/add_source/`, { source_id: sourceId });
     },
 
     async removeSource(spaceId: number, sourceId: number): Promise<void> {
-        // Use apiClient for JSON endpoints, ensure kebab-case
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/remove-source/`, { source_id: sourceId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/remove_source/`, { source_id: sourceId });
     },
 
     async linkBot(spaceId: number, botId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/link-bot/`, { bot_id: botId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/link_bot/`, { bot_id: botId });
     },
 
     async unlinkBot(spaceId: number, botId: number): Promise<void> {
-        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/unlink-bot/`, { bot_id: botId });
+        await apiClient.post(`/api/v1/studio/spaces/${spaceId}/unlink_bot/`, { bot_id: botId });
     },
 
     async getSources(): Promise<any[]> {

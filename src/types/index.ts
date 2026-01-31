@@ -24,7 +24,7 @@ export interface Message {
   content: string;
   created_at: string;
   attachment?: string; // URL do arquivo
-  attachment_type?: string | null;
+  attachment_type?: 'image' | 'file' | 'audio';
   duration?: number; // Se for áudio
 }
 
