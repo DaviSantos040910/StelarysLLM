@@ -36,12 +36,17 @@ export const botService = {
 
       if (data.description) formData.append('description', data.description);
 
+      const sanitizeId = (id: any) => {
+          if (id && typeof id === 'object' && id.id) return String(id.id);
+          return String(id);
+      };
+
       if (data.category_ids) {
-          data.category_ids.forEach(id => formData.append('category_ids', id));
+          data.category_ids.forEach(id => formData.append('category_ids', sanitizeId(id)));
       }
 
       if (data.study_space_ids) {
-          data.study_space_ids.forEach(id => formData.append('study_space_ids', String(id)));
+          data.study_space_ids.forEach(id => formData.append('study_space_ids', sanitizeId(id)));
       }
 
       if (data.avatar && data.avatar.uri) {
@@ -102,12 +107,17 @@ export const botService = {
       if (data.publicity) formData.append('publicity', data.publicity);
       if (data.description) formData.append('description', data.description);
 
+      const sanitizeId = (id: any) => {
+          if (id && typeof id === 'object' && id.id) return String(id.id);
+          return String(id);
+      };
+
       if (data.category_ids) {
-          data.category_ids.forEach(id => formData.append('category_ids', id));
+          data.category_ids.forEach(id => formData.append('category_ids', sanitizeId(id)));
       }
 
       if (data.study_space_ids) {
-          data.study_space_ids.forEach(id => formData.append('study_space_ids', String(id)));
+          data.study_space_ids.forEach(id => formData.append('study_space_ids', sanitizeId(id)));
       }
 
       if (data.avatar && data.avatar.uri) {
