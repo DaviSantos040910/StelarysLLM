@@ -125,6 +125,7 @@ export default function ChatScreen() {
                             suggestion1: data.suggestions?.[0],
                             suggestion2: data.suggestions?.[1],
                             suggestion3: data.suggestions?.[2],
+                            createdByMe: data.bot.createdByMe,
                         }
                     });
                 }

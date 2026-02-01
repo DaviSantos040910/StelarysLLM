@@ -1,4 +1,5 @@
 import client from '../api/client';
+import { useAuthStore } from '../stores/authStore';
 import { ChatBootstrap } from '../types/chat';
 
 export interface CreateBotData {
@@ -51,13 +52,27 @@ export const botService = {
           } as any);
       }
 
+      const token = useAuthStore.getState().token;
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/`, {
           method: 'POST',
           headers: {
-              'Authorization': client.defaults.headers.common['Authorization'] as string || '',
+              'Authorization': `Bearer ${token}`,
           },
           body: formData as any,
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // Try to find a meaningful error message
+        let errorMessage = errorData.detail || "Failed to create bot";
+        if (!errorData.detail) {
+            // Check for field errors (e.g. { name: ['required'] })
+            const fieldErrors = Object.entries(errorData).map(([key, val]) => `${key}: ${val}`).join(', ');
+            if (fieldErrors) errorMessage = fieldErrors;
+        }
+        throw new Error(errorMessage);
+      }
+
       return await response.json();
   },
 
@@ -100,13 +115,25 @@ export const botService = {
           } as any);
       }
 
+      const token = useAuthStore.getState().token;
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/${botId}/`, {
           method: 'PATCH',
           headers: {
-              'Authorization': client.defaults.headers.common['Authorization'] as string || '',
+              'Authorization': `Bearer ${token}`,
           },
           body: formData as any,
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = errorData.detail || "Failed to update bot";
+        if (!errorData.detail) {
+             const fieldErrors = Object.entries(errorData).map(([key, val]) => `${key}: ${val}`).join(', ');
+             if (fieldErrors) errorMessage = fieldErrors;
+        }
+        throw new Error(errorMessage);
+      }
+
       return await response.json();
   },
 

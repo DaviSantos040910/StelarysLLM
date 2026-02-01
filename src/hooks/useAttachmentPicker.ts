@@ -54,7 +54,7 @@ export const useAttachmentPicker = () => {
    * Abre o seletor de imagens
    * ✅ RETORNA ARRAY DE ANEXOS
    */
-  const pickImage = async (): Promise<AttachmentPickerResult[] | null> => {
+  const pickImage = async (multiple: boolean = true): Promise<AttachmentPickerResult[] | null> => {
     try {
       setIsPickerLoading(true);
       const hasPermission = await requestPermissions('image');
@@ -65,7 +65,7 @@ export const useAttachmentPicker = () => {
         allowsEditing: false,
         quality: 0.8, // Comprime para reduzir tamanho
         exif: false,
-        allowsMultipleSelection: true, // ✅ HABILITA SELEÇÃO MÚLTIPLA
+        allowsMultipleSelection: multiple,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {

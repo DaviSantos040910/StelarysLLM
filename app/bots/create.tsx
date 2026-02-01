@@ -82,7 +82,7 @@ export default function CreateBotScreen() {
     };
 
     const handlePickAvatar = async () => {
-        const result = await pickImage();
+        const result = await pickImage(false); // Single selection for avatar
         if (result && result[0]) setAvatar(result[0]);
     };
 
@@ -160,6 +160,10 @@ export default function CreateBotScreen() {
                     study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
                 });
 
+                if (!newBot || !newBot.id) {
+                    throw new Error("Failed to create bot: No ID returned.");
+                }
+
                 const bootstrap = await botService.getChatBootstrap(newBot.id);
 
                 router.replace({
@@ -172,9 +176,10 @@ export default function CreateBotScreen() {
                 });
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao salvar o tutor.");
+            const msg = error.message || "Falha ao salvar o tutor.";
+            Alert.alert("Erro", msg);
         } finally {
             setIsSubmitting(false);
         }
