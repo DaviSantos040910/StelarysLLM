@@ -70,7 +70,12 @@ export default function CreateBotScreen() {
             if (bot.avatar_url) setAvatar({ uri: bot.avatar_url });
 
             if (bot.categories) {
-                setSelectedCategories(bot.categories.map((c: any) => c.id));
+                // Handle both object (from BotSerializer) and ID (from default ModelSerializer) formats
+                const categoryIds = bot.categories.map((c: any) => {
+                    if (c && typeof c === 'object' && c.id) return String(c.id);
+                    return String(c);
+                }).filter((id: string) => id && id !== 'undefined');
+                setSelectedCategories(categoryIds);
             }
         } catch (error) {
             console.error(error);
