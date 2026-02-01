@@ -67,7 +67,10 @@ export const botService = {
         let errorMessage = errorData.detail || "Failed to create bot";
         if (!errorData.detail) {
             // Check for field errors (e.g. { name: ['required'] })
-            const fieldErrors = Object.entries(errorData).map(([key, val]) => `${key}: ${val}`).join(', ');
+            const fieldErrors = Object.entries(errorData).map(([key, val]) => {
+                const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                return `${key}: ${valStr}`;
+            }).join(', ');
             if (fieldErrors) errorMessage = fieldErrors;
         }
         throw new Error(errorMessage);
@@ -128,7 +131,10 @@ export const botService = {
         const errorData = await response.json().catch(() => ({}));
         let errorMessage = errorData.detail || "Failed to update bot";
         if (!errorData.detail) {
-             const fieldErrors = Object.entries(errorData).map(([key, val]) => `${key}: ${val}`).join(', ');
+             const fieldErrors = Object.entries(errorData).map(([key, val]) => {
+                 const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                 return `${key}: ${valStr}`;
+             }).join(', ');
              if (fieldErrors) errorMessage = fieldErrors;
         }
         throw new Error(errorMessage);
