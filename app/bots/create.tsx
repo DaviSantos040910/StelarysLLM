@@ -67,7 +67,8 @@ export default function CreateBotScreen() {
             setAllowWebSearch(bot.allow_web_search);
             setStrictContext(bot.strict_context || false);
 
-            if (bot.avatar_url) setAvatar({ uri: bot.avatar_url });
+            const avatarUri = bot.avatarUrl || bot.avatar_url;
+            if (avatarUri) setAvatar({ uri: avatarUri });
 
             if (bot.categories) {
                 // Handle both object (from BotSerializer) and ID (from default ModelSerializer) formats
