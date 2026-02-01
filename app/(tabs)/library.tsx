@@ -9,9 +9,11 @@ import { libraryService } from '../../src/services/libraryService';
 import { StudySpace } from '../../src/types/studio';
 import { SpaceCard } from '../../src/components/library/SpaceCard';
 import { CreateSpaceModal } from '../../src/components/library/CreateSpaceModal';
+import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 
 export default function LibraryScreen() {
     const router = useRouter();
+    const miniPlayerHeight = useMiniPlayerHeight();
     const [spaces, setSpaces] = useState<StudySpace[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -105,7 +107,8 @@ export default function LibraryScreen() {
             {/* FAB */}
             <Pressable
                 onPress={() => setCreateModalVisible(true)}
-                className="absolute bottom-8 right-6 w-14 h-14 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50"
+                style={{ bottom: 96 + miniPlayerHeight }}
+                className="absolute right-6 w-14 h-14 bg-cosmic-purple rounded-full items-center justify-center shadow-lg shadow-indigo-500/50"
             >
                 <Plus color="#fff" size={28} />
             </Pressable>
