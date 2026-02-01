@@ -198,11 +198,20 @@ export default function StudyDetailsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-space-dark" edges={['top']}>
-      <View className="flex-row items-center p-4 border-b border-gray-100 dark:border-white/10">
-        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2 rounded-full active:bg-gray-100 dark:active:bg-white/10">
-           <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
+      <View className="flex-row items-center justify-between p-4 border-b border-gray-100 dark:border-white/10">
+        <View className="flex-row items-center">
+            <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2 rounded-full active:bg-gray-100 dark:active:bg-white/10">
+            <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
+            </TouchableOpacity>
+            <Text className="font-bold text-lg text-gray-900 dark:text-starlight">Detalhes do Espaço</Text>
+        </View>
+        <TouchableOpacity onPress={handleDeleteSpace} disabled={isDeleting}>
+            {isDeleting ? (
+                <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+                <Text className="text-red-500 font-bold text-base">Excluir</Text>
+            )}
         </TouchableOpacity>
-        <Text className="font-bold text-lg text-gray-900 dark:text-starlight">Detalhes do Espaço</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
@@ -307,24 +316,6 @@ export default function StudyDetailsScreen() {
             )}
           </View>
         )}
-
-        {/* Delete Space Button */}
-        <View className="mt-8 mb-4">
-            <TouchableOpacity
-                onPress={handleDeleteSpace}
-                disabled={isDeleting}
-                className="flex-row items-center justify-center p-4 bg-red-500/10 rounded-xl border border-red-500/30"
-            >
-                {isDeleting ? (
-                    <ActivityIndicator color="#ef4444" />
-                ) : (
-                    <>
-                        <Trash2 size={20} color="#ef4444" className="mr-2" />
-                        <Text className="text-red-500 font-bold text-lg">Apagar Espaço de Estudo</Text>
-                    </>
-                )}
-            </TouchableOpacity>
-        </View>
 
       </ScrollView>
 
