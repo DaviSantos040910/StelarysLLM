@@ -91,7 +91,13 @@ export const libraryService = {
         if (!response.ok) {
             const err = await response.text();
             console.log('Add source error:', err);
-            throw new Error('Failed to add source');
+            // Try to extract detail from JSON if possible
+            let message = 'Failed to add source';
+            try {
+                const jsonErr = JSON.parse(err);
+                if (jsonErr.detail) message = jsonErr.detail;
+            } catch (e) {}
+            throw new Error(message);
         }
         return await response.json();
     },
