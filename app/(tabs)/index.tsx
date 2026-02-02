@@ -56,9 +56,6 @@ export default function ChatListScreen() {
           <Text className="text-starlight text-lg font-medium">Olá,</Text>
           <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-          <UserAvatar imageUri={user?.avatar_url} size={48} />
-        </TouchableOpacity>
       </View>
 
       {/* Chat List */}
