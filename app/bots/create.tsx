@@ -140,6 +140,10 @@ export default function CreateBotScreen() {
         setIsSubmitting(true);
         try {
             if (isEditMode) {
+                // Only send avatar if it has a 'name' property (indicating a new pick)
+                // Existing avatars are just { uri: ... } without name/type
+                const avatarToSend = avatar?.name ? avatar : undefined;
+
                 await botService.updateBot(botId, {
                     name,
                     description,
@@ -147,7 +151,7 @@ export default function CreateBotScreen() {
                     allow_web_search: allowWebSearch,
                     strict_context: strictContext,
                     publicity: 'Public',
-                    avatar: avatar?.uri?.startsWith('http') ? undefined : avatar, // Only send if changed (local uri)
+                    avatar: avatarToSend,
                     category_ids: selectedCategories,
                     study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
                 });
