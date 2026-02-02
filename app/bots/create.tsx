@@ -349,11 +349,12 @@ export default function CreateBotScreen() {
                         <Text className="text-gray-400 font-bold mb-4">Categorias (Máx 3)</Text>
                         <View className="flex-row flex-wrap gap-2 mb-8">
                             {categories.map(cat => {
-                                const isSelected = selectedCategories.includes(cat.id);
+                                const catId = String(cat.id);
+                                const isSelected = selectedCategories.includes(catId);
                                 return (
                                     <Pressable
-                                        key={cat.id}
-                                        onPress={() => toggleCategory(cat.id)}
+                                        key={catId}
+                                        onPress={() => toggleCategory(catId)}
                                         className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-white/20 border-white' : 'bg-white/5 border-white/10'}`}
                                     >
                                         <Text className={`${isSelected ? 'text-white font-bold' : 'text-gray-400'}`}>{cat.name}</Text>
