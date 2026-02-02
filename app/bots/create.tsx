@@ -78,6 +78,13 @@ export default function CreateBotScreen() {
                 }).filter((id: string) => id && id !== 'undefined');
                 setSelectedCategories(categoryIds);
             }
+
+            if (bot.study_spaces && bot.study_spaces.length > 0) {
+                // If study_spaces is list of IDs [1] or Objects [{id:1}]
+                const firstSpace = bot.study_spaces[0];
+                const spaceId = (typeof firstSpace === 'object' && firstSpace.id) ? firstSpace.id : firstSpace;
+                setSelectedSpaceId(Number(spaceId));
+            }
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Falha ao carregar dados do tutor.");
