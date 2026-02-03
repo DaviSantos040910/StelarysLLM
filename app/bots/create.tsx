@@ -1,12 +1,12 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Camera, Globe, Sparkles, FolderOpen, Layers, Trash2 } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Camera, FolderOpen, Globe, Layers, Sparkles, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { botService } from '../../src/services/botService';
-import { exploreService, Category } from '../../src/services/exploreService';
+import { Category, exploreService } from '../../src/services/exploreService';
 import { libraryService } from '../../src/services/libraryService';
 import { useChatStore } from '../../src/stores/chatStore';
 import { StudySpace } from '../../src/types/studio';
@@ -127,7 +127,7 @@ export default function CreateBotScreen() {
                         try {
                             await botService.deleteBot(botId);
                             Alert.alert("Sucesso", "Tutor excluído com sucesso.");
-                            router.replace('/(tabs)/');
+                            router.replace('/(tabs)/' as any);
                         } catch (error) {
                             console.error(error);
                             Alert.alert("Erro", "Falha ao excluir o tutor.");
@@ -194,7 +194,7 @@ export default function CreateBotScreen() {
                 const bootstrap = await botService.getChatBootstrap(newBot.id);
 
                 router.replace({
-                    pathname: `/chat/${bootstrap.conversationId}`,
+                    pathname: `/chat/${bootstrap.conversationId}` as any,
                     params: {
                         botId: newBot.id,
                         botName: newBot.name,

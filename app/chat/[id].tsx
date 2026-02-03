@@ -16,8 +16,8 @@ import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
-import { useChatStore } from '../../src/stores/chatStore';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
+import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
@@ -377,8 +377,6 @@ export default function ChatScreen() {
                             onChangeText={setInputText}
                             onSend={() => handleSend()}
                             onPlusPress={() => setIsAttachmentSheetVisible(true)}
-                            onGalleryPress={() => handleDirectAttachment('image')}
-                            onCameraPress={() => handleDirectAttachment('camera')}
                             onAudioRecorded={handleAudioRecorded}
                             disabled={isStreaming || isPickerLoading}
                             attachments={stagedAttachments}
