@@ -20,6 +20,7 @@ interface ChatState {
   addMessage: (message: Message) => void;
   uploadFile: (chatId: string | number, file: any) => Promise<void>;
   setCurrentChat: (chat: ChatListItem) => void;
+  updateCurrentChatBot: (botUpdates: any) => void;
 }
 
 const generateLocalId = () => `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -34,6 +35,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   page: 1,
 
   setCurrentChat: (chat) => set({ currentChat: chat }),
+
+  updateCurrentChatBot: (botUpdates) => set((state) => ({
+      currentChat: state.currentChat ? {
+          ...state.currentChat,
+          bot: { ...state.currentChat.bot, ...botUpdates }
+      } : null
+  })),
 
   loadMessages: async (chatId) => {
     set({ isLoading: true, error: null, page: 1, hasMore: true });

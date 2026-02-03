@@ -8,6 +8,7 @@ import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { botService } from '../../src/services/botService';
 import { exploreService, Category } from '../../src/services/exploreService';
 import { libraryService } from '../../src/services/libraryService';
+import { useChatStore } from '../../src/stores/chatStore';
 import { StudySpace } from '../../src/types/studio';
 
 export default function CreateBotScreen() {
@@ -17,6 +18,7 @@ export default function CreateBotScreen() {
     const isEditMode = !!botId;
 
     const { pickImage } = useAttachmentPicker();
+    const { updateCurrentChatBot } = useChatStore();
 
     // Data State
     const [name, setName] = useState('');
@@ -151,7 +153,7 @@ export default function CreateBotScreen() {
                 // Existing avatars are just { uri: ... } without name/type
                 const avatarToSend = avatar?.name ? avatar : undefined;
 
-                await botService.updateBot(botId, {
+                const updatedBot = await botService.updateBot(botId, {
                     name,
                     description,
                     prompt,
@@ -162,6 +164,14 @@ export default function CreateBotScreen() {
                     category_ids: selectedCategories,
                     study_space_ids: selectedSpaceId ? [selectedSpaceId] : undefined
                 });
+
+                // Update global chat store to reflect changes immediately in ChatScreen
+                updateCurrentChatBot({
+                    name: updatedBot.name,
+                    description: updatedBot.description,
+                    avatar_url: updatedBot.avatar_url || updatedBot.avatarUrl
+                });
+
                 Alert.alert("Sucesso", "Tutor atualizado com sucesso!");
                 router.back(); // Go back to chat
             } else {
