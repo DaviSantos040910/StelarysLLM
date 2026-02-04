@@ -37,18 +37,19 @@ export const studioService = {
             throw new Error('Invalid chat ID: cannot generate artifact without a valid chat.');
         }
 
+        // Wrap config options in a 'config' object as expected by backend's KnowledgeArtifactViewSet
         const payload = {
             chat: chatInt, // Send as integer for Django ForeignKey
             type,
             title,
-            // Map optional config fields
-            quantity: options?.quantity,
-            difficulty: options?.difficulty,
-            source_ids: options?.sourceIds,
-            custom_instructions: options?.customInstructions,
-            // include_chat_history removed
-            // Map targetDuration to 'duration' as requested by API contract
-            duration: options?.targetDuration
+            config: {
+                quantity: options?.quantity,
+                difficulty: options?.difficulty,
+                selectedSourceIds: options?.sourceIds, // Backend expects 'selectedSourceIds' inside config
+                customInstructions: options?.customInstructions,
+                duration: options?.targetDuration,
+                includeChatHistory: options?.includeChatHistory
+            }
         };
 
         try {
