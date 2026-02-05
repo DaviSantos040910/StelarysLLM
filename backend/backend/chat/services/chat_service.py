@@ -198,8 +198,11 @@ def get_ai_response(
             strict_context=strict_context
         )
 
+        # Adjust temperature based on RAG context presence
+        temperature = 0.3 if doc_contexts else 0.7
+
         generation_config = types.GenerateContentConfig(
-            temperature=0.7,
+            temperature=temperature,
             max_output_tokens=2500,
             system_instruction=system_instruction
         )
@@ -319,8 +322,11 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             strict_context=strict_context
         )
 
+        # Adjust temperature based on RAG context presence
+        temperature = 0.3 if doc_contexts else 0.7
+
         config = types.GenerateContentConfig(
-            temperature=0.7,
+            temperature=temperature,
             max_output_tokens=3000,
             system_instruction=system_instruction
         )
