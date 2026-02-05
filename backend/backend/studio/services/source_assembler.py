@@ -5,12 +5,13 @@ from chat.file_processor import FileProcessor
 from chat.services.token_service import TokenService
 from chat.services.context_builder import build_conversation_history
 from chat.vector_service import vector_service
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 class SourceAssemblyService:
     # Reduced limit for RAG context (focused chunks)
-    MAX_CONTEXT_TOKENS = 50_000
+    MAX_CONTEXT_TOKENS = getattr(settings, 'MAX_RAG_CONTEXT_TOKENS', 50_000)
 
     @staticmethod
     def get_context_from_config(chat_id: int, config: dict, query: str = "") -> str:

@@ -174,6 +174,11 @@ MEDIA_URL = '/media/'
 # Define onde o banco de dados vetorial será salvo localmente.
 CHROMA_DB_PATH = BASE_DIR / 'chroma_db_data'
 
+# --- RAG / Studio Configuration ---
+# Limite de tokens para contexto de geração de artefatos (RAG)
+# Ajustado para 50k para balancear custo e qualidade.
+MAX_RAG_CONTEXT_TOKENS = 50000
+
 # ===== CONFIGURAÇÃO DE IA =====
 
 # False = Gemini API (gratuito com GEMINI_API_KEY)
