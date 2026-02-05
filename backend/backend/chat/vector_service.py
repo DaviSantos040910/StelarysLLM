@@ -45,12 +45,6 @@ class VectorService:
                 return
 
             # Using google.genai client initialization is slightly different.
-            # But the 'embed_content' is usually a method on the client or model.
-            # The previous code used `genai.configure(api_key=api_key)`.
-            # With `google.genai`, we usually instantiate a client.
-
-            # Since this service is a singleton and init happens at import time effectively (or first use),
-            # we should store the client.
             self.genai_client = genai.Client(api_key=api_key)
 
             db_path = str(settings.CHROMA_DB_PATH)
@@ -72,27 +66,11 @@ class VectorService:
             return None
 
         try:
-            # New SDK usage:
-            # client.models.embed_content(model='text-embedding-004', contents=text)
-
-            # 'task_type' is not directly supported in the same way in all versions of the new SDK
-            # or it might be in config.
-            # However, for 0.3.0, let's check basic usage.
-            # The previous code passed `task_type`.
-            # In google-genai 0.3.0, it's typically:
-            # result = client.models.embed_content(model=..., contents=..., config=...)
-
-            # For simplicity and given I cannot browse docs easily, I will trust the standard call.
-            # If task_type is needed, it might be in config.
-
             response = self.genai_client.models.embed_content(
                 model="text-embedding-004",
                 contents=text[:8000],
-                # config=types.EmbedContentConfig(task_type=...) # If needed
             )
 
-            # The response object has 'embeddings'.
-            # If single content, it usually returns one embedding.
             if response.embeddings:
                 return response.embeddings[0].values
             return None
@@ -283,18 +261,6 @@ class VectorService:
     ) -> Tuple[List[str], List[str]]:
         """
         Busca inteligente com suporte a múltiplos documentos e filtro opcional.
-
-        Estratégias por tipo de query:
-        - REFERENCE: Prioriza documento mais recente
-        - SPECIFIC: Busca apenas no documento mencionado
-        - COMPARATIVE: Busca em todos os documentos, agrupa por fonte
-        - GENERAL: Busca híbrida em todos, rankeado por relevância
-
-        Args:
-            allowed_sources: Lista de nomes de arquivos para restringir a busca.
-
-        Returns:
-            Tuple: (doc_contexts, memory_contexts)
         """
         if not self.collection:
             return [], []
@@ -306,9 +272,7 @@ class VectorService:
 
             # Aplica filtro de allowed_sources se fornecido
             if allowed_sources is not None:
-                # Filtra sources disponíveis para apenas os permitidos
                 available_sources = [s for s in available_sources if s in allowed_sources]
-                # Se não sobrou nenhum source permitido, retorna vazio
                 if not available_sources:
                      return [], []
 
@@ -320,15 +284,13 @@ class VectorService:
 
             # 3. Executa estratégia de busca apropriada
             if query_type == QueryType.SPECIFIC and specific_doc:
-                # Se especificou um doc, ignora allowed_sources se ele estiver na lista (já filtrado em available_sources)
                 doc_contexts = self._search_specific_document(
                     query_text, user_id, bot_id, specific_doc, limit
                 )
             elif query_type == QueryType.REFERENCE:
-                # Usa documento mais recente (do contexto ou da lista filtrada)
                 target_source = recent_doc_source
                 if target_source and target_source not in available_sources:
-                    target_source = None # O recente não está na lista permitida
+                    target_source = None
 
                 if not target_source and available_sources:
                     target_source = available_sources[0]
@@ -382,7 +344,6 @@ class VectorService:
     ) -> List[str]:
         """
         Busca comparativa - garante resultados de múltiplos documentos.
-        Distribui o limite entre os documentos disponíveis.
         """
         embedding = self._get_embedding(query, "retrieval_query")
         if not embedding:
@@ -411,7 +372,10 @@ class VectorService:
     def _search_general(
         self, query: str, user_id: int, bot_id: int, limit: int, allowed_sources: Optional[List[str]] = None
     ) -> List[str]:
-        """Busca geral com diversificação de fontes (Reranking simples)."""
+        """
+        Busca geral com diversificação de fontes (Reranking).
+        Garante pelo menos 1 chunk por documento relevante quando possível.
+        """
         embedding = self._get_embedding(query, "retrieval_query")
         if not embedding:
             return []
@@ -424,20 +388,97 @@ class VectorService:
             ]
         }
 
-        # Aplica filtro de allowed_sources no ChromaDB se houver
-        if allowed_sources is not None and len(allowed_sources) > 0:
-            where_clause["$and"].append({"source": {"$in": allowed_sources}})
-        elif allowed_sources is not None and len(allowed_sources) == 0:
-             # Lista vazia mas não None -> não deve retornar nada
-             return []
+        if allowed_sources is not None:
+            if len(allowed_sources) > 0:
+                where_clause["$and"].append({"source": {"$in": allowed_sources}})
+            else:
+                return []
 
+        # Fetch candidates (3x limit) para reranking
+        fetch_k = limit * 3
         results = self.collection.query(
             query_embeddings=[embedding],
-            n_results=limit,
+            n_results=fetch_k,
             where=where_clause
         )
 
-        return self._format_doc_results(results)
+        if not results or not results['documents'] or not results['documents'][0]:
+            return []
+
+        # Parse results into structured candidates
+        candidates = []
+        docs = results['documents'][0]
+        metas = results['metadatas'][0]
+        distances = results['distances'][0] if 'distances' in results and results['distances'] else [0.0] * len(docs)
+
+        for i in range(len(docs)):
+            candidates.append({
+                'doc': docs[i],
+                'meta': metas[i],
+                'dist': distances[i],
+                'source': metas[i].get('source', 'Unknown')
+            })
+
+        # Sort by distance (lower is better in Chroma)
+        candidates.sort(key=lambda x: x['dist'])
+
+        # Reranking Logic:
+        # 1. Pick top chunk from each unique source
+        # 2. Fill remaining slots with next best chunks (respecting per-doc limit)
+        final_selection = []
+        seen_sources = set()
+        source_counts = {}
+        MAX_PER_DOC = 2  # Max chunks per document in final list
+
+        # Pass 1: Diversity (One from each)
+        diversity_picks = []
+        remaining_candidates = []
+
+        for c in candidates:
+            src = c['source']
+            if src not in seen_sources:
+                diversity_picks.append(c)
+                seen_sources.add(src)
+                source_counts[src] = 1
+            else:
+                remaining_candidates.append(c)
+
+        # Apply diversity picks first (up to limit)
+        final_selection.extend(diversity_picks[:limit])
+
+        # Pass 2: Relevance (Fill remaining slots)
+        if len(final_selection) < limit:
+            needed = limit - len(final_selection)
+
+            for c in remaining_candidates:
+                if len(final_selection) >= limit: break
+
+                src = c['source']
+                current_count = source_counts.get(src, 0)
+
+                if current_count < MAX_PER_DOC:
+                    final_selection.append(c)
+                    source_counts[src] = current_count + 1
+
+        # Re-sort final selection by relevance for the prompt
+        final_selection.sort(key=lambda x: x['dist'])
+
+        # Logging for observability
+        selected_sources = [c['source'] for c in final_selection]
+        logger.info(f"[RAG Diversity] Selected {len(final_selection)} chunks from: {selected_sources}")
+
+        return self._format_candidates(final_selection)
+
+    def _format_candidates(self, candidates: List[dict]) -> List[str]:
+        """Helper to format parsed candidates list."""
+        contexts = []
+        for c in candidates:
+            source = c['meta'].get('source', 'Documento')
+            chunk_idx = c['meta'].get('chunk_index', 0)
+            total = c['meta'].get('total_chunks', 1)
+            header = f"[DOCUMENTO: {source} (trecho {chunk_idx + 1}/{total})]"
+            contexts.append(f"{header}\n{c['doc']}")
+        return contexts
 
     def _search_memories(
         self, query: str, user_id: int, bot_id: int, limit: int
