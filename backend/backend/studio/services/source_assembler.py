@@ -1,25 +1,26 @@
 import logging
-from chat.models import ChatMessage
+from chat.models import ChatMessage, Chat
 from studio.models import KnowledgeSource
 from chat.file_processor import FileProcessor
 from chat.services.token_service import TokenService
 from chat.services.context_builder import build_conversation_history
+from chat.vector_service import vector_service
 
 logger = logging.getLogger(__name__)
 
 class SourceAssemblyService:
-    # Safety limit for context (Gemini 1.5 Pro is 1M+, Flash is 1M. We set a safe margin)
-    MAX_CONTEXT_TOKENS = 200_000
+    # Reduced limit for RAG context (focused chunks)
+    MAX_CONTEXT_TOKENS = 50_000
 
     @staticmethod
-    def get_context_from_config(chat_id: int, config: dict) -> str:
+    def get_context_from_config(chat_id: int, config: dict, query: str = "") -> str:
         """
-        Reúne o conteúdo bruto dos arquivos selecionados.
+        Reúne trechos relevantes (RAG) dos arquivos selecionados.
 
         Args:
             chat_id: ID do chat.
-            config: Dicionário contendo:
-                - selectedSourceIds (list[int/str]): IDs das fontes (KnowledgeSource).
+            config: Dicionário contendo selectedSourceIds e includeChatHistory.
+            query: Tópico/Título do artefato para guiar a busca vetorial.
 
         Returns:
             str: O contexto montado pronto para o LLM.
@@ -27,58 +28,54 @@ class SourceAssemblyService:
         context_parts = []
         current_tokens = 0
 
-        # 1. Processar Arquivos Selecionados
+        try:
+            chat = Chat.objects.get(id=chat_id)
+        except Chat.DoesNotExist:
+            return ""
+
+        # 1. RAG de Fontes Selecionadas
         source_ids = config.get('selectedSourceIds', [])
-        if source_ids:
-            # New Logic: Query KnowledgeSource directly
-            # We assume frontend passes KnowledgeSource IDs (as strings or ints)
-            # We filter by ID. Ideally we should filter by user access too, but ContextSourcesView already did that.
-
-            # Sanitizar IDs (remover prefixos se houver, mas decidimos não usar prefixos por enquanto)
+        if source_ids and query:
             clean_ids = [str(sid) for sid in source_ids]
-
             sources = KnowledgeSource.objects.filter(id__in=clean_ids)
+            allowed_names = [s.title for s in sources]
 
+            # Garante que os textos foram extraídos/indexados (lazy extraction fallback)
             for source in sources:
-                # Check if we already hit the limit
-                if current_tokens >= SourceAssemblyService.MAX_CONTEXT_TOKENS:
-                    logger.warning(f"Context limit reached ({SourceAssemblyService.MAX_CONTEXT_TOKENS}). Skipping remaining files.")
-                    context_parts.append("\n[SYSTEM: Maximum context size reached. Remaining files omitted.]")
-                    break
-
-                # Use extracted_text directly
-                content = source.extracted_text
-                title = source.title
-
-                if not content and source.file:
+                if not source.extracted_text and source.file:
                     try:
-                        logger.info(f"Extracting text for source {source.id} (File: {title})")
                         content = FileProcessor.extract_text(source.file.path)
                         if content:
                             source.extracted_text = content
                             source.save(update_fields=['extracted_text'])
-                    except Exception as e:
-                        logger.error(f"Error extracting text for source {source.id}: {e}")
+                            # Index on the fly if needed (idealmente já foi feito no upload)
+                            chunks = FileProcessor.chunk_text(content)
+                            vector_service.add_document_chunks(source.user.id, 0, chunks, source.title)
+                    except Exception: pass
 
-                if content:
-                    # Estimate tokens for this file
-                    file_tokens = TokenService.estimate_tokens(content)
+            # Busca Vetorial Top-K (Limit ~20 chunks)
+            # allowed_sources filtra a busca apenas nos arquivos selecionados
+            doc_contexts, _ = vector_service.search_context(
+                query_text=query,
+                user_id=chat.user_id,
+                bot_id=chat.bot.id,
+                limit=20,
+                allowed_sources=allowed_names
+            )
 
-                    # Check if adding this file exceeds limit
-                    if current_tokens + file_tokens > SourceAssemblyService.MAX_CONTEXT_TOKENS:
-                        # Calculate how much space is left
-                        space_left = SourceAssemblyService.MAX_CONTEXT_TOKENS - current_tokens
-                        if space_left > 100: # Only include if reasonable chunk remains
-                            truncated_content = TokenService.truncate_to_token_limit(content, space_left)
-                            context_parts.append(f"\n--- SOURCE: {title} (Partial) ---\n{truncated_content}")
-                            current_tokens += space_left
-                        else:
-                            logger.warning(f"Skipping source {title} due to full context.")
-                    else:
-                        context_parts.append(f"\n--- SOURCE: {title} ---\n{content}")
-                        current_tokens += file_tokens
-                else:
-                     logger.warning(f"Conteúdo vazio para fonte {title} (ID: {source.id})")
+            if doc_contexts:
+                rag_content = "\n".join(doc_contexts)
+                rag_tokens = TokenService.estimate_tokens(rag_content)
+
+                context_parts.append("## TRECHOS RELEVANTES DOS DOCUMENTOS SELECIONADOS\n")
+                context_parts.append(rag_content)
+                current_tokens += rag_tokens
+            else:
+                context_parts.append("[Nenhum trecho relevante encontrado nos arquivos selecionados para este tópico.]")
+
+        # Fallback: Se não houver query (não deve ocorrer em artefatos), mas houver fontes, usa full text limitado?
+        # Por enquanto, assumimos que Artifact Generation sempre tem query (title).
+
 
         # 2. Process Chat History (if requested)
         if config.get('includeChatHistory'):

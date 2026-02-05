@@ -335,7 +335,11 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
                 'selectedSourceIds': options.get('source_ids', []),
                 'includeChatHistory': options.get('includeChatHistory', False)
             }
-            full_context = SourceAssemblyService.get_context_from_config(artifact.chat.id, config)
+            full_context = SourceAssemblyService.get_context_from_config(
+                artifact.chat.id,
+                config,
+                query=artifact.title  # Pass title as RAG query
+            )
 
             # Handle Podcast flow separately
             if artifact.type == KnowledgeArtifact.ArtifactType.PODCAST:
