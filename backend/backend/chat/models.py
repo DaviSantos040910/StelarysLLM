@@ -113,3 +113,23 @@ class ChatMessage(models.Model):
         if storage and self.attachment.name and storage.exists(self.attachment.name):
             storage.delete(self.attachment.name)
         super().delete(*args, **kwargs)
+
+class ChatResponseMetric(models.Model):
+    """
+    Stores metrics about a generated AI response for RAG analysis.
+    """
+    message = models.OneToOneField(ChatMessage, on_delete=models.CASCADE, related_name='metrics')
+
+    # Number of unique source documents available in the context
+    sources_count = models.IntegerField(default=0)
+
+    # Number of explicit citations found in the response
+    cited_count = models.IntegerField(default=0)
+
+    # Whether the response contains at least one citation
+    has_citation = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Metrics for Msg {self.message.id}: {self.cited_count}/{self.sources_count} citations"

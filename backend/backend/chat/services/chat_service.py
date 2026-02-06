@@ -23,7 +23,7 @@ from django.core.files import File
 
 from google.genai import types
 
-from ..models import ChatMessage, Chat
+from ..models import ChatMessage, Chat, ChatResponseMetric
 from ..vector_service import VectorService
 from .ai_client import get_ai_client, detect_intent, generate_content_stream
 from .image_service import ImageGenerationService
@@ -43,6 +43,50 @@ vector_service = VectorService()
 # Instância global do serviço de imagem
 image_service = ImageGenerationService()
 
+
+def _calculate_metrics(response_text: str, context_sources: list) -> dict:
+    """Calcula métricas de cobertura de fontes na resposta."""
+    if not response_text:
+        return {'sources_count': len(context_sources), 'cited_count': 0, 'has_citation': False}
+
+    cited_count = 0
+    has_citation = False
+
+    # 1. Detectar nomes de arquivos presentes no texto
+    # (Simplificado: busca exata ou parcial do nome)
+    unique_sources = set(context_sources)
+    for src in unique_sources:
+        # Remove extensão para flexibilidade (ex: "relatorio.pdf" -> "relatorio")
+        base_name = os.path.splitext(src)[0]
+        if src in response_text or base_name in response_text:
+            cited_count += 1
+            has_citation = True
+
+    # 2. Detectar padrões explícitos de citação se nenhum nome encontrado
+    if not has_citation:
+        citation_patterns = [r'\[DOCUMENTO:', r'De acordo com', r'No documento', r'Segundo o arquivo']
+        for pattern in citation_patterns:
+            if re.search(pattern, response_text, re.IGNORECASE):
+                has_citation = True
+                break
+
+    return {
+        'sources_count': len(unique_sources),
+        'cited_count': cited_count,
+        'has_citation': has_citation
+    }
+
+def _save_metrics(message: ChatMessage, metrics: dict):
+    """Salva as métricas no banco de dados."""
+    try:
+        ChatResponseMetric.objects.create(
+            message=message,
+            sources_count=metrics['sources_count'],
+            cited_count=metrics['cited_count'],
+            has_citation=metrics['has_citation']
+        )
+    except Exception as e:
+        logger.error(f"Erro ao salvar métricas: {e}")
 
 def _parse_ai_response(response_text: str) -> dict:
     """
@@ -239,6 +283,19 @@ def get_ai_response(
 
         result_data = _parse_ai_response(response.text if response.text else "")
 
+        # Metrics Logic
+        metrics = _calculate_metrics(result_data['content'], available_doc_names)
+        logger.info(f"[Metrics] Msg Response: {metrics}")
+
+        # Save metrics requires a Message object.
+        # Since get_ai_response returns dict (and caller creates message later or earlier?),
+        # we can't easily link to message ID here unless passed.
+        # But handle_voice_message DOES create AI message.
+        # Wait, get_ai_response is usually called by a view which then saves the message.
+        # Ideally, we should return metrics in the result_data so the caller can save them.
+
+        result_data['metrics'] = metrics # Pass metrics up
+
         if result_data['content'] and len(user_message_text) > 10:
             threading.Thread(
                 target=process_memory_background,
@@ -422,6 +479,11 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             chat.last_message_at = timezone.now()
             chat.save()
 
+            # --- Metrics (Stream) ---
+            metrics = _calculate_metrics(full_clean_content, available_docs)
+            _save_metrics(ai_message, metrics)
+            logger.info(f"[Metrics Stream] {metrics}")
+
             # 4. Envia evento final para o frontend fechar conexão
             end_payload = {
                 'type': 'end',
@@ -523,6 +585,12 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
             duration=duration_ms
         )
 
+        ai_message.save() # Save first to get ID
+
+        # Save metrics if present
+        if 'metrics' in ai_response_data:
+            _save_metrics(ai_message, ai_response_data['metrics'])
+
         if generated_image_path:
              ai_message.attachment.name = generated_image_path
              ai_message.attachment_type = 'image'
@@ -532,15 +600,19 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
             try:
                 with open(audio_path, 'rb') as f:
                     filename = f"reply_tts_{uuid.uuid4().hex[:10]}.wav"
-                    ai_message.attachment.save(filename, File(f), save=False)
+                    ai_message.attachment.save(filename, File(f), save=False) # save=False? Attachment needs ID usually or instance?
+                    # If instance already saved, save=True updates it.
+                    # Django FileField save() saves the file and updates the instance.
+                    # Since we called ai_message.save() above, it has an ID.
                     ai_message.attachment_type = 'audio'
                     ai_message.original_filename = "voice_reply.wav"
+                    ai_message.save() # Update metadata first? No, attachment.save handles it.
                 os.remove(audio_path)
             except Exception as e:
                 logger.error(f"[Handle Voice] Erro ao anexar áudio: {e}")
                 ai_message.attachment_type = None
+                ai_message.save()
 
-        ai_message.save()
         chat.last_message_at = timezone.now()
         chat.save()
 
