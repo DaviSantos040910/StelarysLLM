@@ -160,7 +160,7 @@ MODELS = {
         'chat': 'gemini-2.5-flash-lite',
         'chat_pro': 'gemini-2.5-pro',
         'image': 'gemini-2.5-flash-image',
-        'embedding': 'text-embedding-004',
+        'embedding': 'gemini-embedding-001',
         'tts': 'gemini-2.5-flash-preview-tts',
         'lite': 'gemini-2.5-flash-lite',
     },

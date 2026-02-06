@@ -61,23 +61,32 @@ class VectorService:
             logger.critical(f"Falha ao inicializar VectorService: {e}")
 
     def _get_embedding(self, text: str, task_type: str = "retrieval_document") -> Optional[List[float]]:
-        """Gera embedding usando Gemini."""
+        """Gera embedding usando Gemini com fallback de modelos."""
         if not text or len(text.strip()) < 3:
             return None
 
-        try:
-            response = self.genai_client.models.embed_content(
-                model="text-embedding-004",
-                contents=text[:8000],
-            )
+        # Prioritize gemini-embedding-001 as per stable docs
+        models_to_try = ["models/gemini-embedding-001", "gemini-embedding-001", "text-embedding-004"]
 
-            if response.embeddings:
-                return response.embeddings[0].values
-            return None
+        for model in models_to_try:
+            try:
+                response = self.genai_client.models.embed_content(
+                    model=model,
+                    contents=text[:8000],
+                )
 
-        except Exception as e:
-            logger.error(f"Erro ao gerar embedding: {e}")
-            return None
+                if response.embeddings:
+                    return response.embeddings[0].values
+            except Exception as e:
+                if "404" in str(e) or "NOT_FOUND" in str(e):
+                    logger.warning(f"Embedding model '{model}' not found. Trying next...")
+                    continue
+                else:
+                    logger.error(f"Erro ao gerar embedding com {model}: {e}")
+                    return None
+
+        logger.error("Todos os modelos de embedding falharam.")
+        return None
 
     # =========================================================================
     # MÉTODOS DE ADIÇÃO
