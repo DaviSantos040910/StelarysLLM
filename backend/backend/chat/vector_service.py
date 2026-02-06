@@ -430,11 +430,18 @@ class VectorService:
         source_counts = {}
         MAX_PER_DOC = 2  # Max chunks per document in final list
 
+        # Threshold: Skip very irrelevant chunks (distance > 0.55 in cosine/chroma usually implies poor match)
+        SIMILARITY_THRESHOLD = 0.55
+
         # Pass 1: Diversity (One from each)
         diversity_picks = []
         remaining_candidates = []
 
         for c in candidates:
+            # Check relevance
+            if c['dist'] > SIMILARITY_THRESHOLD:
+                continue
+
             src = c['source']
             if src not in seen_sources:
                 diversity_picks.append(c)
