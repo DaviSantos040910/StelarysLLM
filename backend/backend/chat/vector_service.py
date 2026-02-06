@@ -51,8 +51,10 @@ class VectorService:
             os.makedirs(db_path, exist_ok=True)
 
             self.client = chromadb.PersistentClient(path=db_path)
+            # Use new collection name to force 3072 dimension
+            # Old collection "chat_memory" (768) is abandoned but kept for safety
             self.collection = self.client.get_or_create_collection(
-                name="chat_memory",
+                name="chat_memory_3072",
                 metadata={"hnsw:space": "cosine"}
             )
             logger.info(f"VectorService inicializado: {db_path}")
