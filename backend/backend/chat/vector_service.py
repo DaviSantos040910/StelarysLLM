@@ -241,10 +241,13 @@ class VectorService:
             return []
 
         # Constrói filtro OR para bot_id e study_space_ids
-        or_conditions = [{"bot_id": str(bot_id)}, {"bot_id": "0"}]
+        or_conditions = [{"bot_id": str(bot_id)}]
         if study_space_ids:
             for sid in study_space_ids:
                  or_conditions.append({"study_space_id": str(sid)})
+
+        # Se houver apenas uma condição, simplifica.
+        # Mas ChromaDB aceita "$or": [{"key": "val"}] normalmente.
 
         try:
             results = self.collection.get(
@@ -355,7 +358,7 @@ class VectorService:
             return [], []
 
     def _build_or_filter(self, user_id: int, bot_id: int, study_space_ids: Optional[List[int]]) -> dict:
-        or_conds = [{"bot_id": str(bot_id)}, {"bot_id": "0"}]
+        or_conds = [{"bot_id": str(bot_id)}]
         if study_space_ids:
             for sid in study_space_ids:
                 or_conds.append({"study_space_id": str(sid)})
