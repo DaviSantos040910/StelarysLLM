@@ -44,6 +44,7 @@ from .services import (
     handle_voice_message,
     process_message_stream
 )
+from chat.services.image_description_service import image_description_service
 from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
@@ -391,21 +392,31 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'text/plain'
                     ]
+
+                    text = None
                     if obj.attachment_type == 'file' and mime in processable_mimes:
+                         text = FileProcessor.extract_text(obj.attachment.path, mime)
+                    elif obj.attachment_type == 'image' and mime and mime.startswith('image/'):
+                         logger.info(f"[RAG Image] Descrevendo: {obj.original_filename}")
+                         text = image_description_service.describe_image(obj.attachment.path)
+
+                    if text:
                         try:
-                            logger.info(f"[RAG] Processando: {obj.original_filename}")
-                            text = FileProcessor.extract_text(obj.attachment.path, mime)
-                            if text:
-                                chunks = FileProcessor.chunk_text(text)
-                                if chunks:
-                                    vector_service.add_document_chunks(
-                                        user_id=chat.user.id,
-                                        chunks=chunks,
-                                        source_name=obj.original_filename,
-                                        source_id=f"msg_{obj.id}",
-                                        bot_id=chat.bot.id,
-                                        study_space_id=None
-                                    )
+                            logger.info(f"[RAG] Indexando texto extraído de: {obj.original_filename}")
+                            # Salva o texto extraído no modelo para cache/debug
+                            obj.extracted_text = text
+                            obj.save(update_fields=['extracted_text'])
+
+                            chunks = FileProcessor.chunk_text(text)
+                            if chunks:
+                                vector_service.add_document_chunks(
+                                    user_id=chat.user.id,
+                                    chunks=chunks,
+                                    source_name=obj.original_filename,
+                                    source_id=f"msg_{obj.id}",
+                                    bot_id=chat.bot.id,
+                                    study_space_id=None
+                                )
                         except Exception as rag_error:
                             logger.error(f"[RAG ERROR] {obj.original_filename}: {rag_error}")
 
@@ -726,6 +737,8 @@ class ChatSourceView(APIView):
             extracted_text = ""
             if source.source_type == 'FILE' and source.file:
                 extracted_text = FileProcessor.extract_text(source.file.path)
+            elif source.source_type == 'IMAGE' and source.file:
+                extracted_text = image_description_service.describe_image(source.file)
             elif source.url:
                 # Assuming ContentExtractor is available or similar logic
                 from chat.services.content_extractor import ContentExtractor

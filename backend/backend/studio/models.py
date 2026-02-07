@@ -7,6 +7,7 @@ class KnowledgeSource(models.Model):
         FILE = 'FILE', 'File'
         URL = 'URL', 'URL'
         YOUTUBE = 'YOUTUBE', 'YouTube'
+        IMAGE = 'IMAGE', 'Image'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='knowledge_sources')
     title = models.CharField(max_length=255)

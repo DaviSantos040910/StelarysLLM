@@ -19,6 +19,7 @@ from chat.file_processor import FileProcessor
 from chat.vector_service import vector_service
 from chat.services.content_extractor import ContentExtractor
 from chat.services.ai_client import get_ai_client, get_model
+from chat.services.image_description_service import image_description_service
 from studio.services.source_assembler import SourceAssemblyService
 from studio.services.podcast_scripting import PodcastScriptingService
 from studio.services.audio_mixer import AudioMixerService
@@ -49,6 +50,8 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
         try:
             if instance.source_type == KnowledgeSource.SourceType.FILE and instance.file:
                 extracted_text = FileProcessor.extract_text(instance.file.path)
+            elif instance.source_type == KnowledgeSource.SourceType.IMAGE and instance.file:
+                 extracted_text = image_description_service.describe_image(instance.file)
             elif instance.source_type in [KnowledgeSource.SourceType.URL, KnowledgeSource.SourceType.YOUTUBE] and instance.url:
                 extracted_text = ContentExtractor.extract_from_url(instance.url)
 
@@ -226,6 +229,8 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
             extracted_text = ""
             if source.source_type == KnowledgeSource.SourceType.FILE and source.file:
                 extracted_text = FileProcessor.extract_text(source.file.path)
+            elif source.source_type == KnowledgeSource.SourceType.IMAGE and source.file:
+                extracted_text = image_description_service.describe_image(source.file)
             elif source.source_type in [KnowledgeSource.SourceType.URL, KnowledgeSource.SourceType.YOUTUBE] and source.url:
                 extracted_text = ContentExtractor.extract_from_url(source.url)
 
