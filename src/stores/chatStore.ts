@@ -16,7 +16,7 @@ interface ChatState {
   loadMoreMessages: (chatId: string | number) => Promise<void>;
   sendMessage: (chatId: string | number, text: string) => Promise<void>;
   regenerateMessage: (chatId: string | number) => Promise<void>;
-  updateMessage: (messageId: string, updates: Partial<Message>) => void;
+  updateMessage: (messageId: string | number, updates: Partial<Message>) => void;
   addMessage: (message: Message) => void;
   uploadFile: (chatId: string | number, file: any) => Promise<void>;
   setCurrentChat: (chat: ChatListItem) => void;
@@ -79,7 +79,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   updateMessage: (messageId, updates) => {
       set((state) => ({
           messages: state.messages.map((m) =>
-              m.id === messageId ? { ...m, ...updates } : m
+              String(m.id) === String(messageId) ? { ...m, ...updates } : m
           )
       }));
   },
