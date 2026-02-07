@@ -70,3 +70,31 @@ class IngestionServiceTest(TestCase):
             self.assertTrue(result)
             mock_describe.assert_called_once()
             mock_add.assert_called()
+
+    @patch('chat.services.image_description_service.image_description_service.describe_image')
+    @patch('chat.file_processor.FileProcessor.extract_text')
+    @patch('chat.vector_service.vector_service.add_document_chunks')
+    def test_ingest_file_as_image_fallback(self, mock_add, mock_extract, mock_describe):
+        """
+        Test that a source marked as FILE but with image mimetype is routed to image description service.
+        """
+        mock_describe.return_value = "Robust image description"
+
+        with patch('chat.file_processor.FileProcessor.chunk_text', return_value=['chunk']) as mock_chunk:
+            # Create source as FILE but with .jpg extension/content_type
+            source = KnowledgeSource.objects.create(
+                user=self.user,
+                title="Mislabelled Image",
+                source_type=KnowledgeSource.SourceType.FILE,
+                file=SimpleUploadedFile("photo.jpg", b"fakeimg", content_type="image/jpeg")
+            )
+
+            result = KnowledgeIngestionService.ingest_source(source)
+
+            self.assertTrue(result)
+            # Should call describe_image, NOT extract_text
+            mock_describe.assert_called_once()
+            mock_extract.assert_not_called()
+
+            source.refresh_from_db()
+            self.assertEqual(source.extracted_text, "Robust image description")

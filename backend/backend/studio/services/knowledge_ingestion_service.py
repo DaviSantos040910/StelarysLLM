@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 from typing import Optional
 from studio.models import KnowledgeSource
 from chat.file_processor import FileProcessor
@@ -29,7 +30,14 @@ class KnowledgeIngestionService:
                 extracted_text = ""
 
                 if source.source_type == KnowledgeSource.SourceType.FILE and source.file:
-                    extracted_text = FileProcessor.extract_text(source.file.path)
+                    # Robustness: Check if FILE is actually an image
+                    mime_type, _ = mimetypes.guess_type(source.file.name)
+                    if mime_type and mime_type.startswith('image/'):
+                        extracted_text = image_description_service.describe_image(source.file)
+                        # Optional: correct the source type for future reference
+                        # source.source_type = KnowledgeSource.SourceType.IMAGE
+                    else:
+                        extracted_text = FileProcessor.extract_text(source.file.path)
 
                 elif source.source_type == KnowledgeSource.SourceType.IMAGE and source.file:
                     extracted_text = image_description_service.describe_image(source.file)
