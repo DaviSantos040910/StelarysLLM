@@ -22,6 +22,13 @@ class Command(BaseCommand):
 
         for source in sources:
             try:
+                # Clean up existing vectors for this source to avoid duplicates
+                try:
+                    vector_service.collection.delete(where={"source_id": str(source.id)})
+                    self.stdout.write(f"Cleared old vectors for {source.id}")
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"Could not clear vectors for {source.id}: {e}"))
+
                 # Use extracted text if available
                 text = source.extracted_text
 

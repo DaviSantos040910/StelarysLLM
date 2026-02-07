@@ -39,7 +39,8 @@ class SourceAssemblyService:
         if source_ids and query:
             clean_ids = [str(sid) for sid in source_ids]
             sources = KnowledgeSource.objects.filter(id__in=clean_ids)
-            allowed_names = [s.title for s in sources]
+
+            # Note: allowed_names removed as we filter by ID now
 
             # Garante que os textos foram extraídos/indexados (lazy extraction fallback)
             for source in sources:
