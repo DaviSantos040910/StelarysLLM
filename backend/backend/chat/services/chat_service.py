@@ -229,15 +229,28 @@ def get_ai_response(
         # Observability Log
         logger.info(f"[Context] Chat {chat_id} | Bot {bot.id} | Strict: {strict_context} | Web: {allow_web_search}")
         logger.info(f"[Context] Available Docs: {available_doc_names}")
+
+        # --- Format Contexts with Citations ---
+        formatted_doc_contexts = []
+        source_map = {} # source_id -> {index: 1, title: 'Title'}
+        used_source_indices = []
+
         if doc_contexts:
-            sources_used = set()
-            for c in doc_contexts:
-                if "[DOCUMENTO: " in c:
-                    try:
-                        src = c.split("[DOCUMENTO: ")[1].split(" (trecho")[0]
-                        sources_used.add(src)
-                    except: pass
-            logger.info(f"[Context] Sources Included in Prompt ({len(doc_contexts)} chunks): {list(sources_used)}")
+            for chunk in doc_contexts:
+                # chunk is now a Dict: {content, source, source_id, ...}
+                s_id = chunk.get('source_id') or chunk.get('source') # Fallback to title if ID missing
+                s_title = chunk.get('source', 'Documento')
+
+                if s_id not in source_map:
+                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
+
+                s_idx = source_map[s_id]['index']
+                used_source_indices.append(s_idx)
+
+                # Format: [1] (Title): Content
+                formatted_doc_contexts.append(f"[Fonte {s_idx}] ({s_title}):\n{chunk['content']}")
+
+            logger.info(f"[Context] Sources Mapped: {source_map}")
 
         # --- Strict Mode Fallback Logic (NotebookLM Style) ---
         if strict_context and not doc_contexts:
@@ -309,7 +322,7 @@ def get_ai_response(
             system_instruction = build_system_instruction(
                 bot_prompt=user_defined_prompt,
                 user_name=user_name,
-                doc_contexts=doc_contexts,
+            doc_contexts=formatted_doc_contexts,
                 memory_contexts=memory_contexts,
                 current_time=current_time_str,
                 available_docs=available_doc_names,
@@ -318,7 +331,7 @@ def get_ai_response(
             )
 
             # Adjust temperature based on RAG context presence
-            temperature = 0.3 if doc_contexts else 0.7
+            temperature = 0.3 if formatted_doc_contexts else 0.7
 
             generation_config = types.GenerateContentConfig(
                 temperature=temperature,
@@ -357,6 +370,16 @@ def get_ai_response(
         )
 
         result_data = _parse_ai_response(response.text if response.text else "")
+
+        # Append Citations Legend if sources were used
+        if source_map:
+            citations_text = "\n\nFontes:"
+            # Sort by index
+            sorted_sources = sorted(source_map.values(), key=lambda x: x['index'])
+            for s in sorted_sources:
+                citations_text += f"\n[{s['index']}] {s['title']}"
+
+            result_data['content'] += citations_text
 
         # Metrics Logic
         metrics = _calculate_metrics(result_data['content'], available_doc_names)
@@ -442,15 +465,19 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
         # Observability Log
         logger.info(f"[Context Stream] Chat {chat_id} | Bot {bot.id} | Strict: {strict_context} | Web: {allow_web_search}")
         logger.info(f"[Context Stream] Available Docs: {available_docs}")
+
+        # --- Format Contexts with Citations ---
+        formatted_doc_contexts = []
+        source_map = {}
         if doc_contexts:
-            sources_used = set()
-            for c in doc_contexts:
-                if "[DOCUMENTO: " in c:
-                    try:
-                        src = c.split("[DOCUMENTO: ")[1].split(" (trecho")[0]
-                        sources_used.add(src)
-                    except: pass
-            logger.info(f"[Context Stream] Sources Included in Prompt ({len(doc_contexts)} chunks): {list(sources_used)}")
+            for chunk in doc_contexts:
+                s_id = chunk.get('source_id') or chunk.get('source')
+                s_title = chunk.get('source', 'Documento')
+                if s_id not in source_map:
+                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
+                s_idx = source_map[s_id]['index']
+                formatted_doc_contexts.append(f"[Fonte {s_idx}] ({s_title}):\n{chunk['content']}")
+            logger.info(f"[Context Stream] Sources Mapped: {source_map}")
 
         # --- Strict Mode Fallback Logic (NotebookLM Style) ---
         if strict_context and not doc_contexts:
@@ -521,7 +548,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             system_instruction = build_system_instruction(
                 bot_prompt=user_defined_prompt,
                 user_name=user_name,
-                doc_contexts=doc_contexts,
+                doc_contexts=formatted_doc_contexts,
                 memory_contexts=memory_contexts,
                 current_time=current_time_str,
                 available_docs=available_docs,
@@ -529,12 +556,8 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                 strict_context=strict_context
             )
 
-            # If not strict and no docs, but also no web search (unlikely given new defaults, but possible),
-            # we just let it answer generally.
-            # But if doc_contexts EXIST, we want to prioritize them.
-
             config = types.GenerateContentConfig(
-                temperature=0.3 if doc_contexts else 0.7,
+                temperature=0.3 if formatted_doc_contexts else 0.7,
                 max_output_tokens=3000,
                 system_instruction=system_instruction
             )
@@ -650,6 +673,21 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             metrics = _calculate_metrics(full_clean_content, available_docs)
             _save_metrics(ai_message, metrics)
             logger.info(f"[Metrics Stream] {metrics}")
+
+            # 3.1 Append Citations (Stream)
+            if source_map:
+                citations_text = "\n\nFontes:"
+                sorted_sources = sorted(source_map.values(), key=lambda x: x['index'])
+                for s in sorted_sources:
+                    citations_text += f"\n[{s['index']}] {s['title']}"
+
+                full_clean_content += citations_text
+                # Send the citations chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'text': citations_text})}\n\n"
+
+                # Update DB message
+                ai_message.content = full_clean_content
+                ai_message.save()
 
             # 4. Envia evento final para o frontend fechar conexão
             end_payload = {

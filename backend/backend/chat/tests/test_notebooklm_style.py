@@ -100,4 +100,33 @@ class NotebookLMStyleTest(TestCase):
         # Verify Tool was added
         config = call_args[1]['config']
         self.assertTrue(hasattr(config, 'tools'), "Config missing tools")
-        # Difficult to inspect google_search object inside list, but presence implies intent
+
+    @patch('chat.services.chat_service.vector_service.search_context')
+    @patch('chat.services.chat_service.vector_service.get_available_documents')
+    @patch('chat.services.chat_service.get_ai_client')
+    def test_citations_format(self, mock_get_client, mock_get_docs, mock_search):
+        """
+        Verify that citations section is appended when docs are found.
+        """
+        # Setup: Docs found
+        docs_found = [{
+            'content': 'Quantum physics is weird.',
+            'source': 'Quantum.pdf',
+            'source_id': '101'
+        }]
+        mock_search.return_value = (docs_found, [])
+
+        # Mock Gemini
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = "According to [1], physics is weird."
+        mock_client.models.generate_content.return_value = mock_response
+
+        # Execute
+        response = get_ai_response(self.chat.id, "Explain quantum")
+
+        # Verify content has Legend
+        self.assertIn("According to [1], physics is weird.", response['content'])
+        self.assertIn("Fontes:", response['content'])
+        self.assertIn("[1] Quantum.pdf", response['content'])
