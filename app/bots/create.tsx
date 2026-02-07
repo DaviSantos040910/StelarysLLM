@@ -169,7 +169,11 @@ export default function CreateBotScreen() {
                 updateCurrentChatBot({
                     name: updatedBot.name,
                     description: updatedBot.description,
-                    avatar_url: updatedBot.avatar_url || updatedBot.avatarUrl
+                    avatar_url: updatedBot.avatar_url || updatedBot.avatarUrl,
+                    allow_web_search: updatedBot.allow_web_search,
+                    strict_context: updatedBot.strict_context,
+                    study_spaces: updatedBot.study_spaces,
+                    prompt: updatedBot.prompt
                 });
 
                 Alert.alert("Sucesso", "Tutor atualizado com sucesso!");
