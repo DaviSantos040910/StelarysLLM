@@ -239,6 +239,38 @@ def get_ai_response(
                     except: pass
             logger.info(f"[Context] Sources Included in Prompt ({len(doc_contexts)} chunks): {list(sources_used)}")
 
+        # --- Strict Mode Fallback Logic (NotebookLM Style) ---
+        if strict_context and not doc_contexts:
+            if available_doc_names:
+                logger.info("[Sync] Strict Mode + No Context Found -> Generating Refusal Template")
+                refusal_prompt = (
+                    f"You are a strict knowledge assistant. The user asked: '{user_message_text}'. "
+                    f"You searched the following available documents but found NO relevant information: {', '.join(available_doc_names[:5])}. "
+                    "You MUST output a response following EXACTLY this template:\n\n"
+                    f"Os documentos fornecidos não contêm informações sobre {user_message_text}.\n\n"
+                    "As fontes disponíveis tratam principalmente de:\n"
+                    "- <Generate a very brief 1-sentence summary of what the filenames imply>\n\n"
+                    "Para que eu possa responder com base nas suas fontes, você pode:\n"
+                    "- adicionar uma fonte que explique esse tema,\n"
+                    "- indicar onde isso aparece (arquivo/página),\n"
+                    "- ou reformular a pergunta usando termos presentes nos documentos."
+                )
+
+                # Override prompt content for refusal
+                contents = [{"role": "user", "parts": [{"text": refusal_prompt}]}]
+                generation_config = types.GenerateContentConfig(temperature=0.3, max_output_tokens=500)
+
+                # Bypass standard flow
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=contents,
+                    config=generation_config
+                )
+                return _parse_ai_response(response.text if response.text else "")
+            else:
+                return {'content': "Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.", 'suggestions': []}
+
+        # --- Standard Flow ---
         system_instruction = build_system_instruction(
             bot_prompt=user_defined_prompt,
             user_name=user_name,
@@ -385,16 +417,53 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                     except: pass
             logger.info(f"[Context Stream] Sources Included in Prompt ({len(doc_contexts)} chunks): {list(sources_used)}")
 
-        system_instruction = build_system_instruction(
-            bot_prompt=user_defined_prompt,
-            user_name=user_name,
-            doc_contexts=doc_contexts,
-            memory_contexts=memory_contexts,
-            current_time=current_time_str,
-            available_docs=available_docs,
-            allow_web_search=allow_web_search, # --- Passa flag para o system prompt ---
-            strict_context=strict_context
-        )
+        # --- Strict Mode Fallback Logic (NotebookLM Style) ---
+        if strict_context and not doc_contexts:
+            if available_docs:
+                logger.info("[Stream] Strict Mode + No Context Found -> Generating Refusal Template")
+                # Generate a strict refusal based on available sources
+                refusal_prompt = (
+                    f"You are a strict knowledge assistant. The user asked: '{user_message_text}'. "
+                    f"You searched the following available documents but found NO relevant information: {', '.join(available_docs[:5])}. "
+                    "You MUST output a response following EXACTLY this template:\n\n"
+                    f"Os documentos fornecidos não contêm informações sobre {user_message_text}.\n\n"
+                    "As fontes disponíveis tratam principalmente de:\n"
+                    "- <Generate a very brief 1-sentence summary of what the filenames imply>\n\n"
+                    "Para que eu possa responder com base nas suas fontes, você pode:\n"
+                    "- adicionar uma fonte que explique esse tema,\n"
+                    "- indicar onde isso aparece (arquivo/página),\n"
+                    "- ou reformular a pergunta usando termos presentes nos documentos."
+                )
+
+                # Override prompt content for refusal
+                contents = [{"role": "user", "parts": [{"text": refusal_prompt}]}]
+                # Use a clean config for refusal
+                config = types.GenerateContentConfig(temperature=0.3, max_output_tokens=500)
+            else:
+                logger.info("[Stream] Strict Mode + No Docs -> Generic Refusal")
+                yield f"data: {json.dumps({'type': 'chunk', 'text': 'Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'end', 'message_id': 0, 'clean_content': 'Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.', 'suggestions': []})}\n\n"
+                return
+        else:
+            # Standard Flow
+            system_instruction = build_system_instruction(
+                bot_prompt=user_defined_prompt,
+                user_name=user_name,
+                doc_contexts=doc_contexts,
+                memory_contexts=memory_contexts,
+                current_time=current_time_str,
+                available_docs=available_docs,
+                allow_web_search=allow_web_search,
+                strict_context=strict_context
+            )
+            config = types.GenerateContentConfig(
+                temperature=0.3 if doc_contexts else 0.7,
+                max_output_tokens=3000,
+                system_instruction=system_instruction
+            )
+
+            prompt_text = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
+            contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
 
         # Adjust temperature based on RAG context presence
         temperature = 0.3 if doc_contexts else 0.7
