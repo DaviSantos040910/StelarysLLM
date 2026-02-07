@@ -33,6 +33,10 @@ export type Bot = {
   suggestion2?: string;
   suggestion3?: string;
   createdByMe?: boolean; // Added based on backend response
+  allow_web_search?: boolean;
+  strict_context?: boolean;
+  prompt?: string;
+  study_spaces?: any[];
 };
 
 // Represents an item in the main chat list screen.

@@ -24,7 +24,7 @@ export default function CreateBotScreen() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [prompt, setPrompt] = useState('');
-    const [allowWebSearch, setAllowWebSearch] = useState(false);
+    // const [allowWebSearch, setAllowWebSearch] = useState(false); // REMOVED: Always true
     const [strictContext, setStrictContext] = useState(false);
 
     // Selectors State
@@ -66,7 +66,7 @@ export default function CreateBotScreen() {
             setName(bot.name);
             setDescription(bot.description || '');
             setPrompt(bot.prompt || '');
-            setAllowWebSearch(bot.allow_web_search);
+            // setAllowWebSearch(bot.allow_web_search); // REMOVED
             setStrictContext(bot.strict_context || false);
 
             const avatarUri = bot.avatarUrl || bot.avatar_url;
@@ -157,7 +157,7 @@ export default function CreateBotScreen() {
                     name,
                     description,
                     prompt,
-                    allow_web_search: allowWebSearch,
+                    allow_web_search: true, // ALWAYS TRUE
                     strict_context: strictContext,
                     publicity: 'Public',
                     avatar: avatarToSend,
@@ -170,7 +170,7 @@ export default function CreateBotScreen() {
                     name: updatedBot.name,
                     description: updatedBot.description,
                     avatar_url: updatedBot.avatar_url || updatedBot.avatarUrl,
-                    allow_web_search: updatedBot.allow_web_search,
+                    allow_web_search: true, // ALWAYS TRUE
                     strict_context: updatedBot.strict_context,
                     study_spaces: updatedBot.study_spaces,
                     prompt: updatedBot.prompt
@@ -183,7 +183,7 @@ export default function CreateBotScreen() {
                     name,
                     description,
                     prompt,
-                    allow_web_search: allowWebSearch,
+                    allow_web_search: true, // ALWAYS TRUE
                     strict_context: strictContext,
                     publicity: 'Public',
                     avatar,
@@ -314,38 +314,20 @@ export default function CreateBotScreen() {
                             className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 min-h-[120px]"
                         />
 
-                        <View className="flex-row items-center justify-between mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
-                            <View className="flex-row items-center flex-1 mr-4">
-                                <Globe size={20} color="#3b82f6" />
-                                <View className="ml-3">
-                                    <Text className="text-starlight font-bold">Acesso à Internet</Text>
-                                    <Text className="text-gray-500 text-xs">Permitir pesquisas no Google em tempo real</Text>
-                                </View>
-                            </View>
-                            <Switch
-                                value={allowWebSearch}
-                                onValueChange={(val) => {
-                                    setAllowWebSearch(val);
-                                    if (val) setStrictContext(false);
-                                }}
-                                trackColor={{ false: "#334155", true: "#3b82f6" }}
-                                thumbColor="#ffffff"
-                            />
-                        </View>
+                        {/* REMOVED: Allow Web Search Switch (Default is ALWAYS TRUE) */}
 
                         <View className="flex-row items-center justify-between mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
                             <View className="flex-row items-center flex-1 mr-4">
                                 <FolderOpen size={20} color="#eab308" />
                                 <View className="ml-3">
                                     <Text className="text-starlight font-bold">Apenas Fontes</Text>
-                                    <Text className="text-gray-500 text-xs">Responder estritamente com base nos arquivos enviados</Text>
+                                    <Text className="text-gray-500 text-xs">Responder estritamente com base nos arquivos enviados. (Desativa conhecimento geral)</Text>
                                 </View>
                             </View>
                             <Switch
                                 value={strictContext}
                                 onValueChange={(val) => {
                                     setStrictContext(val);
-                                    if (val) setAllowWebSearch(false);
                                 }}
                                 trackColor={{ false: "#334155", true: "#eab308" }}
                                 thumbColor="#ffffff"
