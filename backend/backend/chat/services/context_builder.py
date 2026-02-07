@@ -133,11 +133,21 @@ Você tem acesso a informações em tempo real via Google Search.
     strict_instruction = ""
     if strict_context:
         strict_instruction = """
-## MODO ESTRITO DE CONTEXTO ATIVADO
-1. **USE APENAS O CONTEXTO FORNECIDO**: Você DEVE responder usando APENAS as informações contidas na seção "TRECHOS RELEVANTES DOS DOCUMENTOS".
-2. **NÃO INVENTE**: Se a resposta não estiver nos documentos, diga claramente: "Desculpe, não encontrei essa informação nos documentos fornecidos."
-3. **SEM CONHECIMENTO EXTERNO**: Não use seu conhecimento geral para responder perguntas.
-4. **PRIORIDADE**: Esta regra anula qualquer outra instrução de permissividade.
+## 🚨 MODO ESTRITO DE CONTEXTO ATIVADO 🚨
+⚠️ **INSTRUÇÃO CRÍTICA**: Você está operando em modo RESTRITO.
+1. **IGNORAR HISTÓRICO DE PERMISSIVIDADE**: Se em mensagens anteriores você usou conhecimento externo, IGNORE esse precedente. Agora você está PROIBIDO de usar conhecimento externo.
+2. **USE APENAS O CONTEXTO FORNECIDO**: Você DEVE responder usando APENAS as informações contidas na seção "TRECHOS RELEVANTES DOS DOCUMENTOS".
+3. **NÃO INVENTE**: Se a resposta não estiver nos documentos, diga claramente: "Desculpe, não encontrei essa informação nos documentos fornecidos."
+4. **SEM INTERNET/CONHECIMENTO GERAL**: Não use seu conhecimento geral ou internet, mesmo que o usuário peça.
+5. **PRIORIDADE MÁXIMA**: Esta regra anula qualquer outra instrução do seu personagem ou histórico.
+"""
+    else:
+        # Se NÃO for estrito, explicitamos o modo aberto para garantir que ele saia do modo estrito se estava antes
+        strict_instruction = """
+## MODO DE CONHECIMENTO MISTO
+- Você pode usar os documentos fornecidos como fonte primária.
+- Se necessário, você PODE usar seu conhecimento geral ou internet (se habilitada) para complementar.
+- Ignore restrições de "apenas contexto" de turnos anteriores.
 """
 
     return f"""# PERSONAGEM

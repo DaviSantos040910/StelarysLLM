@@ -227,6 +227,7 @@ def get_ai_response(
         )
 
         # Observability Log
+        logger.info(f"[Context] Chat {chat_id} | Bot {bot.id} | Strict: {strict_context} | Web: {allow_web_search}")
         logger.info(f"[Context] Available Docs: {available_doc_names}")
         if doc_contexts:
             sources_used = set()
@@ -372,6 +373,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
         )
 
         # Observability Log
+        logger.info(f"[Context Stream] Chat {chat_id} | Bot {bot.id} | Strict: {strict_context} | Web: {allow_web_search}")
         logger.info(f"[Context Stream] Available Docs: {available_docs}")
         if doc_contexts:
             sources_used = set()
