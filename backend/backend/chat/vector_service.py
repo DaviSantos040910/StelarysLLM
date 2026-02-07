@@ -298,26 +298,38 @@ class VectorService:
         study_space_ids: Optional[List[int]] = None,
         limit: int = 6,
         recent_doc_source: Optional[str] = None,
-        allowed_sources: Optional[List[str]] = None
+        allowed_source_ids: Optional[List[str]] = None, # Changed from allowed_sources
+        allowed_sources: Optional[List[str]] = None # Deprecated but kept for compatibility
     ) -> Tuple[List[str], List[str]]:
         """
-        Busca inteligente com suporte a múltiplos documentos e filtro opcional.
+        Busca inteligente com suporte a múltiplos documentos e filtro opcional por ID.
         """
         if not self.collection:
             return [], []
 
         try:
-            # 1. Lista documentos disponíveis
+            # 1. Lista documentos disponíveis (apenas para logging/debug)
+            # available_docs = self.get_available_documents(user_id, bot_id, study_space_ids)
+            # available_sources = [d['source'] for d in available_docs]
+
+            # 2. Classifica a query (ainda usa nomes para "inteligência" de linguagem natural)
+            # Para isso, precisamos dos nomes disponíveis no contexto permitido.
+            # Se allowed_source_ids for fornecido, filtramos os nomes.
+
+            # TODO: Otimizar para não buscar todos docs se tivermos IDs
             available_docs = self.get_available_documents(user_id, bot_id, study_space_ids)
+
+            # Filtra por ID se fornecido
+            if allowed_source_ids:
+                # available_docs não retorna IDs nos metadados completos por padrão no get_available_documents atual?
+                # O metodo get_available_documents retorna dict com 'source' e 'timestamp'.
+                # Precisamos atualizar get_available_documents para retornar source_id também se quisermos filtrar aqui.
+                # Mas o filtro real acontece na query do Chroma.
+                pass
+
             available_sources = [d['source'] for d in available_docs]
 
-            # Aplica filtro de allowed_sources se fornecido
-            if allowed_sources is not None:
-                available_sources = [s for s in available_sources if s in allowed_sources]
-                if not available_sources:
-                     return [], []
-
-            logger.info(f"[RAG] Documentos considerados: {available_sources}")
+            logger.info(f"[RAG] Documentos considerados: {len(available_sources)}")
 
             # 2. Classifica a query
             query_type, specific_doc = self.classify_query(query_text, available_sources)
@@ -325,11 +337,13 @@ class VectorService:
 
             # 3. Executa estratégia de busca apropriada
             if query_type == QueryType.SPECIFIC and specific_doc:
+                # Se for específico, buscamos pelo nome (source) E aplicamos filtros de ID se houver
                 doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, specific_doc, limit, study_space_ids
+                    query_text, user_id, bot_id, specific_doc, limit, study_space_ids, allowed_source_ids
                 )
             elif query_type == QueryType.REFERENCE:
                 target_source = recent_doc_source
+                # Validação simples do target_source
                 if target_source and target_source not in available_sources:
                     target_source = None
 
@@ -337,15 +351,15 @@ class VectorService:
                     target_source = available_sources[0]
 
                 doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, target_source, limit, study_space_ids
+                    query_text, user_id, bot_id, target_source, limit, study_space_ids, allowed_source_ids
                 ) if target_source else []
             elif query_type == QueryType.COMPARATIVE:
                 doc_contexts = self._search_comparative(
-                    query_text, user_id, bot_id, available_sources, limit, study_space_ids
+                    query_text, user_id, bot_id, available_sources, limit, study_space_ids, allowed_source_ids
                 )
             else:  # GENERAL
                 doc_contexts = self._search_general(
-                    query_text, user_id, bot_id, limit, allowed_sources, study_space_ids
+                    query_text, user_id, bot_id, limit, allowed_source_ids, study_space_ids
                 )
 
             # 4. Busca memórias (sempre complementar)
@@ -372,7 +386,7 @@ class VectorService:
         }
 
     def _search_specific_document(
-        self, query: str, user_id: int, bot_id: int, source: str, limit: int, study_space_ids: Optional[List[int]] = None
+        self, query: str, user_id: int, bot_id: int, source: str, limit: int, study_space_ids: Optional[List[int]] = None, allowed_source_ids: Optional[List[str]] = None
     ) -> List[str]:
         """Busca em um documento específico."""
         embedding = self._get_embedding(query, "retrieval_query")
@@ -381,6 +395,9 @@ class VectorService:
 
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
         where_clause["$and"].append({"source": source})
+
+        if allowed_source_ids:
+            where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
 
         results = self.collection.query(
             query_embeddings=[embedding],
@@ -391,7 +408,7 @@ class VectorService:
         return self._format_doc_results(results)
 
     def _search_comparative(
-        self, query: str, user_id: int, bot_id: int, sources: List[str], limit: int, study_space_ids: Optional[List[int]] = None
+        self, query: str, user_id: int, bot_id: int, sources: List[str], limit: int, study_space_ids: Optional[List[int]] = None, allowed_source_ids: Optional[List[str]] = None
     ) -> List[str]:
         """
         Busca comparativa - garante resultados de múltiplos documentos.
@@ -407,6 +424,9 @@ class VectorService:
             where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
             where_clause["$and"].append({"source": source})
 
+            if allowed_source_ids:
+                where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
+
             results = self.collection.query(
                 query_embeddings=[embedding],
                 n_results=per_doc_limit,
@@ -417,7 +437,7 @@ class VectorService:
         return all_results[:limit]
 
     def _search_general(
-        self, query: str, user_id: int, bot_id: int, limit: int, allowed_sources: Optional[List[str]] = None, study_space_ids: Optional[List[int]] = None
+        self, query: str, user_id: int, bot_id: int, limit: int, allowed_source_ids: Optional[List[str]] = None, study_space_ids: Optional[List[int]] = None
     ) -> List[str]:
         """
         Busca geral com diversificação de fontes (Reranking).
@@ -429,10 +449,11 @@ class VectorService:
 
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
 
-        if allowed_sources is not None:
-            if len(allowed_sources) > 0:
-                where_clause["$and"].append({"source": {"$in": allowed_sources}})
+        if allowed_source_ids is not None:
+            if len(allowed_source_ids) > 0:
+                where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
             else:
+                # Se lista vazia foi passada explicitamente, não retorna nada
                 return []
 
         # Fetch candidates (3x limit) para reranking

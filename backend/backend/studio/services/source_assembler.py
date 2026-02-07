@@ -62,7 +62,7 @@ class SourceAssemblyService:
                     except Exception: pass
 
             # Busca Vetorial Top-K (Limit ~20 chunks)
-            # allowed_sources filtra a busca apenas nos arquivos selecionados
+            # allowed_source_ids filtra a busca apenas nos arquivos selecionados
             study_space_ids = list(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else []
 
             doc_contexts, _ = vector_service.search_context(
@@ -71,7 +71,7 @@ class SourceAssemblyService:
                 bot_id=chat.bot.id,
                 study_space_ids=study_space_ids,
                 limit=20,
-                allowed_sources=allowed_names
+                allowed_source_ids=clean_ids # Pass IDs explicitly
             )
 
             if doc_contexts:

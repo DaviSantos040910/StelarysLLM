@@ -527,7 +527,8 @@ def _get_smart_context(
     user_id: int,
     bot_id: int,
     chat_id: int,
-    study_space_ids: list = None
+    study_space_ids: list = None,
+    allowed_source_ids: list = None
 ) -> tuple:
     """Busca contexto de forma inteligente usando o VectorService multi-doc."""
     try:
@@ -537,6 +538,7 @@ def _get_smart_context(
             user_id=user_id,
             bot_id=bot_id,
             study_space_ids=study_space_ids,
+            allowed_source_ids=allowed_source_ids,
             limit=6,
             recent_doc_source=recent_source
         )
