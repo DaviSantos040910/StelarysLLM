@@ -62,3 +62,42 @@ class NotebookLMStyleTest(TestCase):
         response = get_ai_response(self.chat.id, "Hello")
 
         self.assertIn("Para responder, preciso que você adicione fontes", response['content'])
+
+    @patch('chat.services.chat_service.vector_service.search_context')
+    @patch('chat.services.chat_service.vector_service.get_available_documents')
+    @patch('chat.services.chat_service.get_ai_client')
+    def test_mixed_mode_no_context_fallback(self, mock_get_client, mock_get_docs, mock_search):
+        """
+        Verify that when strict_context is False (Mixed), no docs found, but web search is ON,
+        it triggers the Two-Block prompt.
+        """
+        # Change bot config
+        self.bot.strict_context = False
+        self.bot.allow_web_search = True
+        self.bot.save()
+
+        # Setup: No context found
+        mock_search.return_value = ([], [])
+
+        # Mock Gemini
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = "Nas suas fontes..."
+        mock_client.models.generate_content.return_value = mock_response
+
+        # Execute
+        response = get_ai_response(self.chat.id, "Cotação do dólar")
+
+        # Verify prompt
+        call_args = mock_client.models.generate_content.call_args
+        contents = call_args[1]['contents']
+        prompt_text = contents[0]['parts'][0]['text']
+
+        self.assertIn("INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.", prompt_text)
+        self.assertIn("Fora do contexto dos documentos, de forma geral:", prompt_text)
+
+        # Verify Tool was added
+        config = call_args[1]['config']
+        self.assertTrue(hasattr(config, 'tools'), "Config missing tools")
+        # Difficult to inspect google_search object inside list, but presence implies intent

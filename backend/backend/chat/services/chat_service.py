@@ -270,36 +270,71 @@ def get_ai_response(
             else:
                 return {'content': "Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.", 'suggestions': []}
 
-        # --- Standard Flow ---
-        system_instruction = build_system_instruction(
-            bot_prompt=user_defined_prompt,
-            user_name=user_name,
-            doc_contexts=doc_contexts,
-            memory_contexts=memory_contexts,
-            current_time=current_time_str,
-            available_docs=available_doc_names,
-            allow_web_search=allow_web_search, # Passa a flag para o construtor de prompt
-            strict_context=strict_context
-        )
+        # --- Mixed Mode Fallback (Sync) ---
+        elif not strict_context and not doc_contexts and allow_web_search:
+             logger.info("[Sync] Mixed Mode + No Context -> Forcing Two-Block Answer")
+             mixed_prompt = (
+                 f"User Question: '{user_message_text}'\n\n"
+                 "CONTEXT CHECK: You searched the user's documents but found NO matches.\n"
+                 "INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.\n\n"
+                 "TEMPLATE:\n"
+                 f"Nas suas fontes, não encontrei informações sobre {user_message_text}.\n\n"
+                 "Fora do contexto dos documentos, de forma geral:\n"
+                 "<Insert your helpful answer here based on general knowledge or web search>"
+             )
 
-        # Adjust temperature based on RAG context presence
-        temperature = 0.3 if doc_contexts else 0.7
+             system_instruction = build_system_instruction(
+                bot_prompt=user_defined_prompt,
+                user_name=user_name,
+                doc_contexts=[],
+                memory_contexts=memory_contexts,
+                current_time=current_time_str,
+                available_docs=available_doc_names,
+                allow_web_search=True,
+                strict_context=False
+            )
 
-        generation_config = types.GenerateContentConfig(
-            temperature=temperature,
-            max_output_tokens=2500,
-            system_instruction=system_instruction
-        )
+             generation_config = types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=2500,
+                system_instruction=system_instruction,
+                tools=[types.Tool(google_search=types.GoogleSearch())]
+            )
 
-        # Adiciona ferramenta Google Search na configuração síncrona (Apenas se Strict Context estiver OFF)
-        if allow_web_search and not strict_context:
-            # Se config.tools já existe, adiciona. Se não, cria.
-            if hasattr(generation_config, 'tools') and generation_config.tools:
-                generation_config.tools.append(types.Tool(google_search=types.GoogleSearch()))
-            else:
-                generation_config.tools = [types.Tool(google_search=types.GoogleSearch())]
+             # Override input
+             input_parts = [{"text": mixed_prompt}]
 
-        input_parts = []
+        else:
+            # --- Standard Flow ---
+            system_instruction = build_system_instruction(
+                bot_prompt=user_defined_prompt,
+                user_name=user_name,
+                doc_contexts=doc_contexts,
+                memory_contexts=memory_contexts,
+                current_time=current_time_str,
+                available_docs=available_doc_names,
+                allow_web_search=allow_web_search, # Passa a flag para o construtor de prompt
+                strict_context=strict_context
+            )
+
+            # Adjust temperature based on RAG context presence
+            temperature = 0.3 if doc_contexts else 0.7
+
+            generation_config = types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=2500,
+                system_instruction=system_instruction
+            )
+
+            # Adiciona ferramenta Google Search na configuração síncrona (Apenas se Strict Context estiver OFF)
+            if allow_web_search and not strict_context:
+                # Se config.tools já existe, adiciona. Se não, cria.
+                if hasattr(generation_config, 'tools') and generation_config.tools:
+                    generation_config.tools.append(types.Tool(google_search=types.GoogleSearch()))
+                else:
+                    generation_config.tools = [types.Tool(google_search=types.GoogleSearch())]
+
+            input_parts = []
         if user_message_obj and user_message_obj.attachment:
             try:
                 if hasattr(user_message_obj.attachment, 'path') and user_message_obj.attachment.path:
@@ -444,8 +479,45 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                 yield f"data: {json.dumps({'type': 'chunk', 'text': 'Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.'})}\n\n"
                 yield f"data: {json.dumps({'type': 'end', 'message_id': 0, 'clean_content': 'Para responder, preciso que você adicione fontes de estudo (PDFs, Arquivos, Links) ao chat ou espaço de estudo.', 'suggestions': []})}\n\n"
                 return
+
+        # --- Mixed Mode Fallback (No Context but Web Allowed) ---
+        elif not strict_context and not doc_contexts and allow_web_search:
+             logger.info("[Stream] Mixed Mode + No Context -> Forcing Two-Block Answer")
+             mixed_prompt = (
+                 f"User Question: '{user_message_text}'\n\n"
+                 "CONTEXT CHECK: You searched the user's documents but found NO matches.\n"
+                 "INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.\n\n"
+                 "TEMPLATE:\n"
+                 f"Nas suas fontes, não encontrei informações sobre {user_message_text}.\n\n"
+                 "Fora do contexto dos documentos, de forma geral:\n"
+                 "<Insert your helpful answer here based on general knowledge or web search>"
+             )
+
+             # Override prompt content, but keep history to maintain conversation flow if needed
+             # Actually, for this specific format enforcement, it's safer to be direct in the last turn
+             prompt_text = mixed_prompt
+             contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
+
+             # Use standard config but enable web search
+             system_instruction = build_system_instruction(
+                bot_prompt=user_defined_prompt,
+                user_name=user_name,
+                doc_contexts=[], # Empty
+                memory_contexts=memory_contexts,
+                current_time=current_time_str,
+                available_docs=available_docs,
+                allow_web_search=True,
+                strict_context=False
+            )
+             config = types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=3000,
+                system_instruction=system_instruction,
+                tools=[types.Tool(google_search=types.GoogleSearch())]
+            )
+
         else:
-            # Standard Flow
+            # Standard Flow (Evidence Found OR Mixed Mode without Web)
             system_instruction = build_system_instruction(
                 bot_prompt=user_defined_prompt,
                 user_name=user_name,
@@ -456,11 +528,20 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                 allow_web_search=allow_web_search,
                 strict_context=strict_context
             )
+
+            # If not strict and no docs, but also no web search (unlikely given new defaults, but possible),
+            # we just let it answer generally.
+            # But if doc_contexts EXIST, we want to prioritize them.
+
             config = types.GenerateContentConfig(
                 temperature=0.3 if doc_contexts else 0.7,
                 max_output_tokens=3000,
                 system_instruction=system_instruction
             )
+
+            # Enable tools only if allowed and not strict
+            if allow_web_search and not strict_context:
+                 config.tools = [types.Tool(google_search=types.GoogleSearch())]
 
             prompt_text = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
             contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
