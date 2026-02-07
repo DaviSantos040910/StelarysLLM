@@ -14,6 +14,7 @@ interface AudioPlayerState {
   title: string | null;
   artifactId: number | null;
   chatId: string | null;
+  playSessionId: number;
 
   play: (uri: string, title?: string, artifactId?: number, chatId?: string) => Promise<void>;
   pause: () => Promise<void>;
@@ -37,6 +38,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
   title: null,
   artifactId: null,
   chatId: null,
+  playSessionId: 0,
 
   play: async (uri, title, artifactId, chatId) => {
     // Evita chamadas duplicadas se já estiver carregando o MESMO uri
@@ -61,8 +63,12 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       await close();
     }
 
+    // Start New Session
+    const currentSessionId = get().playSessionId + 1;
+
     // 2. Define estado inicial IMEDIATAMENTE (Feedback Visual)
     set({
+      playSessionId: currentSessionId,
       isLoading: true,
       currentUri: uri, // Otimista: assume que esse é o atual
       title: title || 'Carregando áudio...',
@@ -88,10 +94,15 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
       // 3. Race Condition com Timeout de 15s para evitar spinner eterno
+      // IMPORTANT: shouldPlay: false to prevent ghost audio if timeout occurs
       const loadPromise = Audio.Sound.createAsync(
         { uri, headers }, // Inject headers
-        { shouldPlay: true, rate: get().rate, shouldCorrectPitch: true },
+        { shouldPlay: false, rate: get().rate, shouldCorrectPitch: true },
         (status) => {
+          // Status Update Callback (runs frequently)
+          // Must check session ID to prevent zombie updates
+          if (get().playSessionId !== currentSessionId) return;
+
           if (status.isLoaded) {
             set({
               position: status.positionMillis,
@@ -111,10 +122,20 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         setTimeout(() => reject(new Error('Timeout ao carregar áudio')), 15000)
       );
 
+      // Aguarda o resultado
       const result = await Promise.race([loadPromise, timeoutPromise]) as { sound: Audio.Sound, status: any };
       const { sound, status } = result;
 
-      // 4. Sucesso
+      // Session Guard: Check if user cancelled/navigated/stopped while loading
+      if (get().playSessionId !== currentSessionId) {
+          console.log("Audio loaded but session expired (orphaned). Unloading.");
+          await sound.unloadAsync();
+          return;
+      }
+
+      // 4. Sucesso (Sessão Válida) -> Agora damos play manual
+      await sound.playAsync();
+
       set({
         sound,
         isLoading: false,
@@ -123,10 +144,27 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
       });
 
     } catch (error) {
+      // Se for timeout, o loadPromise ainda pode resolver depois.
+      // A Session Guard acima (dentro do `then` ou após `await`) deve tratar.
+      // Se loadPromise resolver APÓS este catch, precisamos garantir que não toque.
+      // Como Audio.Sound.createAsync tem `shouldPlay: true`, ele toca sozinho se não descarregado.
+      // O `loadPromise` original não tem como ser cancelado externamente.
+      // Mas o `createAsync` retorna o sound object.
+      // Se cair no catch (Timeout), o `result` é indefinido aqui.
+
       console.error('Failed to play audio:', error);
-      // Mantemos o currentUri para permitir "Tentar Novamente", mas paramos o loading
-      set({ isLoading: false, isPlaying: false });
-      // alert('Não foi possível reproduzir o áudio. Verifique sua conexão.'); // Remove alert to avoid spam if auto-playing next
+
+      // Se a sessão ainda for a mesma (ninguém clicou em outro play), marca como falha/parado
+      if (get().playSessionId === currentSessionId) {
+          set({ isLoading: false, isPlaying: false });
+      }
+
+      // Nota: Se o `loadPromise` terminar depois, ele retornará o `sound`.
+      // Mas como não temos referência a ele AQUI (no catch do race), não podemos dar unload.
+      // POREM, o `Audio.Sound.createAsync` já foi disparado.
+      // Solução: O `createAsync` foi disparado. Não temos a ref dele se o timeout ganhar.
+      // Isso é um problema da API do Expo.
+      // Workaround: Não usar `shouldPlay: true` no createAsync. Dar play manual APÓS a verificação de sessão.
     }
   },
 

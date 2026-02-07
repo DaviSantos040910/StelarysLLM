@@ -38,7 +38,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const isStreaming = message.status === 'sending' && !isUser;
 
     // Use global audio store to track state
-    const { currentUri, isPlaying, pause, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
+    const { currentUri, isPlaying, stop, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
 
     // Determine if THIS message is playing (we use message.id as the identifier passed to store's chatId/artifactId slot or logic)
     // Actually, store uses `chatId` as a generic ID field sometimes, or we can check URI if we know it.
@@ -79,7 +79,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
     const handleTTSAction = () => {
         if (isThisMessagePlaying) {
-            pause();
+            // Stop and unload if user clicks square
+            stop?.() || useAudioPlayerStore.getState().close();
         } else {
             onTTS?.(String(message.id), message.content);
         }
