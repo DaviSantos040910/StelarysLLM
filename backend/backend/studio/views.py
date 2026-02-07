@@ -20,6 +20,7 @@ from chat.vector_service import vector_service
 from chat.services.content_extractor import ContentExtractor
 from chat.services.ai_client import get_ai_client, get_model
 from chat.services.image_description_service import image_description_service
+from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
 from studio.services.source_assembler import SourceAssemblyService
 from studio.services.podcast_scripting import PodcastScriptingService
 from studio.services.audio_mixer import AudioMixerService
@@ -45,37 +46,9 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
         # Save initially
         instance = serializer.save(user=self.request.user)
 
-        # Immediate Extraction
-        extracted_text = ""
-        try:
-            if instance.source_type == KnowledgeSource.SourceType.FILE and instance.file:
-                extracted_text = FileProcessor.extract_text(instance.file.path)
-            elif instance.source_type == KnowledgeSource.SourceType.IMAGE and instance.file:
-                 extracted_text = image_description_service.describe_image(instance.file)
-            elif instance.source_type in [KnowledgeSource.SourceType.URL, KnowledgeSource.SourceType.YOUTUBE] and instance.url:
-                extracted_text = ContentExtractor.extract_from_url(instance.url)
-
-            if extracted_text:
-                instance.extracted_text = extracted_text
-                instance.save(update_fields=['extracted_text'])
-
-                # Index globally for the user (bot_id=0)
-                try:
-                    chunks = FileProcessor.chunk_text(extracted_text)
-                    vector_service.add_document_chunks(
-                        user_id=instance.user.id,
-                        chunks=chunks,
-                        source_name=instance.title,
-                        source_id=instance.id,
-                        bot_id=0,
-                        study_space_id=None
-                    )
-                except Exception as vec_err:
-                    logger.error(f"Error indexing source {instance.id}: {vec_err}")
-
-        except Exception as e:
-            logger.error(f"Error extracting text for KnowledgeSource {instance.id}: {e}")
-            # We don't fail the request, but we log it. Text remains empty/null.
+        # Ingest using centralized service
+        # bot_id=0 signifies Global/Library context
+        KnowledgeIngestionService.ingest_source(instance, bot_id=0)
 
     @action(detail=True, methods=['post'])
     def add_to_chat(self, request, pk=None):
@@ -224,36 +197,8 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
 
         source.save()
 
-        # 2. Extract Text (Reuse logic from KnowledgeSourceViewSet.perform_create)
-        try:
-            extracted_text = ""
-            if source.source_type == KnowledgeSource.SourceType.FILE and source.file:
-                extracted_text = FileProcessor.extract_text(source.file.path)
-            elif source.source_type == KnowledgeSource.SourceType.IMAGE and source.file:
-                extracted_text = image_description_service.describe_image(source.file)
-            elif source.source_type in [KnowledgeSource.SourceType.URL, KnowledgeSource.SourceType.YOUTUBE] and source.url:
-                extracted_text = ContentExtractor.extract_from_url(source.url)
-
-            if extracted_text:
-                source.extracted_text = extracted_text
-                source.save(update_fields=['extracted_text'])
-
-                # Index globally for the user (bot_id=0)
-                try:
-                    chunks = FileProcessor.chunk_text(extracted_text)
-                    vector_service.add_document_chunks(
-                        user_id=source.user.id,
-                        chunks=chunks,
-                        source_name=source.title,
-                        source_id=source.id,
-                        bot_id=None,
-                        study_space_id=space.id
-                    )
-                except Exception as vec_err:
-                    logger.error(f"Error indexing source {source.id}: {vec_err}")
-
-        except Exception as e:
-            logger.error(f"Error extracting text for Study Space source: {e}")
+        # 2. Ingest using centralized service for this Study Space
+        KnowledgeIngestionService.ingest_source(source, study_space_id=space.id)
 
         # 3. Link to Space
         space.sources.add(source)

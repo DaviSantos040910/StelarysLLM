@@ -45,6 +45,7 @@ from .services import (
     process_message_stream
 )
 from chat.services.image_description_service import image_description_service
+from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
 from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
@@ -732,35 +733,8 @@ class ChatSourceView(APIView):
 
         source.save()
 
-        # 2. Extract Text (Sync for now, or reuse logic)
-        try:
-            extracted_text = ""
-            if source.source_type == 'FILE' and source.file:
-                extracted_text = FileProcessor.extract_text(source.file.path)
-            elif source.source_type == 'IMAGE' and source.file:
-                extracted_text = image_description_service.describe_image(source.file)
-            elif source.url:
-                # Assuming ContentExtractor is available or similar logic
-                from chat.services.content_extractor import ContentExtractor
-                extracted_text = ContentExtractor.extract_from_url(source.url)
-
-            if extracted_text:
-                source.extracted_text = extracted_text
-                source.save()
-
-                # 3. Index in Vector DB
-                chunks = FileProcessor.chunk_text(extracted_text)
-                if chunks:
-                    vector_service.add_document_chunks(
-                        user_id=request.user.id,
-                        chunks=chunks,
-                        source_name=source.title,
-                        source_id=source.id,
-                        bot_id=chat.bot.id,
-                        study_space_id=None
-                    )
-        except Exception as e:
-            logger.error(f"Error processing chat source: {e}")
+        # 2. Ingest using centralized service for this Chat's Bot
+        KnowledgeIngestionService.ingest_source(source, bot_id=chat.bot.id)
 
         # 4. Link to Chat
         chat.sources.add(source)
