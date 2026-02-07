@@ -215,8 +215,15 @@ def get_ai_response(
         exclude_id = user_message_obj.id if user_message_obj else None
         gemini_history, _ = build_conversation_history(chat_id, limit=12, exclude_message_id=exclude_id)
 
+        # Obter IDs dos espaços de estudo vinculados
+        study_space_ids = list(bot.study_spaces.values_list('id', flat=True))
+
         doc_contexts, memory_contexts, available_doc_names = _get_smart_context(
-            query=user_message_text, user_id=chat.user_id, bot_id=bot.id, chat_id=chat_id
+            query=user_message_text,
+            user_id=chat.user_id,
+            bot_id=bot.id,
+            chat_id=chat_id,
+            study_space_ids=study_space_ids
         )
 
         # Observability Log
@@ -352,8 +359,16 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
         current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M')
 
         gemini_history, _ = build_conversation_history(chat_id, limit=10)
+
+        # Obter IDs dos espaços de estudo vinculados
+        study_space_ids = list(bot.study_spaces.values_list('id', flat=True))
+
         doc_contexts, memory_contexts, available_docs = _get_smart_context(
-            query=user_message_text, user_id=chat.user_id, bot_id=bot.id, chat_id=chat_id
+            query=user_message_text,
+            user_id=chat.user_id,
+            bot_id=bot.id,
+            chat_id=chat_id,
+            study_space_ids=study_space_ids
         )
 
         # Observability Log
@@ -511,7 +526,8 @@ def _get_smart_context(
     query: str,
     user_id: int,
     bot_id: int,
-    chat_id: int
+    chat_id: int,
+    study_space_ids: list = None
 ) -> tuple:
     """Busca contexto de forma inteligente usando o VectorService multi-doc."""
     try:
@@ -520,10 +536,15 @@ def _get_smart_context(
             query_text=query,
             user_id=user_id,
             bot_id=bot_id,
+            study_space_ids=study_space_ids,
             limit=6,
             recent_doc_source=recent_source
         )
-        available_docs = vector_service.get_available_documents(user_id, bot_id)
+        available_docs = vector_service.get_available_documents(
+            user_id,
+            bot_id,
+            study_space_ids=study_space_ids
+        )
         available_names = [d['source'] for d in available_docs]
         return doc_contexts, memory_contexts, available_names
     except Exception as e:

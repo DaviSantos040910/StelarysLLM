@@ -400,9 +400,11 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                                 if chunks:
                                     vector_service.add_document_chunks(
                                         user_id=chat.user.id,
-                                        bot_id=chat.bot.id,
                                         chunks=chunks,
-                                        source_name=obj.original_filename
+                                        source_name=obj.original_filename,
+                                        source_id=f"msg_{obj.id}",
+                                        bot_id=chat.bot.id,
+                                        study_space_id=None
                                     )
                         except Exception as rag_error:
                             logger.error(f"[RAG ERROR] {obj.original_filename}: {rag_error}")
@@ -738,9 +740,11 @@ class ChatSourceView(APIView):
                 if chunks:
                     vector_service.add_document_chunks(
                         user_id=request.user.id,
-                        bot_id=chat.bot.id,
                         chunks=chunks,
-                        source_name=source.title
+                        source_name=source.title,
+                        source_id=source.id,
+                        bot_id=chat.bot.id,
+                        study_space_id=None
                     )
         except Exception as e:
             logger.error(f"Error processing chat source: {e}")

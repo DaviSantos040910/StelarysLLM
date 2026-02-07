@@ -122,16 +122,18 @@ class VectorService:
     def add_document_chunks(
         self,
         user_id: int,
-        bot_id: int,
         chunks: List[str],
         source_name: str,
+        source_id: str,
+        bot_id: Optional[int] = None,
+        study_space_id: Optional[int] = None,
         message_id: Optional[int] = None
     ) -> None:
         """Adiciona chunks de documento com metadados completos."""
         if not self.collection or not chunks:
             return
 
-        logger.info(f"Indexando {len(chunks)} chunks de '{source_name}'")
+        logger.info(f"Indexando {len(chunks)} chunks de '{source_name}' (Space: {study_space_id}, Bot: {bot_id})")
 
         docs, embeds, metas, ids = [], [], [], []
         timestamp = datetime.now().isoformat()
@@ -144,17 +146,33 @@ class VectorService:
             docs.append(chunk)
             embeds.append(embedding)
             ids.append(str(uuid.uuid4()))
-            metas.append({
+
+            # Constrói metadados com todos os campos solicitados
+            meta = {
                 'user_id': str(user_id),
-                'bot_id': str(bot_id),
                 'type': 'document',
                 'source': source_name,
-                'source_lower': source_name.lower(),  # Para busca case-insensitive
+                'source_id': str(source_id),
+                'source_title': source_name,
+                'source_lower': source_name.lower(),
                 'chunk_index': i,
                 'total_chunks': len(chunks),
                 'timestamp': timestamp,
                 'message_id': str(message_id) if message_id else ''
-            })
+            }
+
+            # Campos opcionais para filtro
+            if bot_id is not None:
+                meta['bot_id'] = str(bot_id)
+            else:
+                meta['bot_id'] = ''
+
+            if study_space_id is not None:
+                meta['study_space_id'] = str(study_space_id)
+            else:
+                meta['study_space_id'] = ''
+
+            metas.append(meta)
 
         if docs:
             try:
@@ -210,23 +228,31 @@ class VectorService:
         # 4. Query geral - busca em todos os documentos
         return QueryType.GENERAL, None
 
-    def get_available_documents(self, user_id: int, bot_id: int) -> List[Dict]:
+    def get_available_documents(
+        self,
+        user_id: int,
+        bot_id: int,
+        study_space_ids: Optional[List[int]] = None
+    ) -> List[Dict]:
         """
-        Lista todos os documentos disponíveis para o usuário/bot.
-
-        Returns:
-            Lista de dicts com 'source' e 'timestamp', ordenados por recência.
+        Lista todos os documentos disponíveis para o usuário/bot/espaços.
         """
         if not self.collection:
             return []
+
+        # Constrói filtro OR para bot_id e study_space_ids
+        or_conditions = [{"bot_id": str(bot_id)}, {"bot_id": "0"}]
+        if study_space_ids:
+            for sid in study_space_ids:
+                 or_conditions.append({"study_space_id": str(sid)})
 
         try:
             results = self.collection.get(
                 where={
                     "$and": [
                         {"user_id": str(user_id)},
-                        {"bot_id": {"$in": [str(bot_id), "0"]}},
-                        {"type": "document"}
+                        {"type": "document"},
+                        {"$or": or_conditions}
                     ]
                 },
                 include=["metadatas"]
@@ -266,6 +292,7 @@ class VectorService:
         query_text: str,
         user_id: int,
         bot_id: int,
+        study_space_ids: Optional[List[int]] = None,
         limit: int = 6,
         recent_doc_source: Optional[str] = None,
         allowed_sources: Optional[List[str]] = None
@@ -278,7 +305,7 @@ class VectorService:
 
         try:
             # 1. Lista documentos disponíveis
-            available_docs = self.get_available_documents(user_id, bot_id)
+            available_docs = self.get_available_documents(user_id, bot_id, study_space_ids)
             available_sources = [d['source'] for d in available_docs]
 
             # Aplica filtro de allowed_sources se fornecido
@@ -296,7 +323,7 @@ class VectorService:
             # 3. Executa estratégia de busca apropriada
             if query_type == QueryType.SPECIFIC and specific_doc:
                 doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, specific_doc, limit
+                    query_text, user_id, bot_id, specific_doc, limit, study_space_ids
                 )
             elif query_type == QueryType.REFERENCE:
                 target_source = recent_doc_source
@@ -307,15 +334,15 @@ class VectorService:
                     target_source = available_sources[0]
 
                 doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, target_source, limit
+                    query_text, user_id, bot_id, target_source, limit, study_space_ids
                 ) if target_source else []
             elif query_type == QueryType.COMPARATIVE:
                 doc_contexts = self._search_comparative(
-                    query_text, user_id, bot_id, available_sources, limit
+                    query_text, user_id, bot_id, available_sources, limit, study_space_ids
                 )
             else:  # GENERAL
                 doc_contexts = self._search_general(
-                    query_text, user_id, bot_id, limit, allowed_sources
+                    query_text, user_id, bot_id, limit, allowed_sources, study_space_ids
                 )
 
             # 4. Busca memórias (sempre complementar)
@@ -327,31 +354,41 @@ class VectorService:
             logger.error(f"Erro em search_context: {e}")
             return [], []
 
+    def _build_or_filter(self, user_id: int, bot_id: int, study_space_ids: Optional[List[int]]) -> dict:
+        or_conds = [{"bot_id": str(bot_id)}, {"bot_id": "0"}]
+        if study_space_ids:
+            for sid in study_space_ids:
+                or_conds.append({"study_space_id": str(sid)})
+
+        return {
+            "$and": [
+                {"user_id": str(user_id)},
+                {"type": "document"},
+                {"$or": or_conds}
+            ]
+        }
+
     def _search_specific_document(
-        self, query: str, user_id: int, bot_id: int, source: str, limit: int
+        self, query: str, user_id: int, bot_id: int, source: str, limit: int, study_space_ids: Optional[List[int]] = None
     ) -> List[str]:
         """Busca em um documento específico."""
         embedding = self._get_embedding(query, "retrieval_query")
         if not embedding:
             return []
 
+        where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
+        where_clause["$and"].append({"source": source})
+
         results = self.collection.query(
             query_embeddings=[embedding],
             n_results=limit,
-            where={
-                "$and": [
-                    {"user_id": str(user_id)},
-                    {"bot_id": {"$in": [str(bot_id), "0"]}},
-                    {"type": "document"},
-                    {"source": source}
-                ]
-            }
+            where=where_clause
         )
 
         return self._format_doc_results(results)
 
     def _search_comparative(
-        self, query: str, user_id: int, bot_id: int, sources: List[str], limit: int
+        self, query: str, user_id: int, bot_id: int, sources: List[str], limit: int, study_space_ids: Optional[List[int]] = None
     ) -> List[str]:
         """
         Busca comparativa - garante resultados de múltiplos documentos.
@@ -364,24 +401,20 @@ class VectorService:
         per_doc_limit = max(2, limit // len(sources)) if sources else limit
 
         for source in sources[:4]:  # Máximo 4 documentos para comparação
+            where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
+            where_clause["$and"].append({"source": source})
+
             results = self.collection.query(
                 query_embeddings=[embedding],
                 n_results=per_doc_limit,
-                where={
-                    "$and": [
-                        {"user_id": str(user_id)},
-                        {"bot_id": {"$in": [str(bot_id), "0"]}},
-                        {"type": "document"},
-                        {"source": source}
-                    ]
-                }
+                where=where_clause
             )
             all_results.extend(self._format_doc_results(results))
 
         return all_results[:limit]
 
     def _search_general(
-        self, query: str, user_id: int, bot_id: int, limit: int, allowed_sources: Optional[List[str]] = None
+        self, query: str, user_id: int, bot_id: int, limit: int, allowed_sources: Optional[List[str]] = None, study_space_ids: Optional[List[int]] = None
     ) -> List[str]:
         """
         Busca geral com diversificação de fontes (Reranking).
@@ -391,13 +424,7 @@ class VectorService:
         if not embedding:
             return []
 
-        where_clause = {
-            "$and": [
-                {"user_id": str(user_id)},
-                {"bot_id": {"$in": [str(bot_id), "0"]}},
-                {"type": "document"}
-            ]
-        }
+        where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
 
         if allowed_sources is not None:
             if len(allowed_sources) > 0:

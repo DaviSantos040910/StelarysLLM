@@ -31,9 +31,11 @@ class ReindexTest(TestCase):
         chunks = ["This is a test document for reindexing."]
         vector_service.add_document_chunks(
             user_id=self.user.id,
-            bot_id=0,
             chunks=chunks,
-            source_name=self.source.title
+            source_name=self.source.title,
+            source_id=self.source.id,
+            bot_id=0,
+            study_space_id=None
         )
 
         # Verifica se add foi chamado

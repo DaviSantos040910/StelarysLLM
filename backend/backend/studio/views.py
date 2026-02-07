@@ -61,9 +61,11 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
                     chunks = FileProcessor.chunk_text(extracted_text)
                     vector_service.add_document_chunks(
                         user_id=instance.user.id,
-                        bot_id=0,
                         chunks=chunks,
-                        source_name=instance.title
+                        source_name=instance.title,
+                        source_id=instance.id,
+                        bot_id=0,
+                        study_space_id=None
                     )
                 except Exception as vec_err:
                     logger.error(f"Error indexing source {instance.id}: {vec_err}")
@@ -236,9 +238,11 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
                     chunks = FileProcessor.chunk_text(extracted_text)
                     vector_service.add_document_chunks(
                         user_id=source.user.id,
-                        bot_id=0,
                         chunks=chunks,
-                        source_name=source.title
+                        source_name=source.title,
+                        source_id=source.id,
+                        bot_id=None,
+                        study_space_id=space.id
                     )
                 except Exception as vec_err:
                     logger.error(f"Error indexing source {source.id}: {vec_err}")

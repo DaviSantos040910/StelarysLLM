@@ -51,15 +51,25 @@ class SourceAssemblyService:
                             source.save(update_fields=['extracted_text'])
                             # Index on the fly if needed (idealmente já foi feito no upload)
                             chunks = FileProcessor.chunk_text(content)
-                            vector_service.add_document_chunks(source.user.id, 0, chunks, source.title)
+                            vector_service.add_document_chunks(
+                                user_id=source.user.id,
+                                chunks=chunks,
+                                source_name=source.title,
+                                source_id=source.id,
+                                bot_id=0,
+                                study_space_id=None
+                            )
                     except Exception: pass
 
             # Busca Vetorial Top-K (Limit ~20 chunks)
             # allowed_sources filtra a busca apenas nos arquivos selecionados
+            study_space_ids = list(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else []
+
             doc_contexts, _ = vector_service.search_context(
                 query_text=query,
                 user_id=chat.user_id,
                 bot_id=chat.bot.id,
+                study_space_ids=study_space_ids,
                 limit=20,
                 allowed_sources=allowed_names
             )
