@@ -6,6 +6,7 @@ import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Rocket } from 'lucide-react-native';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -29,13 +30,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-space-bg p-6 justify-center">
+    <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-10 items-center">
-        <View className="bg-nebula/20 p-4 rounded-full mb-4">
+        <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
            <Rocket size={48} color="#6366f1" />
         </View>
-        <Text className="text-3xl font-bold text-white mb-2">Welcome Back</Text>
-        <Text className="text-gray-400 text-base">Sign in to continue to StelarysLM</Text>
+        <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Welcome Back</Text>
+        <Text className={`${themeClasses.textSecondary} text-base`}>Sign in to continue to StelarysLM</Text>
       </View>
 
       {error && (
@@ -73,9 +74,9 @@ export default function LoginScreen() {
       {isLoading && <ActivityIndicator className="mt-4" color="#06b6d4" />}
 
       <View className="flex-row justify-center mt-6">
-        <Text className="text-gray-400">Don't have an account? </Text>
+        <Text className={themeClasses.textMuted}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-          <Text className="text-accent-cyan font-semibold">Sign Up</Text>
+          <Text className="text-indigo-500 dark:text-cyan-400 font-semibold">Sign Up</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

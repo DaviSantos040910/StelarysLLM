@@ -6,6 +6,7 @@ import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Star } from 'lucide-react-native';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -32,13 +33,13 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-space-bg p-6 justify-center">
+    <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-8 items-center">
-        <View className="bg-secondary/20 p-4 rounded-full mb-4">
+        <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
            <Star size={48} color="#d946ef" />
         </View>
-        <Text className="text-3xl font-bold text-white mb-2">Create Account</Text>
-        <Text className="text-gray-400 text-base">Join StelarysLM to start learning</Text>
+        <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Create Account</Text>
+        <Text className={`${themeClasses.textSecondary} text-base`}>Join StelarysLM to start learning</Text>
       </View>
 
       {error && (
@@ -80,15 +81,15 @@ export default function SignupScreen() {
         onPress={handleSignup}
         disabled={isLoading}
         className="mt-4"
-        variant="secondary"
+        variant="primary"
       />
 
-      {isLoading && <ActivityIndicator className="mt-4" color="#d946ef" />}
+      {isLoading && <ActivityIndicator className="mt-4" color="#818cf8" />}
 
       <View className="flex-row justify-center mt-6">
-        <Text className="text-gray-400">Already have an account? </Text>
+        <Text className={themeClasses.textMuted}>Already have an account? </Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-accent-purple font-semibold">Log In</Text>
+          <Text className="text-indigo-500 dark:text-cyan-400 font-semibold">Log In</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
