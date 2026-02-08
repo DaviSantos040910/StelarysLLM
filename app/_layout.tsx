@@ -8,6 +8,7 @@ import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 import { useThemeStore } from '../src/stores/themeStore';
 import { useColorScheme } from 'nativewind';
 import { themeClasses } from '../src/theme/classes';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -56,46 +57,48 @@ export default function RootLayout() {
   const backgroundColor = mode === 'dark' ? '#020617' : '#f8fafc'; // Matches tailwind config
 
   return (
-    <View className={themeClasses.screen}>
-      <Stack screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' }, // Let View handle bg
-        animation: 'slide_from_right'
-      }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View className={themeClasses.screen}>
+        <Stack screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'transparent' }, // Let View handle bg
+          animation: 'slide_from_right'
+        }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
-        {/* Chat Routes */}
-        <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="chat/reader" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="chat/manage-sources" options={{ headerShown: false }} />
-        <Stack.Screen name="chat/history" options={{ headerShown: false }} />
+          {/* Chat Routes */}
+          <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="chat/reader" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="chat/manage-sources" options={{ headerShown: false }} />
+          <Stack.Screen name="chat/history" options={{ headerShown: false }} />
 
-        {/* Studio Routes */}
-        <Stack.Screen name="studio/gallery" options={{ headerShown: false }} />
+          {/* Studio Routes */}
+          <Stack.Screen name="studio/gallery" options={{ headerShown: false }} />
 
-        {/* Profile Routes */}
-        <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/security" options={{ headerShown: false }} />
+          {/* Profile Routes */}
+          <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+          <Stack.Screen name="profile/security" options={{ headerShown: false }} />
 
-        {/* Bot Routes */}
-        <Stack.Screen name="bots/create" options={{ headerShown: false }} />
+          {/* Bot Routes */}
+          <Stack.Screen name="bots/create" options={{ headerShown: false }} />
 
-        {/* Library Routes */}
-        <Stack.Screen name="library/[id]" options={{ headerShown: false }} />
-      </Stack>
+          {/* Library Routes */}
+          <Stack.Screen name="library/[id]" options={{ headerShown: false }} />
+        </Stack>
 
-      {/* Global Mini Audio Player */}
-      <MiniAudioPlayer />
+        {/* Global Mini Audio Player */}
+        <MiniAudioPlayer />
 
-      <StatusBar style={statusBarStyle} backgroundColor={backgroundColor} />
+        <StatusBar style={statusBarStyle} backgroundColor={backgroundColor} />
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <View className={`absolute inset-0 z-50 justify-center items-center ${themeClasses.screen}`}>
-          <ActivityIndicator size="large" color="#818cf8" />
-        </View>
-      )}
-    </View>
+        {/* Loading Overlay */}
+        {isLoading && (
+          <View className={`absolute inset-0 z-50 justify-center items-center ${themeClasses.screen}`}>
+            <ActivityIndicator size="large" color="#818cf8" />
+          </View>
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
