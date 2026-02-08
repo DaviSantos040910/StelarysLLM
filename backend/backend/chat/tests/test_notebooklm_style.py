@@ -20,6 +20,44 @@ class NotebookLMStyleTest(TestCase):
     @patch('chat.services.chat_service.vector_service.search_context')
     @patch('chat.services.chat_service.vector_service.get_available_documents')
     @patch('chat.services.chat_service.get_ai_client')
+    def test_strict_mode_personality_refusal(self, mock_get_client, mock_get_docs, mock_search):
+        """
+        Test that strict mode refusal uses the bot's personality.
+        """
+        # Configure Pirate Bot
+        self.bot.prompt = "You are a grumpy Pirate Captain. Always say 'Arrgh!'."
+        self.bot.save()
+
+        # Setup: No context found
+        mock_search.return_value = ([], []) # doc_contexts, memory_contexts
+        # Setup: Docs exist in library
+        mock_get_docs.return_value = [{'source': 'TreasureMap.pdf'}]
+
+        # Mock Gemini Client
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = "Arrgh! The documents say nothing about gold."
+        mock_client.models.generate_content.return_value = mock_response
+
+        # Execute
+        get_ai_response(self.chat.id, "Where is the gold?")
+
+        # Verify
+        # Check if refusal template prompt contains the Pirate instruction
+        call_args = mock_client.models.generate_content.call_args
+        contents = call_args[1]['contents']
+        prompt_text = contents[0]['parts'][0]['text']
+
+        # The prompt should contain the bot's personality
+        self.assertIn("You are a grumpy Pirate Captain.", prompt_text)
+        # And the strict refusal template
+        self.assertIn("You MUST output a response following EXACTLY this template", prompt_text)
+        self.assertIn("adopting your personality tone in the placeholders", prompt_text)
+
+    @patch('chat.services.chat_service.vector_service.search_context')
+    @patch('chat.services.chat_service.vector_service.get_available_documents')
+    @patch('chat.services.chat_service.get_ai_client')
     def test_strict_mode_no_context_fallback(self, mock_get_client, mock_get_docs, mock_search):
         """
         Verify that when strict_context is True and no docs are found,

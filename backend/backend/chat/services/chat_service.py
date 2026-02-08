@@ -271,6 +271,7 @@ def get_ai_response(
                 )
 
                 # Override prompt content for refusal
+                # Inject personality explicitly in the prompt construction so it overrides default model behavior
                 contents = [{"role": "user", "parts": [{"text": refusal_prompt}]}]
                 generation_config = types.GenerateContentConfig(temperature=0.3, max_output_tokens=500)
 
