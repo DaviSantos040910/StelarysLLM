@@ -352,7 +352,7 @@ export default function CreateBotScreen() {
                                     <Pressable
                                         key={catId}
                                         onPress={() => toggleCategory(catId)}
-                                        className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
+                                        className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-indigo-500 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/10`}`}
                                     >
                                         <Text className={`${isSelected ? 'text-white font-bold' : themeClasses.textSecondary}`}>{cat.name}</Text>
                                     </Pressable>
@@ -364,7 +364,7 @@ export default function CreateBotScreen() {
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <Pressable
                                 onPress={() => setSelectedSpaceId(null)}
-                                className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${selectedSpaceId === null ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
+                                className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${selectedSpaceId === null ? 'bg-indigo-500 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/10`}`}
                             >
                                 <FolderOpen size={24} color={selectedSpaceId === null ? '#fff' : "#94a3b8"} />
                                 <Text className={`${selectedSpaceId === null ? 'text-white' : themeClasses.textMuted} font-medium`}>Nenhum</Text>
@@ -376,7 +376,7 @@ export default function CreateBotScreen() {
                                     <Pressable
                                         key={space.id}
                                         onPress={() => setSelectedSpaceId(space.id)}
-                                        className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${isSelected ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
+                                        className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${isSelected ? 'bg-indigo-500 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/10`}`}
                                     >
                                         <FolderOpen size={24} color={isSelected ? '#fff' : "#94a3b8"} />
                                         <Text className={`font-medium ${isSelected ? 'text-white' : themeClasses.textMuted}`} numberOfLines={2}>

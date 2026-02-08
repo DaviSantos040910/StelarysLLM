@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { userService } from '../../src/services/userService';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function SecurityScreen() {
     const router = useRouter();
@@ -37,12 +38,12 @@ export default function SecurityScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50 dark:bg-space-dark" edges={['top']}>
-            <View className="px-4 py-4 flex-row items-center justify-between border-b border-gray-200 dark:border-white/10">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-gray-200 dark:active:bg-white/10">
-                    <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
+            <View className={`px-4 py-4 flex-row items-center justify-between ${themeClasses.headerBorder}`}>
+                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                 </Pressable>
-                <Text className="text-lg font-bold text-gray-900 dark:text-starlight">Segurança</Text>
+                <Text className={`${themeClasses.textPrimary} text-lg font-bold`}>Segurança</Text>
                 <Pressable onPress={handleSave} disabled={isSubmitting} className="p-2">
                     {isSubmitting ? <ActivityIndicator size="small" color="#818cf8" /> : <Check size={24} color="#818cf8" />}
                 </Pressable>
@@ -50,32 +51,32 @@ export default function SecurityScreen() {
 
             <View className="p-6 space-y-6">
                 <View>
-                    <Text className="text-gray-500 dark:text-gray-400 mb-2 font-medium">Senha Atual</Text>
+                    <Text className={`${themeClasses.textSecondary} mb-2 font-medium`}>Senha Atual</Text>
                     <TextInput
                         value={oldPassword}
                         onChangeText={setOldPassword}
                         secureTextEntry
-                        className="bg-white dark:bg-space-light p-4 rounded-xl border border-gray-200 dark:border-white/10 text-gray-900 dark:text-starlight"
+                        className={`${themeClasses.input} p-4`}
                     />
                 </View>
 
                 <View>
-                    <Text className="text-gray-500 dark:text-gray-400 mb-2 font-medium">Nova Senha</Text>
+                    <Text className={`${themeClasses.textSecondary} mb-2 font-medium`}>Nova Senha</Text>
                     <TextInput
                         value={newPassword}
                         onChangeText={setNewPassword}
                         secureTextEntry
-                        className="bg-white dark:bg-space-light p-4 rounded-xl border border-gray-200 dark:border-white/10 text-gray-900 dark:text-starlight"
+                        className={`${themeClasses.input} p-4`}
                     />
                 </View>
 
                 <View>
-                    <Text className="text-gray-500 dark:text-gray-400 mb-2 font-medium">Confirmar Nova Senha</Text>
+                    <Text className={`${themeClasses.textSecondary} mb-2 font-medium`}>Confirmar Nova Senha</Text>
                     <TextInput
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry
-                        className="bg-white dark:bg-space-light p-4 rounded-xl border border-gray-200 dark:border-white/10 text-gray-900 dark:text-starlight"
+                        className={`${themeClasses.input} p-4`}
                     />
                 </View>
             </View>

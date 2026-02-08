@@ -104,7 +104,7 @@ const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtif
                     <Text className={`${themeClasses.textMuted} text-xs`}>{dateStr}</Text>
                 </View>
 
-                <View className="mt-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                <View className={`mt-2 pt-2 border-t border-gray-200 dark:border-white/5`}>
                     {item.type === 'PODCAST' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{item.duration || '00:00'} min</Text>}
                     {item.type === 'QUIZ' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>Revisar</Text>}
                     {item.type === 'FLASHCARD' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
