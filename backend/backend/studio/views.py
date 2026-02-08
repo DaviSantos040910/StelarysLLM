@@ -305,7 +305,14 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             model_name = get_model('chat')
 
             # 2. Build Prompt
-            system_instruction, response_schema = self._build_prompt_and_schema(artifact.type, artifact.title, full_context, options)
+            bot_prompt = artifact.chat.bot.prompt if artifact.chat.bot and artifact.chat.bot.prompt else None
+            system_instruction, response_schema = self._build_prompt_and_schema(
+                artifact.type,
+                artifact.title,
+                full_context,
+                options,
+                bot_prompt=bot_prompt
+            )
 
             # 3. Call AI with Structured Output
             # If using RAG (selected source IDs), lower temperature
@@ -372,7 +379,7 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             artifact.status = KnowledgeArtifact.Status.ERROR
             artifact.save()
 
-    def _build_prompt_and_schema(self, artifact_type, title, context, options):
+    def _build_prompt_and_schema(self, artifact_type, title, context, options, bot_prompt=None):
         difficulty = options.get('difficulty', 'Medium')
         quantity = options.get('quantity', 10)
         instructions = options.get('custom_instructions', '')
@@ -383,6 +390,10 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             f"Language: Detect the language from the context (default to Portuguese if unclear).\n"
             f"Target Audience Difficulty: {difficulty}.\n"
         )
+
+        if bot_prompt:
+             base_instruction += f"\nYOUR PERSONALITY/ROLE:\n{bot_prompt}\n"
+             base_instruction += "Adopt this persona for the tone and style of the content, but STRICTLY use the provided Context Material for facts.\n"
 
         if instructions:
             base_instruction += f"CUSTOM INSTRUCTIONS:\n{instructions}\n"
