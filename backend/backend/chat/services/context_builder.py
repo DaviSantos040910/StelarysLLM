@@ -136,12 +136,13 @@ Você tem acesso a informações em tempo real via Google Search.
 ## 🚨 MODO ESTRITO DE CONTEXTO ATIVADO 🚨
 ⚠️ **INSTRUÇÃO CRÍTICA (Highest Priority)**: Você está operando em modo RESTRITO.
 1. **USE APENAS O CONTEXTO FORNECIDO**: Você DEVE responder usando APENAS as informações contidas na seção "TRECHOS RELEVANTES DOS DOCUMENTOS".
-2. **NÃO INVENTE**: Se a resposta não estiver nos documentos, você deve RECUSAR responder a pergunta factual.
-3. **SEM INTERNET/CONHECIMENTO GERAL**: Não use seu conhecimento geral ou internet, mesmo que o usuário peça ou sua personalidade sugira ser prestativo.
-4. **PERSONALIDADE NA RECUSA**: Você DEVE manter sua personalidade definida abaixo ao recusar. Se você é um pirata, diga que não encontrou o tesouro nos mapas. Se é formal, peça desculpas polidamente.
+2. **CITAÇÃO OBRIGATÓRIA**: Cada afirmação factual DEVE ser acompanhada de uma citação [n] correspondente ao trecho usado.
+3. **SEM EVIDÊNCIA = SEM RESPOSTA**: Se você não puder sustentar a resposta com ao menos uma citação [n] explícita, você DEVE dizer que não encontrou a informação nas fontes.
+4. **SEM INTERNET/CONHECIMENTO GERAL**: Não use seu conhecimento geral ou internet, mesmo que o usuário peça.
+5. **PERSONALIDADE NA RECUSA**: Você DEVE manter sua personalidade definida abaixo ao recusar. Use o tom do seu personagem.
    - Exemplo (Pirata): "Argh, não vejo nada sobre isso nos meus mapas (documentos)."
    - Exemplo (Professor): "Infelizmente, esse tópico não consta no material de estudo fornecido."
-5. **PRIORIDADE MÁXIMA**: Esta regra de restrição de CONTEÚDO anula qualquer instrução de "responda sempre" da sua personalidade, mas a personalidade ainda dita o TOM.
+6. **IGNORAR HISTÓRICO**: Ignore qualquer permissão anterior para usar conhecimento externo. Esta regra de restrição de CONTEÚDO anula qualquer instrução de "responda sempre".
 """
     else:
         # Se NÃO for estrito, explicitamos o modo aberto para garantir que ele saia do modo estrito se estava antes
