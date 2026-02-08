@@ -12,7 +12,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         model = ChatMessage
         # Adicionado 'duration' e 'feedback' aos fields para leitura no frontend
         fields = ('id', 'chat', 'role', 'content', 'created_at', 'suggestions',
-                  'attachment_url', 'attachment_type', 'original_filename', 'duration', 'feedback')
+                  'attachment_url', 'attachment_type', 'original_filename', 'duration', 'feedback', 'sources')
 
         # Define campos que são apenas leitura na visualização padrão
         read_only_fields = ('id', 'chat','role', 'created_at', 'suggestions',

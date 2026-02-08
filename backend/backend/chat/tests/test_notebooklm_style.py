@@ -144,14 +144,18 @@ class NotebookLMStyleTest(TestCase):
     @patch('chat.services.chat_service.get_ai_client')
     def test_citations_format(self, mock_get_client, mock_get_docs, mock_search):
         """
-        Verify that citations section is appended when docs are found.
+        Verify that citations are structured in the 'sources' field.
         """
         # Setup: Docs found
         docs_found = [{
             'content': 'Quantum physics is weird.',
             'source': 'Quantum.pdf',
-            'source_id': '101'
+            'source_id': '101',
+            'index': 1 # Assuming vector service or logic assigns this? Actually source_map does.
         }]
+        # Note: In real logic, ChatService builds the source_map with index.
+        # But mock_search returns chunks.
+
         mock_search.return_value = (docs_found, [])
 
         # Mock Gemini
@@ -164,7 +168,11 @@ class NotebookLMStyleTest(TestCase):
         # Execute
         response = get_ai_response(self.chat.id, "Explain quantum")
 
-        # Verify content has Legend
+        # Verify content logic (We REMOVED the appended text, so checking for "Fontes:" in content should FAIL or be removed)
         self.assertIn("According to [1], physics is weird.", response['content'])
-        self.assertIn("Fontes:", response['content'])
-        self.assertIn("[1] Quantum.pdf", response['content'])
+
+        # Verify SOURCES field
+        self.assertIn('sources', response)
+        self.assertEqual(len(response['sources']), 1)
+        self.assertEqual(response['sources'][0]['title'], 'Quantum.pdf')
+        self.assertEqual(response['sources'][0]['index'], 1)

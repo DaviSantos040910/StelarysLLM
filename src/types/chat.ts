@@ -90,3 +90,11 @@ export interface ChatSource {
     selected?: boolean;
     status?: 'pending' | 'processed' | 'error'; // Added status
 }
+
+export interface SourceRef {
+    id: string;
+    title: string;
+    type: string;
+    url?: string;
+    index: number;
+}

@@ -392,15 +392,26 @@ def get_ai_response(
                 # Clear citations legend logic triggers below since content changed
                 source_map = {}
 
-        # Append Citations Legend if sources were used
+        # Build Sources list for frontend
+        sources_list = []
         if source_map:
-            citations_text = "\n\nFontes:"
-            # Sort by index
-            sorted_sources = sorted(source_map.values(), key=lambda x: x['index'])
-            for s in sorted_sources:
-                citations_text += f"\n[{s['index']}] {s['title']}"
+            # Extract citations actually used in the FINAL text
+            used_indices = set(re.findall(r'\[(\d+)\]', result_data['content']))
 
-            result_data['content'] += citations_text
+            # Map back to source details
+            unique_sources = {}
+            for s_id, s_info in source_map.items():
+                if str(s_info['index']) in used_indices:
+                    if s_id not in unique_sources:
+                        unique_sources[s_id] = {
+                            'id': s_id,
+                            'title': s_info['title'],
+                            'type': 'file', # Default, could be refined if source_map had type
+                            'index': s_info['index']
+                        }
+
+            sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
+            result_data['sources'] = sources_list
 
         # Metrics Logic
         metrics = _calculate_metrics(result_data['content'], available_doc_names)
@@ -699,19 +710,24 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             _save_metrics(ai_message, metrics)
             logger.info(f"[Metrics Stream] {metrics}")
 
-            # 3.1 Append Citations (Stream)
+            # 3.1 Extract Citations for Frontend (Stream)
+            final_sources_list = []
             if source_map:
-                citations_text = "\n\nFontes:"
-                sorted_sources = sorted(source_map.values(), key=lambda x: x['index'])
-                for s in sorted_sources:
-                    citations_text += f"\n[{s['index']}] {s['title']}"
+                used_indices = set(re.findall(r'\[(\d+)\]', full_clean_content))
+                unique_sources = {}
+                for s_id, s_info in source_map.items():
+                    if str(s_info['index']) in used_indices:
+                        if s_id not in unique_sources:
+                            unique_sources[s_id] = {
+                                'id': s_id,
+                                'title': s_info['title'],
+                                'type': 'file',
+                                'index': s_info['index']
+                            }
+                final_sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
 
-                full_clean_content += citations_text
-                # Send the citations chunk
-                yield f"data: {json.dumps({'type': 'chunk', 'text': citations_text})}\n\n"
-
-                # Update DB message
-                ai_message.content = full_clean_content
+                # Save sources to DB
+                ai_message.sources = final_sources_list
                 ai_message.save()
 
             # 4. Envia evento final para o frontend fechar conexão
@@ -719,7 +735,8 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                 'type': 'end',
                 'message_id': ai_message.id,
                 'clean_content': full_clean_content,
-                'suggestions': final_suggestions
+                'suggestions': final_suggestions,
+                'sources': final_sources_list
             }
             yield f"data: {json.dumps(end_payload)}\n\n"
 
@@ -810,6 +827,7 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
 
         ai_text = ai_response_data.get('content', '')
         ai_suggestions = ai_response_data.get('suggestions', [])
+        ai_sources = ai_response_data.get('sources', [])
         audio_path = ai_response_data.get('audio_path')
         duration_ms = ai_response_data.get('duration_ms', 0)
         generated_image_path = ai_response_data.get('generated_image_path')
@@ -820,7 +838,8 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
             content=ai_text,
             suggestion1=ai_suggestions[0] if len(ai_suggestions) > 0 else None,
             suggestion2=ai_suggestions[1] if len(ai_suggestions) > 1 else None,
-            duration=duration_ms
+            duration=duration_ms,
+            sources=ai_sources
         )
 
         ai_message.save() # Save first to get ID

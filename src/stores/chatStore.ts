@@ -163,7 +163,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
                             ...m,
                             status: 'sent',
                             id: meta.message_id || m.id,
-                            suggestions: meta.suggestions || m.suggestions
+                            suggestions: meta.suggestions || m.suggestions,
+                            sources: meta.sources || m.sources
                         };
                     }
                     if (m.localId === userLocalId) {

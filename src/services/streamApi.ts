@@ -2,6 +2,7 @@
 import EventSource, { EventSourceListener } from "react-native-sse";
 import { useAuthStore } from '../stores/authStore';
 import { BASE_URL } from '../api/client';
+import { SourceRef } from "../types/chat";
 
 export interface StreamMetadata {
     message_id?: string;
@@ -11,6 +12,7 @@ export interface StreamMetadata {
     detail?: string;
     clean_content?: string;
     suggestions?: string[];
+    sources?: SourceRef[];
 }
 
 interface StreamCallbacks {

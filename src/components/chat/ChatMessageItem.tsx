@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { BookOpen, Copy, FileText, RefreshCw, ThumbsDown, ThumbsUp, Volume2, Square, Loader2 } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
+import { ReferencesSheet } from './ReferencesSheet';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -36,6 +37,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const router = useRouter();
     const isUser = message.role === 'user';
     const isStreaming = message.status === 'sending' && !isUser;
+
+    const [showReferences, setShowReferences] = useState(false);
 
     // Use global audio store to track state
     const { currentUri, isPlaying, stop, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
@@ -212,7 +215,31 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                                 <RefreshCw size={16} color="#94a3b8" />
                             </Pressable>
                         )}
+
+                        {/* References Chip (Right Aligned) */}
+                        {message.sources && message.sources.length > 0 && (
+                            <View className="flex-1 items-end">
+                                <Pressable
+                                    onPress={() => setShowReferences(true)}
+                                    className="flex-row items-center px-3 py-1.5 bg-space-light/50 border border-white/10 rounded-full active:bg-space-light"
+                                >
+                                    <BookOpen size={14} color="#fbbf24" className="mr-2" />
+                                    <Text className="text-starlight text-xs font-bold">
+                                        Fontes ({message.sources.length})
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        )}
                     </View>
+
+                    {/* References Sheet */}
+                    {message.sources && message.sources.length > 0 && (
+                        <ReferencesSheet
+                            sources={message.sources}
+                            isVisible={showReferences}
+                            onClose={() => setShowReferences(false)}
+                        />
+                    )}
 
                     {/* Suggestions Chips (Mini) */}
                     {isLastMessage && message.suggestions && message.suggestions.length > 0 && (

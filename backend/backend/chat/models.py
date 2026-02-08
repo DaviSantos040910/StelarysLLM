@@ -95,6 +95,9 @@ class ChatMessage(models.Model):
         blank=True
     )
 
+    # List of structured sources cited in the message (for UI chip)
+    sources = models.JSONField(default=list, blank=True)
+
     # -----------------------
     def __str__(self):
         if self.attachment and self.original_filename:
