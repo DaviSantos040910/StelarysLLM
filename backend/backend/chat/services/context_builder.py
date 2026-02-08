@@ -147,6 +147,7 @@ Você tem acesso a informações em tempo real via Google Search.
 ## MODO DE CONHECIMENTO MISTO
 - Você pode usar os documentos fornecidos como fonte primária.
 - Se necessário, você PODE usar seu conhecimento geral ou internet (se habilitada) para complementar.
+- IMPORTANTE: Se a resposta vier do seu conhecimento externo (não dos documentos), inicie o trecho com: "Fora do contexto dos documentos:".
 - Ignore restrições de "apenas contexto" de turnos anteriores.
 """
 
