@@ -6,6 +6,7 @@ import { PlusCircle, CheckCircle } from 'lucide-react-native';
 import { ExploreBotItem, exploreService } from '../../services/exploreService';
 import { UserAvatar } from '../UserAvatar';
 import { botService } from '../../services/botService';
+import { themeClasses } from '../../theme/classes';
 
 interface Props {
   item: ExploreBotItem;
@@ -51,13 +52,13 @@ export const ExploreBotRow: React.FC<Props> = ({ item }) => {
   return (
     <Pressable
         onPress={handleRowPress}
-        className="flex-row items-center p-4 border-b border-white/5 bg-space-dark active:bg-space-light/30"
+        className={`flex-row items-center p-4 ${themeClasses.headerBorder} ${themeClasses.screen} ${themeClasses.press}`}
     >
       <UserAvatar imageUri={item.avatar_url} size={48} />
 
       <View className="flex-1 ml-3 mr-2">
-        <Text className="text-starlight font-bold text-base" numberOfLines={1}>{item.name}</Text>
-        <Text className="text-gray-400 text-sm" numberOfLines={2}>{item.description}</Text>
+        <Text className={`${themeClasses.textPrimary} font-bold text-base`} numberOfLines={1}>{item.name}</Text>
+        <Text className={`${themeClasses.textSecondary} text-sm`} numberOfLines={2}>{item.description}</Text>
       </View>
 
       <Pressable onPress={handleToggleSubscribe} disabled={isLoading} className="p-2">

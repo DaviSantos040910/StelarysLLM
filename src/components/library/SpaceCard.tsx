@@ -2,6 +2,7 @@ import { Layers } from 'lucide-react-native';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { StudySpace } from '../../types/studio';
+import { themeClasses } from '../../theme/classes';
 
 interface Props {
     space: StudySpace;
@@ -12,9 +13,9 @@ export const SpaceCard: React.FC<Props> = ({ space, onPress }) => {
     return (
         <Pressable
             onPress={onPress}
-            className="bg-space-light rounded-2xl mb-4 overflow-hidden border border-white/10 active:opacity-90"
+            className={`rounded-2xl mb-4 overflow-hidden shadow-sm active:opacity-90 ${themeClasses.surface}`}
         >
-            <View className="h-32 bg-gray-800 relative">
+            <View className="h-32 bg-gray-200 dark:bg-gray-800 relative">
                 {space.cover_image ? (
                     <Image source={{ uri: space.cover_image }} className="w-full h-full" resizeMode="cover" />
                 ) : (
@@ -29,8 +30,8 @@ export const SpaceCard: React.FC<Props> = ({ space, onPress }) => {
             </View>
 
             <View className="p-4 flex-row justify-between">
-                <Text className="text-gray-400 text-xs font-medium">{space.sources?.length || 0} fontes</Text>
-                <Text className="text-gray-400 text-xs font-medium">{space.bots?.length || 0} tutores</Text>
+                <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{space.sources?.length || 0} fontes</Text>
+                <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{space.bots?.length || 0} tutores</Text>
             </View>
         </Pressable>
     );

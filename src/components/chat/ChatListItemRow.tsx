@@ -6,6 +6,7 @@ import { ChatListItem } from '../../types/chat';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
 import { UserAvatar } from '../UserAvatar';
+import { themeClasses } from '../../theme/classes';
 
 type Props = {
   item: ChatListItem;
@@ -65,21 +66,21 @@ export const ChatListItemRow: React.FC<Props> = ({ item }) => {
   return (
     <Pressable
         onPress={handlePress}
-        className="active:bg-space-light/50 px-4 py-3 border-b border-white/5"
+        className={`px-4 py-3 ${themeClasses.headerBorder} ${themeClasses.press}`}
     >
       <View className="flex-row items-center">
         <UserAvatar imageUri={item.bot.avatar_url} size={50} />
 
         <View className="flex-1 ml-3 justify-center">
           <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-starlight font-bold text-base" numberOfLines={1}>{item.bot.name}</Text>
+            <Text className={`${themeClasses.textPrimary} font-bold text-base`} numberOfLines={1}>{item.bot.name}</Text>
             {item.last_message_at && (
-              <Text className="text-gray-500 text-xs">
+              <Text className={`${themeClasses.textMuted} text-xs`}>
                 {formatTimestamp(item.last_message_at)}
               </Text>
             )}
           </View>
-         <Text className="text-gray-400 text-sm" numberOfLines={1}>
+         <Text className={`${themeClasses.textSecondary} text-sm`} numberOfLines={1}>
             {lastMessageContent}
           </Text>
         </View>
