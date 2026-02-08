@@ -236,9 +236,9 @@ export default function CreateBotScreen() {
                 <Pressable
                     onPress={handleSubmit}
                     disabled={isSubmitting}
-                    className={`px-4 py-2 rounded-full ${isSubmitting ? 'bg-gray-400 dark:bg-gray-700' : 'bg-cosmic-purple'}`}
+                    className={`min-h-[36px] items-center justify-center px-4 py-2 rounded-full ${isSubmitting ? 'bg-gray-400 dark:bg-gray-700' : 'bg-cosmic-purple'}`}
                 >
-                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-bold">{isEditMode ? 'Salvar' : 'Criar'}</Text>}
+                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-bold text-center">{isEditMode ? 'Salvar' : 'Criar'}</Text>}
                 </Pressable>
             </View>
 
