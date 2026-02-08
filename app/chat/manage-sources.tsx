@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { chatService } from '../../src/services/chatService';
 import { ChatSource } from '../../src/types/chat';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function ManageSourcesScreen() {
     const router = useRouter();
@@ -100,12 +101,12 @@ export default function ManageSourcesScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
-            <View className="px-4 py-4 flex-row items-center border-b border-white/10 mb-2">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
-                    <ArrowLeft color="#fff" size={24} />
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
+            <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
+                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                 </Pressable>
-                <Text className="text-starlight text-xl font-bold ml-2">Gerenciar Fontes</Text>
+                <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Gerenciar Fontes</Text>
             </View>
 
             {loading ? (
@@ -120,19 +121,19 @@ export default function ManageSourcesScreen() {
                     ListEmptyComponent={
                         <View className="items-center mt-20 opacity-50">
                             <FileText size={48} color="#94a3b8" />
-                            <Text className="text-gray-400 mt-4 text-center">Nenhuma fonte ativa.</Text>
-                            <Text className="text-gray-600 text-sm text-center mt-1">Adicione arquivos ou links para dar contexto à IA.</Text>
+                            <Text className={`${themeClasses.textMuted} mt-4 text-center`}>Nenhuma fonte ativa.</Text>
+                            <Text className={`${themeClasses.textSecondary} text-sm text-center mt-1`}>Adicione arquivos ou links para dar contexto à IA.</Text>
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <View className="flex-row items-center bg-space-light p-4 rounded-xl mb-3 border border-white/5">
-                            <View className="mr-4 bg-white/5 p-2 rounded-lg">
+                        <View className={`flex-row items-center p-4 rounded-xl mb-3 ${themeClasses.softSurface}`}>
+                            <View className="mr-4 bg-white/50 dark:bg-white/5 p-2 rounded-lg">
                                 {getIcon(item.source_type || '')}
                             </View>
                             <View className="flex-1">
-                                <Text className="text-starlight font-bold" numberOfLines={1}>{item.title}</Text>
+                                <Text className={`${themeClasses.textPrimary} font-bold`} numberOfLines={1}>{item.title}</Text>
                                 <View className="flex-row items-center mt-1">
-                                    <Text className="text-gray-500 text-xs mr-2">{item.source_type}</Text>
+                                    <Text className={`${themeClasses.textMuted} text-xs mr-2`}>{item.source_type}</Text>
 
                                     {/* Status Indicator */}
                                     {item.status === 'pending' && (

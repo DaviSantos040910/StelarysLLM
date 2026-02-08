@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { chatService } from '../../src/services/chatService';
 import { ChatListItem } from '../../src/types/chat';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function ChatHistoryScreen() {
     const router = useRouter();
@@ -67,12 +68,12 @@ export default function ChatHistoryScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
-            <View className="px-4 py-4 flex-row items-center border-b border-white/10 mb-2">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
-                    <ArrowLeft color="#fff" size={24} />
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
+            <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
+                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                 </Pressable>
-                <Text className="text-starlight text-xl font-bold ml-2">Histórico de Conversas</Text>
+                <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Histórico de Conversas</Text>
             </View>
 
             {loading ? (
@@ -87,7 +88,7 @@ export default function ChatHistoryScreen() {
                     ListEmptyComponent={
                         <View className="items-center mt-20 opacity-50">
                             <History size={48} color="#94a3b8" />
-                            <Text className="text-gray-400 mt-4 text-center">Nenhuma conversa arquivada.</Text>
+                            <Text className={`${themeClasses.textMuted} mt-4 text-center`}>Nenhuma conversa arquivada.</Text>
                         </View>
                     }
                     renderItem={({ item }) => {
@@ -97,24 +98,24 @@ export default function ChatHistoryScreen() {
                             <Pressable
                                 onPress={() => handleRestoreChat(item.id)}
                                 disabled={isRestoring}
-                                className="bg-space-light p-4 rounded-xl mb-3 border border-white/5 active:bg-white/10 flex-row items-center justify-between"
+                                className={`p-4 rounded-xl mb-3 flex-row items-center justify-between ${themeClasses.softSurface} ${themeClasses.press}`}
                             >
                                 <View className="flex-1 mr-4">
                                     <View className="flex-row items-center mb-1">
                                         <MessageSquare size={14} color="#818cf8" />
-                                        <Text className="text-gray-400 text-xs ml-2">{dateStr}</Text>
+                                        <Text className={`${themeClasses.textMuted} text-xs ml-2`}>{dateStr}</Text>
                                     </View>
-                                    <Text className="text-starlight font-bold" numberOfLines={1}>
+                                    <Text className={`${themeClasses.textPrimary} font-bold`} numberOfLines={1}>
                                         {item.last_message?.content || "Conversa sem título"}
                                     </Text>
-                                    <Text className="text-gray-500 text-sm mt-1" numberOfLines={2}>
+                                    <Text className={`${themeClasses.textSecondary} text-sm mt-1`} numberOfLines={2}>
                                         {item.last_message?.content || "Toque para ver o conteúdo..."}
                                     </Text>
                                 </View>
                                 {isRestoring ? (
                                     <ActivityIndicator color="#818cf8" size="small" />
                                 ) : (
-                                    <View className="px-3 py-1 bg-white/5 rounded-lg">
+                                    <View className="px-3 py-1 bg-white/50 dark:bg-white/5 rounded-lg">
                                         <Text className="text-cosmic-purple text-xs font-bold">Abrir</Text>
                                     </View>
                                 )}
