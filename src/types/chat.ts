@@ -18,6 +18,8 @@ export type Message = {
   duration?: number;
   // Status do envio da mensagem (controle local)
   status?: 'sending' | 'sent' | 'error';
+  // Sources/references used for the response
+  sources?: SourceRef[];
 };
 
 // Represents the bot's details.
@@ -79,22 +81,22 @@ export interface ChatContextValue {
 }
 
 export interface ChatSource {
-    id: number;
-    title: string;
-    name?: string;
-    type?: string;
-    source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
-    extracted_text?: string;
-    created_at?: string;
-    url?: string;
-    selected?: boolean;
-    status?: 'pending' | 'processed' | 'error'; // Added status
+  id: number;
+  title: string;
+  name?: string;
+  type?: string;
+  source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
+  extracted_text?: string;
+  created_at?: string;
+  url?: string;
+  selected?: boolean;
+  status?: 'pending' | 'processed' | 'error'; // Added status
 }
 
 export interface SourceRef {
-    id: string;
-    title: string;
-    type: string;
-    url?: string;
-    index: number;
+  id: string;
+  title: string;
+  type: string;
+  url?: string;
+  index: number;
 }

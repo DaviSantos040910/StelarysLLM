@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { BookOpen, Copy, FileText, RefreshCw, ThumbsDown, ThumbsUp, Volume2, Square, Loader2 } from 'lucide-react-native';
+import { BookOpen, Copy, FileText, Loader2, RefreshCw, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
-import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 import { ReferencesSheet } from './ReferencesSheet';
 
 interface ChatMessageItemProps {
@@ -41,7 +41,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const [showReferences, setShowReferences] = useState(false);
 
     // Use global audio store to track state
-    const { currentUri, isPlaying, stop, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
+    const { currentUri, isPlaying, close, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
 
     // Determine if THIS message is playing (we use message.id as the identifier passed to store's chatId/artifactId slot or logic)
     // Actually, store uses `chatId` as a generic ID field sometimes, or we can check URI if we know it.
@@ -83,7 +83,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const handleTTSAction = () => {
         if (isThisMessagePlaying) {
             // Stop and unload if user clicks square
-            stop?.() || useAudioPlayerStore.getState().close();
+            close();
         } else {
             onTTS?.(String(message.id), message.content);
         }
