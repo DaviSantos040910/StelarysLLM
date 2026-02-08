@@ -30,7 +30,7 @@ class SourceAssemblyService:
         current_tokens = 0
 
         try:
-            chat = Chat.objects.get(id=chat_id)
+            chat = Chat.objects.select_related('bot').get(id=chat_id)
         except Chat.DoesNotExist:
             return ""
 
@@ -40,8 +40,6 @@ class SourceAssemblyService:
             clean_ids = [str(sid) for sid in source_ids]
             sources = KnowledgeSource.objects.filter(id__in=clean_ids)
 
-            # Note: allowed_names removed as we filter by ID now
-
             # Garante que os textos foram extraídos/indexados (lazy extraction fallback)
             for source in sources:
                 if not source.extracted_text and source.file:
@@ -50,33 +48,59 @@ class SourceAssemblyService:
                         if content:
                             source.extracted_text = content
                             source.save(update_fields=['extracted_text'])
-                            # Index on the fly if needed (idealmente já foi feito no upload)
+
+                            # Lazy Indexing Logic
+                            # Determine permissions based on where this source is used
+                            # Check if source belongs to any of the bot's study spaces
+                            bot_study_spaces = set(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else set()
+                            source_study_spaces = set(source.study_spaces.values_list('id', flat=True))
+
+                            common_spaces = bot_study_spaces.intersection(source_study_spaces)
+
+                            target_study_space_id = list(common_spaces)[0] if common_spaces else None
+                            # If not in a shared space, index as private bot context if strictly linked?
+                            # Or default to user library (bot_id=0)?
+                            # Safer to index as User Library (0) so it's broadly available if permissions allow,
+                            # OR explicitly for this bot if we consider it "uploaded to chat".
+                            # Given this is a fallback, let's stick to the safest retrieval path:
+                            # If we index it here, we want `search_context` below to find it.
+                            # `search_context` looks for `bot_id=chat.bot.id` OR `study_space_id=...`.
+
+                            target_bot_id = chat.bot.id if not target_study_space_id else None
+
                             chunks = FileProcessor.chunk_text(content)
                             vector_service.add_document_chunks(
                                 user_id=source.user.id,
                                 chunks=chunks,
                                 source_name=source.title,
                                 source_id=source.id,
-                                bot_id=0,
-                                study_space_id=None
+                                bot_id=target_bot_id, # Use specific bot ID if no space match
+                                study_space_id=target_study_space_id
                             )
-                    except Exception: pass
+                    except Exception as e:
+                        logger.error(f"Lazy indexing failed for source {source.id}: {e}")
 
             # Busca Vetorial Top-K (Limit ~20 chunks)
-            # allowed_source_ids filtra a busca apenas nos arquivos selecionados
             study_space_ids = list(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else []
 
             doc_contexts, _ = vector_service.search_context(
                 query_text=query,
                 user_id=chat.user_id,
-                bot_id=chat.bot.id,
+                bot_id=chat.bot.id if chat.bot else 0,
                 study_space_ids=study_space_ids,
                 limit=20,
-                allowed_source_ids=clean_ids # Pass IDs explicitly
+                allowed_source_ids=clean_ids
             )
 
             if doc_contexts:
-                rag_content = "\n".join(doc_contexts)
+                # doc_contexts is List[Dict] -> Format to String
+                formatted_chunks = []
+                for chunk in doc_contexts:
+                    title = chunk.get('source', 'Documento')
+                    content = chunk.get('content', '')
+                    formatted_chunks.append(f"[Source: {title}]\n{content}")
+
+                rag_content = "\n\n".join(formatted_chunks)
                 rag_tokens = TokenService.estimate_tokens(rag_content)
 
                 context_parts.append("## TRECHOS RELEVANTES DOS DOCUMENTOS SELECIONADOS\n")
@@ -85,15 +109,10 @@ class SourceAssemblyService:
             else:
                 context_parts.append("[Nenhum trecho relevante encontrado nos arquivos selecionados para este tópico.]")
 
-        # Fallback: Se não houver query (não deve ocorrer em artefatos), mas houver fontes, usa full text limitado?
-        # Por enquanto, assumimos que Artifact Generation sempre tem query (title).
-
-
         # 2. Process Chat History (if requested)
         if config.get('includeChatHistory'):
             try:
                 # Reuse context builder to get linear history
-                # We only need text parts
                 _, recent_texts = build_conversation_history(chat_id, limit=30)
                 if recent_texts:
                     history_text = "\n".join(recent_texts)

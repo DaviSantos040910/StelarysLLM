@@ -257,9 +257,10 @@ def get_ai_response(
             if available_doc_names:
                 logger.info("[Sync] Strict Mode + No Context Found -> Generating Refusal Template")
                 refusal_prompt = (
-                    f"You are a strict knowledge assistant. The user asked: '{user_message_text}'. "
+                    f"You are a strict knowledge assistant. Your personality is: '{user_defined_prompt}'. "
+                    f"The user asked: '{user_message_text}'. "
                     f"You searched the following available documents but found NO relevant information: {', '.join(available_doc_names[:5])}. "
-                    "You MUST output a response following EXACTLY this template:\n\n"
+                    "You MUST output a response following EXACTLY this template, but adopting your personality tone in the placeholders:\n\n"
                     f"Os documentos fornecidos não contêm informações sobre {user_message_text}.\n\n"
                     "As fontes disponíveis tratam principalmente de:\n"
                     "- <Generate a very brief 1-sentence summary of what the filenames imply>\n\n"
@@ -288,6 +289,7 @@ def get_ai_response(
              logger.info("[Sync] Mixed Mode + No Context -> Forcing Two-Block Answer")
              mixed_prompt = (
                  f"User Question: '{user_message_text}'\n\n"
+                 f"Your Personality: '{user_defined_prompt}'\n"
                  "CONTEXT CHECK: You searched the user's documents but found NO matches.\n"
                  "INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.\n\n"
                  "TEMPLATE:\n"
@@ -485,9 +487,10 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
                 logger.info("[Stream] Strict Mode + No Context Found -> Generating Refusal Template")
                 # Generate a strict refusal based on available sources
                 refusal_prompt = (
-                    f"You are a strict knowledge assistant. The user asked: '{user_message_text}'. "
+                    f"You are a strict knowledge assistant. Your personality is: '{user_defined_prompt}'. "
+                    f"The user asked: '{user_message_text}'. "
                     f"You searched the following available documents but found NO relevant information: {', '.join(available_docs[:5])}. "
-                    "You MUST output a response following EXACTLY this template:\n\n"
+                    "You MUST output a response following EXACTLY this template, but adopting your personality tone in the placeholders:\n\n"
                     f"Os documentos fornecidos não contêm informações sobre {user_message_text}.\n\n"
                     "As fontes disponíveis tratam principalmente de:\n"
                     "- <Generate a very brief 1-sentence summary of what the filenames imply>\n\n"
@@ -512,6 +515,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
              logger.info("[Stream] Mixed Mode + No Context -> Forcing Two-Block Answer")
              mixed_prompt = (
                  f"User Question: '{user_message_text}'\n\n"
+                 f"Your Personality: '{user_defined_prompt}'\n"
                  "CONTEXT CHECK: You searched the user's documents but found NO matches.\n"
                  "INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.\n\n"
                  "TEMPLATE:\n"
