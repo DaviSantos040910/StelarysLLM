@@ -488,6 +488,18 @@ class VectorService:
         # Sort by distance (lower is better in Chroma)
         candidates.sort(key=lambda x: x['dist'])
 
+        # --- Confidence Gate & Thresholding ---
+        # Heurística: Queries curtas/genéricas precisam de threshold mais estrito para evitar ruído.
+        is_short_query = len(query.strip()) < 20 or len(query.split()) <= 3
+        # Lower distance = better match. 0.40 is strict, 0.35 is very strict.
+        SIMILARITY_THRESHOLD = 0.35 if is_short_query else 0.40
+
+        # Confidence Gate: Se o MELHOR resultado for ruim, retornamos vazio imediatamente.
+        # Isso força o modo STRICT a recusar, pois não haverá contexto.
+        if candidates and candidates[0]['dist'] > SIMILARITY_THRESHOLD:
+            logger.info(f"[RAG Gate] Rejected best match dist {candidates[0]['dist']:.3f} > {SIMILARITY_THRESHOLD}")
+            return []
+
         # Reranking Logic:
         # 1. Pick top chunk from each unique source
         # 2. Fill remaining slots with next best chunks (respecting per-doc limit)
@@ -495,9 +507,6 @@ class VectorService:
         seen_sources = set()
         source_counts = {}
         MAX_PER_DOC = 2  # Max chunks per document in final list
-
-        # Threshold: Skip very irrelevant chunks (distance > 0.55 in cosine/chroma usually implies poor match)
-        SIMILARITY_THRESHOLD = 0.55
 
         # Pass 1: Diversity (One from each)
         diversity_picks = []
