@@ -249,7 +249,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                                 <Pressable
                                     key={idx}
                                     onPress={() => onSuggestionPress?.(suggestion)}
-                                    className={`mr-2 mb-2 px-3 py-1 rounded-full border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-space-light/50 active:bg-gray-100 dark:active:bg-space-light`}
+                                    className={`mr-2 mb-2 px-3 py-1 rounded-full border border-gray-200 dark:border-white/10 ${themeClasses.softSurface} active:bg-gray-100 dark:active:bg-space-light`}
                                 >
                                     <Text className={`${themeClasses.textSecondary} text-xs`}>{suggestion}</Text>
                                 </Pressable>

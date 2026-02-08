@@ -19,8 +19,8 @@ export function Button({ title, variant = 'primary', className, ...props }: Butt
       textStyle = "text-white font-bold text-center text-lg";
       break;
     case 'outline':
-      variantStyle = "bg-transparent border border-white/20";
-      textStyle = "text-white font-semibold text-center text-lg";
+      variantStyle = "bg-transparent border border-gray-200 dark:border-white/20";
+      textStyle = "text-gray-900 dark:text-white font-semibold text-center text-lg";
       break;
     default:
       variantStyle = "bg-cosmic-purple";

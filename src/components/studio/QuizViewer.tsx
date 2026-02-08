@@ -59,7 +59,7 @@ export const QuizViewer: React.FC<Props> = ({ data, onFinish }) => {
                   <Text className={`${themeClasses.textPrimary} text-2xl font-bold mb-2 text-center`}>Quiz Finalizado!</Text>
                   <Text className={`${themeClasses.textSecondary} text-lg mb-8 text-center`}>Você acertou</Text>
 
-                  <View className="w-32 h-32 rounded-full border-4 border-cosmic-purple items-center justify-center mb-8 bg-space-dark/30">
+                  <View className="w-32 h-32 rounded-full border-4 border-cosmic-purple items-center justify-center mb-8 bg-gray-100 dark:bg-space-dark/30">
                       <Text className="text-4xl font-bold text-cosmic-purple">{score}/{data.length}</Text>
                   </View>
 

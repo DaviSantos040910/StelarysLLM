@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { BASE_URL } from '../../api/client';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
+import { themeClasses } from '../../theme/classes';
 
 // Opções de velocidade disponíveis
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -141,26 +142,26 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
   // ---------- Render ----------
 
   return (
-    <View className="flex-1 bg-space-dark items-center justify-center p-8">
+    <View className={`flex-1 items-center justify-center p-8 ${themeClasses.screen}`}>
       {/* Cover Art */}
-      <View className="w-64 h-64 bg-space-light rounded-3xl border border-white/10 shadow-2xl items-center justify-center mb-8">
+      <View className={`w-64 h-64 rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl items-center justify-center mb-8 ${themeClasses.softSurface}`}>
         <View className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-3xl items-center justify-center">
           <Text className="text-6xl">🎧</Text>
         </View>
       </View>
 
       {/* Title */}
-      <Text className="text-starlight text-2xl font-bold text-center mb-2" numberOfLines={2}>
+      <Text className={`${themeClasses.textPrimary} text-2xl font-bold text-center mb-2`} numberOfLines={2}>
         {title}
       </Text>
-      <Text className="text-gray-400 text-sm font-medium mb-6">AI Audio Overview</Text>
+      <Text className={`${themeClasses.textSecondary} text-sm font-medium mb-6`}>AI Audio Overview</Text>
 
       {/* Speed Control */}
       <Pressable
         onPress={handleSpeedChange}
-        className="px-4 py-2 bg-white/10 rounded-full mb-6 active:bg-white/20"
+        className={`px-4 py-2 rounded-full mb-6 ${themeClasses.softSurface} ${themeClasses.press}`}
       >
-        <Text className="text-starlight font-bold text-sm">{rate}x</Text>
+        <Text className={`${themeClasses.textPrimary} font-bold text-sm`}>{rate}x</Text>
       </Pressable>
 
       {/* Progress */}
@@ -174,13 +175,13 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
           onValueChange={handleSeekChange}
           onSlidingComplete={handleSeekComplete}
           minimumTrackTintColor="#818cf8"
-          maximumTrackTintColor="rgba(255,255,255,0.1)"
+          maximumTrackTintColor="rgba(148, 163, 184, 0.2)"
           thumbTintColor="#818cf8"
           disabled={!uri || isLoading}
         />
         <View className="flex-row justify-between px-2">
-          <Text className="text-gray-500 text-xs font-mono">{formatTime(displayPosition)}</Text>
-          <Text className="text-gray-500 text-xs font-mono">{formatTime(duration)}</Text>
+          <Text className={`${themeClasses.textMuted} text-xs font-mono`}>{formatTime(displayPosition)}</Text>
+          <Text className={`${themeClasses.textMuted} text-xs font-mono`}>{formatTime(duration)}</Text>
         </View>
       </View>
 
@@ -188,10 +189,10 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
       <View className="flex-row items-center gap-8 mt-4">
         <Pressable
           onPress={() => handleSkip(-15)}
-          className="p-4 bg-white/5 rounded-full active:bg-white/10"
+          className={`p-4 rounded-full ${themeClasses.softSurface} ${themeClasses.press}`}
           disabled={!uri || isLoading}
         >
-          <RotateCcw size={24} color={uri && !isLoading ? "#fff" : "#666"} />
+          <RotateCcw size={24} className={themeClasses.iconPrimary} />
         </Pressable>
 
         <Pressable
@@ -211,10 +212,10 @@ export const PodcastPlayer: React.FC<Props> = ({ uri, title, artifactId, chatId 
 
         <Pressable
           onPress={() => handleSkip(30)}
-          className="p-4 bg-white/5 rounded-full active:bg-white/10"
+          className={`p-4 rounded-full ${themeClasses.softSurface} ${themeClasses.press}`}
           disabled={!uri || isLoading}
         >
-          <FastForward size={24} color={uri && !isLoading ? "#fff" : "#666"} />
+          <FastForward size={24} className={themeClasses.iconPrimary} />
         </Pressable>
       </View>
     </View>

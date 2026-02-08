@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'r
 import { chatService } from '../../services/chatService';
 import { libraryService } from '../../services/libraryService';
 import { ContextSource } from '../../types/studio';
+import { themeClasses } from '../../theme/classes';
 
 interface SourceSelectorProps {
     onClose: () => void;
@@ -85,26 +86,26 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     };
 
     return (
-        <View className="bg-space-light rounded-t-3xl border-t border-white/10 p-6 pb-10 h-[90%] w-full">
+        <View className={`rounded-t-3xl border-t border-gray-200 dark:border-white/10 p-6 pb-10 h-[90%] w-full ${themeClasses.surface}`}>
 
             {/* Header */}
             <View className="flex-row justify-between items-center mb-6">
                 <View>
-                    <Text className="text-starlight text-xl font-bold">Selecionar Fontes</Text>
-                    <Text className="text-gray-400 text-sm">Escolha o conteúdo para o artefato</Text>
+                    <Text className={`${themeClasses.textPrimary} text-xl font-bold`}>Selecionar Fontes</Text>
+                    <Text className={`${themeClasses.textMuted} text-sm`}>Escolha o conteúdo para o artefato</Text>
                 </View>
-                <Pressable onPress={onClose} className="p-2 bg-white/5 rounded-full">
+                <Pressable onPress={onClose} className={`p-2 rounded-full ${themeClasses.softSurface}`}>
                     <X size={24} color="#94a3b8" />
                 </Pressable>
             </View>
 
             {/* Search */}
-            <View className="flex-row items-center bg-white/5 px-4 py-3 rounded-xl border border-white/10 mb-4">
+            <View className={`flex-row items-center px-4 py-3 mb-4 ${themeClasses.input}`}>
                 <Search size={18} color="#94a3b8" />
                 <TextInput
-                    className="flex-1 ml-3 text-starlight"
+                    className={`flex-1 ml-3 ${themeClasses.textPrimary}`}
                     placeholder="Buscar arquivos..."
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor="#94a3b8"
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                 />
@@ -121,7 +122,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     ListEmptyComponent={
-                        <Text className="text-gray-500 text-center mt-10">Nenhuma fonte encontrada.</Text>
+                        <Text className={`${themeClasses.textMuted} text-center mt-10`}>Nenhuma fonte encontrada.</Text>
                     }
                     renderItem={({ item }) => {
                         const isSelected = selectedIds.includes(item.id);
@@ -129,14 +130,14 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                             <Pressable
                                 onPress={() => toggleSelection(item.id)}
                                 className={`flex-row items-center justify-between p-4 rounded-xl mb-2 border ${
-                                    isSelected ? 'bg-indigo-500/10 border-indigo-500' : 'bg-white/5 border-white/5'
+                                    isSelected ? 'bg-indigo-500/10 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/5`
                                 }`}
                             >
                                 <View className="flex-row items-center flex-1 mr-4">
-                                    <View className={`p-2 rounded-lg mr-3 ${isSelected ? 'bg-indigo-500/20' : 'bg-white/10'}`}>
+                                    <View className={`p-2 rounded-lg mr-3 ${isSelected ? 'bg-indigo-500/20' : 'bg-white/50 dark:bg-white/10'}`}>
                                         {getIcon(item.type)}
                                     </View>
-                                    <Text className={`font-medium text-base flex-1 ${isSelected ? 'text-white' : 'text-gray-300'}`} numberOfLines={1}>
+                                    <Text className={`font-medium text-base flex-1 ${isSelected ? 'text-indigo-600 dark:text-white' : themeClasses.textSecondary}`} numberOfLines={1}>
                                         {item.name}
                                     </Text>
                                 </View>
@@ -144,7 +145,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                                 {isSelected ? (
                                     <CheckCircle2 size={24} color="#818cf8" />
                                 ) : (
-                                    <Circle size={24} color="#475569" />
+                                    <Circle size={24} color="#94a3b8" />
                                 )}
                             </Pressable>
                         );
