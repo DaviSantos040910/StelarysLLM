@@ -95,7 +95,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             elevation: 10,
           }
         ]}
-        className="flex-row bg-space-light/95 border border-white/10 rounded-full px-6 py-2 mx-4 min-w-[200px] justify-around items-center"
+        className="flex-row bg-white/95 dark:bg-space-light/95 border border-gray-200 dark:border-white/10 rounded-full px-6 py-2 mx-4 min-w-[200px] justify-around items-center"
       >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];

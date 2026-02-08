@@ -7,6 +7,7 @@ import { useAuthStore } from '../src/stores/authStore';
 import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 import { useThemeStore } from '../src/stores/themeStore';
 import { useColorScheme } from 'nativewind';
+import { themeClasses } from '../src/theme/classes';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -55,7 +56,7 @@ export default function RootLayout() {
   const backgroundColor = mode === 'dark' ? '#020617' : '#f8fafc'; // Matches tailwind config
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-space-dark">
+    <View className={themeClasses.screen}>
       <Stack screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: 'transparent' }, // Let View handle bg
@@ -91,7 +92,7 @@ export default function RootLayout() {
 
       {/* Loading Overlay */}
       {isLoading && (
-        <View className="absolute inset-0 z-50 justify-center items-center bg-gray-50 dark:bg-space-dark">
+        <View className={`absolute inset-0 z-50 justify-center items-center ${themeClasses.screen}`}>
           <ActivityIndicator size="large" color="#818cf8" />
         </View>
       )}

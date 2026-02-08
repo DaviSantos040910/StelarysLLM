@@ -3,6 +3,7 @@ import { View, Text, Pressable, LayoutAnimation, Platform, UIManager, Modal, Tex
 import { FileText, Music, Globe, Youtube, ChevronUp, ChevronDown, X, Link, Image as ImageIcon, Camera } from 'lucide-react-native';
 import Animated, { SlideInDown, SlideOutDown, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useAttachmentPicker } from '../../hooks/useAttachmentPicker';
+import { themeClasses } from '../../theme/classes';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -122,31 +123,31 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
       <Animated.View
         entering={SlideInDown}
         exiting={SlideOutDown}
-        className="absolute bottom-0 left-0 right-0 bg-space-dark border-t border-white/10 rounded-t-[32px] z-50 pb-8 overflow-hidden shadow-2xl"
+        className={`absolute bottom-0 left-0 right-0 bg-white dark:bg-space-light border-t border-gray-200 dark:border-white/10 rounded-t-[32px] z-50 pb-8 overflow-hidden shadow-2xl`}
       >
         {/* Header Handle */}
         <View className="items-center pt-3 pb-2">
-            <View className="w-12 h-1.5 bg-white/20 rounded-full" />
+            <View className="w-12 h-1.5 bg-gray-300 dark:bg-white/20 rounded-full" />
         </View>
 
         {showUrlInput ? (
             /* URL Input View (Generic) */
             <Animated.View entering={FadeIn} className="px-6 py-6 min-h-[250px]">
                  <View className="flex-row items-center justify-between mb-4">
-                     <Text className="text-starlight text-lg font-bold">{getInputTitle()}</Text>
-                     <Pressable onPress={handleUrlCancel} className="p-2 bg-white/5 rounded-full">
+                     <Text className={`${themeClasses.textPrimary} text-lg font-bold`}>{getInputTitle()}</Text>
+                     <Pressable onPress={handleUrlCancel} className={`p-2 rounded-full ${themeClasses.softSurface}`}>
                          <X color="#94a3b8" size={20} />
                      </Pressable>
                  </View>
 
-                 <View className="bg-white/5 border border-white/10 rounded-xl flex-row items-center px-4 py-3 mb-6">
+                 <View className={`flex-row items-center px-4 py-3 mb-6 ${themeClasses.input}`}>
                      <Link color="#94a3b8" size={20} className="mr-3" />
                      <TextInput
                         placeholder={getInputPlaceholder()}
-                        placeholderTextColor="#64748b"
+                        placeholderTextColor="#94a3b8"
                         value={url}
                         onChangeText={setUrl}
-                        className="flex-1 text-starlight text-base"
+                        className={`flex-1 ${themeClasses.textPrimary} text-base`}
                         autoFocus
                         autoCapitalize="none"
                         keyboardType="url"
@@ -155,7 +156,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
 
                  <Pressable
                     onPress={handleUrlConfirm}
-                    className={`w-full py-4 rounded-xl items-center ${url.trim() ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                    className={`w-full py-4 rounded-xl items-center ${url.trim() ? 'bg-cosmic-purple' : 'bg-gray-100 dark:bg-white/10'}`}
                     disabled={!url.trim()}
                  >
                      <Text className={`font-bold text-base ${url.trim() ? 'text-white' : 'text-gray-500'}`}>Confirmar Link</Text>
@@ -165,7 +166,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
             /* Standard Grid View */
             <>
                 <View className="px-6 py-6">
-                    <Text className="text-gray-400 text-sm font-medium mb-4 ml-1">Adicionar ao Chat</Text>
+                    <Text className={`${themeClasses.textSecondary} text-sm font-medium mb-4 ml-1`}>Adicionar ao Chat</Text>
                     <View className="flex-row flex-wrap justify-between gap-y-4">
                         <MediaButton
                             icon={FileText}
@@ -197,12 +198,6 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                             color="#f87171"
                             onPress={() => handleUrlSelect('youtube')}
                         />
-                        {/* Audio is less used or can be file, removing or moving to overflow if needed.
-                            Wait, user said "add options", not replace.
-                            Layout is grid. 6 items fit perfectly in 2 rows of 3, or 3 rows of 2.
-                            Current styling is w-[48%] -> 2 columns.
-                            So 3 rows.
-                        */}
                         <MediaButton
                             icon={Music}
                             label="Áudio"
@@ -213,28 +208,28 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                 </View>
 
                 {/* Divider */}
-                <View className="h-[1px] bg-white/5 mx-6 mb-4" />
+                <View className={`h-[1px] bg-gray-200 dark:bg-white/5 mx-6 mb-4`} />
 
                 {/* Model Footer */}
                 <View className="px-6 pb-2 z-50">
                     <View className="flex-row justify-between items-center">
-                        <Text className="text-gray-400 font-medium">Modelo</Text>
+                        <Text className={`${themeClasses.textSecondary} font-medium`}>Modelo</Text>
 
                         <Pressable
                             onPress={() => {
                                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                 setIsModelListOpen(!isModelListOpen);
                             }}
-                            className="flex-row items-center bg-white/5 px-4 py-2 rounded-full border border-white/10 active:bg-white/10"
+                            className={`flex-row items-center px-4 py-2 rounded-full ${themeClasses.softSurface}`}
                         >
-                            <Text className="text-starlight font-bold mr-2">{selectedModel.name}</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold mr-2`}>{selectedModel.name}</Text>
                             {isModelListOpen ? <ChevronDown size={16} color="#94a3b8" /> : <ChevronUp size={16} color="#94a3b8" />}
                         </Pressable>
                     </View>
 
                     {/* Model Popover List */}
                     {isModelListOpen && (
-                        <View className="absolute bottom-[60px] right-6 w-[200px] bg-space-light border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                        <View className={`absolute bottom-[60px] right-6 w-[200px] bg-white dark:bg-space-light border border-gray-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden`}>
                             {MODELS.map((model, index) => (
                                 <Pressable
                                     key={model.id}
@@ -242,9 +237,9 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                                         setSelectedModel(model);
                                         setIsModelListOpen(false);
                                     }}
-                                    className={`p-4 flex-row items-center justify-between ${index !== MODELS.length - 1 ? 'border-b border-white/5' : ''} active:bg-white/5`}
+                                    className={`p-4 flex-row items-center justify-between ${index !== MODELS.length - 1 ? 'border-b border-gray-200 dark:border-white/5' : ''} active:bg-gray-50 dark:active:bg-white/5`}
                                 >
-                                    <Text className={`text-base ${selectedModel.id === model.id ? 'text-cosmic-purple font-bold' : 'text-starlight'}`}>
+                                    <Text className={`text-base ${selectedModel.id === model.id ? 'text-cosmic-purple font-bold' : themeClasses.textPrimary}`}>
                                         {model.name}
                                     </Text>
                                     {selectedModel.id === model.id && <View className="w-2 h-2 rounded-full bg-cosmic-purple" />}
@@ -265,11 +260,11 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
 const MediaButton = ({ icon: Icon, label, color, onPress }: { icon: any, label: string, color: string, onPress: () => void }) => (
     <Pressable
         onPress={onPress}
-        className="w-[48%] aspect-[1.4] bg-white/5 border border-white/5 rounded-2xl items-center justify-center space-y-3 active:bg-white/10"
+        className={`w-[48%] aspect-[1.4] ${themeClasses.softSurface} items-center justify-center space-y-3 ${themeClasses.press}`}
     >
-        <View className="p-3 rounded-full bg-white/5">
+        <View className="p-3 rounded-full bg-white/50 dark:bg-white/5">
             <Icon size={28} color={color} />
         </View>
-        <Text className="text-starlight font-medium">{label}</Text>
+        <Text className={`${themeClasses.textPrimary} font-medium`}>{label}</Text>
     </Pressable>
 );

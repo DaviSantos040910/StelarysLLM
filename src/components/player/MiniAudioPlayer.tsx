@@ -4,7 +4,9 @@ import React from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
+import { themeClasses } from '../../theme/classes';
 
 // Opções de velocidade disponíveis
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -13,6 +15,7 @@ export const MiniAudioPlayer = () => {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const {
     currentUri,
     isMinimized,
@@ -94,40 +97,40 @@ export const MiniAudioPlayer = () => {
         paddingBottom: bottomPadding,
         paddingHorizontal: 16
       }}
-      className="absolute left-0 right-0 bg-space-dark z-50"
+      className={`absolute left-0 right-0 z-50`}
     >
-      <View className="bg-space-light rounded-xl border border-white/10 shadow-lg overflow-hidden">
+      <View className={`${themeClasses.surface} shadow-lg overflow-hidden`}>
         {/* Progress Bar Line */}
-        <View className="h-1 bg-white/10 w-full">
+        <View className="h-1 bg-gray-100 dark:bg-white/10 w-full">
           <View style={{ width: `${progressPercent}%` }} className="h-full bg-cosmic-purple" />
         </View>
 
         <View className="flex-row items-center p-3">
           <Pressable
             onPress={isPlaying ? pause : resume}
-            className="w-10 h-10 bg-white/5 rounded-full items-center justify-center mr-3 active:bg-white/10"
+            className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${themeClasses.softSurface}`}
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color="#818cf8" size="small" />
             ) : isPlaying ? (
-              <Pause color="#fff" size={20} fill="#fff" />
+              <Pause color={colorScheme === 'dark' ? '#fff' : '#020617'} size={20} fill={colorScheme === 'dark' ? '#fff' : '#020617'} />
             ) : (
-              <Play color="#fff" size={20} fill="#fff" />
+              <Play color={colorScheme === 'dark' ? '#fff' : '#020617'} size={20} fill={colorScheme === 'dark' ? '#fff' : '#020617'} />
             )}
           </Pressable>
 
           <Pressable className="flex-1" onPress={handlePress}>
-            <Text className="text-starlight font-bold text-sm" numberOfLines={1}>{title || 'Áudio'}</Text>
-            <Text className="text-gray-400 text-xs">Toque para expandir</Text>
+            <Text className={`${themeClasses.textPrimary} font-bold text-sm`} numberOfLines={1}>{title || 'Áudio'}</Text>
+            <Text className={`${themeClasses.textMuted} text-xs`}>Toque para expandir</Text>
           </Pressable>
 
           {/* Speed Control */}
           <Pressable
             onPress={handleSpeedChange}
-            className="px-2 py-1 bg-white/10 rounded-full mr-2 active:bg-white/20"
+            className={`px-2 py-1 rounded-full mr-2 ${themeClasses.softSurface} active:bg-gray-200 dark:active:bg-white/20`}
           >
-            <Text className="text-starlight font-bold text-xs">{rate}x</Text>
+            <Text className={`${themeClasses.textPrimary} font-bold text-xs`}>{rate}x</Text>
           </Pressable>
 
           <Pressable onPress={handleClose} className="p-2" hitSlop={10}>

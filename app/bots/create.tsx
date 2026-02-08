@@ -10,6 +10,7 @@ import { Category, exploreService } from '../../src/services/exploreService';
 import { libraryService } from '../../src/services/libraryService';
 import { useChatStore } from '../../src/stores/chatStore';
 import { StudySpace } from '../../src/types/studio';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function CreateBotScreen() {
     const router = useRouter();
@@ -218,24 +219,24 @@ export default function CreateBotScreen() {
 
     if (isLoading) {
         return (
-            <View className="flex-1 bg-space-dark items-center justify-center">
+            <View className={`flex-1 items-center justify-center ${themeClasses.screen}`}>
                 <ActivityIndicator size="large" color="#818cf8" />
             </View>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
             {/* Header */}
-            <View className="px-4 py-4 flex-row items-center justify-between border-b border-white/10 bg-space-dark z-10">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
-                    <ArrowLeft color="#fff" size={24} />
+            <View className={`px-4 py-4 flex-row items-center justify-between ${themeClasses.headerBorder} ${themeClasses.screen} z-10`}>
+                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                 </Pressable>
-                <Text className="text-starlight text-xl font-bold">{isEditMode ? 'Editar Tutor' : 'Criar Novo Tutor'}</Text>
+                <Text className={`${themeClasses.textPrimary} text-xl font-bold`}>{isEditMode ? 'Editar Tutor' : 'Criar Novo Tutor'}</Text>
                 <Pressable
                     onPress={handleSubmit}
                     disabled={isSubmitting}
-                    className={`px-4 py-2 rounded-full ${isSubmitting ? 'bg-gray-700' : 'bg-cosmic-purple'}`}
+                    className={`px-4 py-2 rounded-full ${isSubmitting ? 'bg-gray-400 dark:bg-gray-700' : 'bg-cosmic-purple'}`}
                 >
                     {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-bold">{isEditMode ? 'Salvar' : 'Criar'}</Text>}
                 </Pressable>
@@ -247,15 +248,15 @@ export default function CreateBotScreen() {
                     {/* Avatar */}
                     <Pressable
                         onPress={handlePickAvatar}
-                        className="w-28 h-28 rounded-full bg-space-light border-4 border-space-dark items-center justify-center overflow-hidden z-10"
+                        className="w-28 h-28 rounded-full bg-white dark:bg-space-light border-4 border-gray-100 dark:border-space-dark items-center justify-center overflow-hidden z-10"
                     >
                         {({ pressed }) => (
                             <>
                                 {avatar ? (
                                     <Image source={{ uri: avatar.uri }} className="w-full h-full" />
                                 ) : (
-                                    <View className="w-full h-full items-center justify-center bg-white/10">
-                                        <Sparkles size={32} color="#94a3b8" />
+                                    <View className="w-full h-full items-center justify-center bg-gray-50 dark:bg-white/10">
+                                        <Sparkles size={32} className={themeClasses.iconSecondary} />
                                     </View>
                                 )}
                                 <View
@@ -268,31 +269,31 @@ export default function CreateBotScreen() {
                             </>
                         )}
                     </Pressable>
-                    <Text className="text-gray-400 text-xs mt-2">Toque para alterar a imagem</Text>
+                    <Text className={`${themeClasses.textMuted} text-xs mt-2`}>Toque para alterar a imagem</Text>
                 </View>
 
                 {/* Form Content */}
                 <View className="px-6 space-y-8">
                     {/* Basic Info */}
                     <View>
-                        <Text className="text-gray-400 font-bold mb-3">Nome do Tutor</Text>
+                        <Text className={`${themeClasses.textSecondary} font-bold mb-3`}>Nome do Tutor</Text>
                         <TextInput
                             value={name}
                             onChangeText={setName}
                             placeholder="Ex: Professor de História"
-                            placeholderTextColor="#64748b"
-                            className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 text-lg font-bold"
+                            placeholderTextColor="#94a3b8"
+                            className={`${themeClasses.input} text-lg font-bold p-4`}
                         />
                     </View>
 
                     <View>
-                        <Text className="text-gray-400 font-bold mb-3">Descrição (Opcional)</Text>
+                        <Text className={`${themeClasses.textSecondary} font-bold mb-3`}>Descrição (Opcional)</Text>
                         <TextInput
                             value={description}
                             onChangeText={setDescription}
                             placeholder="Breve descrição sobre o que ele ensina..."
-                            placeholderTextColor="#64748b"
-                            className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10"
+                            placeholderTextColor="#94a3b8"
+                            className={`${themeClasses.input} p-4`}
                         />
                     </View>
 
@@ -300,28 +301,28 @@ export default function CreateBotScreen() {
                     <View>
                         <View className="flex-row items-center mb-4">
                             <Sparkles size={16} color="#fbbf24" className="mr-2" />
-                            <Text className="text-starlight font-bold text-lg">Inteligência</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold text-lg`}>Inteligência</Text>
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-3">Instruções do Sistema (Prompt)</Text>
+                        <Text className={`${themeClasses.textSecondary} font-bold mb-3`}>Instruções do Sistema (Prompt)</Text>
                         <TextInput
                             value={prompt}
                             onChangeText={setPrompt}
                             placeholder="Como o tutor deve se comportar? O que ele sabe?"
-                            placeholderTextColor="#64748b"
+                            placeholderTextColor="#94a3b8"
                             multiline
                             textAlignVertical="top"
-                            className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 min-h-[120px]"
+                            className={`${themeClasses.input} p-4 min-h-[120px]`}
                         />
 
                         {/* REMOVED: Allow Web Search Switch (Default is ALWAYS TRUE) */}
 
-                        <View className="flex-row items-center justify-between mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                        <View className={`flex-row items-center justify-between mt-4 ${themeClasses.softSurface} p-4`}>
                             <View className="flex-row items-center flex-1 mr-4">
                                 <FolderOpen size={20} color="#eab308" />
                                 <View className="ml-3">
-                                    <Text className="text-starlight font-bold">Apenas Fontes</Text>
-                                    <Text className="text-gray-500 text-xs">Responder estritamente com base nos arquivos enviados. (Desativa conhecimento geral)</Text>
+                                    <Text className={`${themeClasses.textPrimary} font-bold`}>Apenas Fontes</Text>
+                                    <Text className={`${themeClasses.textMuted} text-xs`}>Responder estritamente com base nos arquivos enviados. (Desativa conhecimento geral)</Text>
                                 </View>
                             </View>
                             <Switch
@@ -339,10 +340,10 @@ export default function CreateBotScreen() {
                     <View>
                         <View className="flex-row items-center mb-4">
                             <Layers size={16} color="#34d399" className="mr-2" />
-                            <Text className="text-starlight font-bold text-lg">Organização</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold text-lg`}>Organização</Text>
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-4">Categorias (Máx 3)</Text>
+                        <Text className={`${themeClasses.textSecondary} font-bold mb-4`}>Categorias (Máx 3)</Text>
                         <View className="flex-row flex-wrap gap-2 mb-8">
                             {categories.map(cat => {
                                 const catId = String(cat.id);
@@ -351,22 +352,22 @@ export default function CreateBotScreen() {
                                     <Pressable
                                         key={catId}
                                         onPress={() => toggleCategory(catId)}
-                                        className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-white/20 border-white' : 'bg-white/5 border-white/10'}`}
+                                        className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
                                     >
-                                        <Text className={`${isSelected ? 'text-white font-bold' : 'text-gray-400'}`}>{cat.name}</Text>
+                                        <Text className={`${isSelected ? 'text-white font-bold' : themeClasses.textSecondary}`}>{cat.name}</Text>
                                     </Pressable>
                                 );
                             })}
                         </View>
 
-                        <Text className="text-gray-400 font-bold mb-4">Vincular Espaço de Estudo (Opcional)</Text>
+                        <Text className={`${themeClasses.textSecondary} font-bold mb-4`}>Vincular Espaço de Estudo (Opcional)</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <Pressable
                                 onPress={() => setSelectedSpaceId(null)}
-                                className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${selectedSpaceId === null ? 'bg-white/10 border-white' : 'bg-white/5 border-white/10'}`}
+                                className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${selectedSpaceId === null ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
                             >
-                                <FolderOpen size={24} color="#94a3b8" />
-                                <Text className="text-gray-400 font-medium">Nenhum</Text>
+                                <FolderOpen size={24} color={selectedSpaceId === null ? '#fff' : "#94a3b8"} />
+                                <Text className={`${selectedSpaceId === null ? 'text-white' : themeClasses.textMuted} font-medium`}>Nenhum</Text>
                             </Pressable>
 
                             {spaces.map(space => {
@@ -375,10 +376,10 @@ export default function CreateBotScreen() {
                                     <Pressable
                                         key={space.id}
                                         onPress={() => setSelectedSpaceId(space.id)}
-                                        className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${isSelected ? 'bg-white/10 border-white' : 'bg-white/5 border-white/10'}`}
+                                        className={`mr-4 p-4 rounded-xl border w-[140px] h-[100px] justify-between ${isSelected ? 'bg-indigo-500 border-indigo-500' : themeClasses.softSurface}`}
                                     >
-                                        <FolderOpen size={24} color={isSelected ? '#818cf8' : "#94a3b8"} />
-                                        <Text className={`font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`} numberOfLines={2}>
+                                        <FolderOpen size={24} color={isSelected ? '#fff' : "#94a3b8"} />
+                                        <Text className={`font-medium ${isSelected ? 'text-white' : themeClasses.textMuted}`} numberOfLines={2}>
                                             {space.title}
                                         </Text>
                                     </Pressable>

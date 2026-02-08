@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { FlashcardItem } from '../../types/studio';
 import { RotateCw } from 'lucide-react-native';
+import { themeClasses } from '../../theme/classes';
 
 interface Props {
   data: FlashcardItem[];
@@ -21,8 +22,8 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
   // Safety check
   if (!data || data.length === 0) {
       return (
-          <View className="flex-1 bg-space-dark items-center justify-center">
-              <Text className="text-gray-400">Nenhum flashcard disponível.</Text>
+          <View className={`flex-1 items-center justify-center ${themeClasses.screen}`}>
+              <Text className={themeClasses.textMuted}>Nenhum flashcard disponível.</Text>
           </View>
       );
   }
@@ -79,21 +80,21 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
   const currentCard = data[currentIndex];
 
   return (
-    <View className="flex-1 bg-space-dark items-center justify-center p-6">
+    <View className={`flex-1 items-center justify-center p-6 ${themeClasses.screen}`}>
 
        <View className="w-full aspect-[3/4] max-h-[500px] relative">
            {/* Front */}
            <Animated.View
-             className="absolute inset-0 bg-space-light rounded-3xl border border-white/10 items-center justify-center p-8 shadow-2xl backface-hidden"
+             className={`absolute inset-0 rounded-3xl border border-gray-200 dark:border-white/10 items-center justify-center p-8 shadow-2xl backface-hidden ${themeClasses.surface}`}
              style={frontStyle}
            >
-                <Text className="text-gray-400 font-bold uppercase tracking-widest mb-4">Frente</Text>
-                <Text className="text-starlight text-3xl font-bold text-center leading-10">
+                <Text className={`${themeClasses.textMuted} font-bold uppercase tracking-widest mb-4`}>Frente</Text>
+                <Text className={`${themeClasses.textPrimary} text-3xl font-bold text-center leading-10`}>
                     {currentCard.front}
                 </Text>
                 <View className="absolute bottom-6 flex-row items-center">
                     <RotateCw size={16} color="#94a3b8" className="mr-2" />
-                    <Text className="text-gray-400 text-sm">Toque para virar</Text>
+                    <Text className={`${themeClasses.textMuted} text-sm`}>Toque para virar</Text>
                 </View>
            </Animated.View>
 
@@ -114,14 +115,14 @@ export const FlashcardViewer: React.FC<Props> = ({ data }) => {
 
        {/* Controls */}
        <View className="mt-8 flex-row items-center gap-4">
-            <Text className="text-gray-500 font-medium">
+            <Text className={`${themeClasses.textMuted} font-medium`}>
                 {currentIndex + 1} / {data.length}
             </Text>
             <Pressable
                 onPress={handleNext}
-                className="bg-white/10 px-6 py-3 rounded-full active:bg-white/20"
+                className={`px-6 py-3 rounded-full ${themeClasses.softSurface} ${themeClasses.press}`}
             >
-                <Text className="text-starlight font-bold">Próximo Card</Text>
+                <Text className={`${themeClasses.textPrimary} font-bold`}>Próximo Card</Text>
             </Pressable>
        </View>
 

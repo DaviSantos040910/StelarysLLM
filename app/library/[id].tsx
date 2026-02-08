@@ -197,13 +197,13 @@ export default function StudyDetailsScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-space-dark" edges={['top']}>
-      <View className="flex-row items-center justify-between p-4 border-b border-gray-100 dark:border-white/10">
+    <SafeAreaView className={themeClasses.screen} edges={['top']}>
+      <View className={`flex-row items-center justify-between p-4 ${themeClasses.headerBorder}`}>
         <View className="flex-row items-center">
-            <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2 rounded-full active:bg-gray-100 dark:active:bg-white/10">
-            <ArrowLeft className="text-gray-900 dark:text-white" size={24} />
+            <TouchableOpacity onPress={() => router.back()} className={`p-2 mr-2 rounded-full ${themeClasses.press}`}>
+            <ArrowLeft className={themeClasses.iconPrimary} size={24} />
             </TouchableOpacity>
-            <Text className="font-bold text-lg text-gray-900 dark:text-starlight">Detalhes do Espaço</Text>
+            <Text className={`font-bold text-lg ${themeClasses.textPrimary}`}>Detalhes do Espaço</Text>
         </View>
         <TouchableOpacity onPress={handleDeleteSpace} disabled={isDeleting}>
             {isDeleting ? (
@@ -220,17 +220,17 @@ export default function StudyDetailsScreen() {
         {space?.cover_image && (
             <Image
                 source={{ uri: space.cover_image }}
-                className="w-full h-48 rounded-xl mb-6 bg-gray-100 dark:bg-white/5"
+                className={`w-full h-48 rounded-xl mb-6 ${themeClasses.softSurface}`}
                 resizeMode="cover"
             />
         )}
 
-        <Text className="text-2xl font-bold mb-2 text-gray-900 dark:text-starlight">{space?.title}</Text>
-        <Text className="text-gray-500 dark:text-gray-400 mb-8">{space?.description || "Sem descrição"}</Text>
+        <Text className={`text-2xl font-bold mb-2 ${themeClasses.textPrimary}`}>{space?.title}</Text>
+        <Text className={`${themeClasses.textSecondary} mb-8`}>{space?.description || "Sem descrição"}</Text>
 
         {/* Tutors Section */}
         <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Tutores Vinculados</Text>
+            <Text className={`text-lg font-bold ${themeClasses.textPrimary}`}>Tutores Vinculados</Text>
             <TouchableOpacity onPress={openLinkBotModal} className="flex-row items-center">
                 <Plus size={20} color="#818cf8" />
                 <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
@@ -238,11 +238,11 @@ export default function StudyDetailsScreen() {
         </View>
 
         {bots.length === 0 ? (
-            <Text className="text-gray-500 dark:text-gray-400 text-center py-4 mb-6 italic">Nenhum tutor vinculado.</Text>
+            <Text className={`${themeClasses.textMuted} text-center py-4 mb-6 italic`}>Nenhum tutor vinculado.</Text>
         ) : (
             <View className="mb-8">
                 {bots.map((bot) => (
-                    <View key={bot.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                    <View key={bot.id} className={`flex-row items-center justify-between ${themeClasses.softSurface} p-3 mb-2`}>
                         <View className="flex-row items-center flex-1 mr-2">
                             {bot.avatar_url ? (
                                 <Image source={{ uri: bot.avatar_url }} className="w-10 h-10 rounded-full mr-3" />
@@ -251,7 +251,7 @@ export default function StudyDetailsScreen() {
                                     <BotIcon size={20} color="#818cf8" />
                                 </View>
                             )}
-                            <Text className="text-gray-900 dark:text-starlight font-medium text-base">{bot.name}</Text>
+                            <Text className={`${themeClasses.textPrimary} font-medium text-base`}>{bot.name}</Text>
                         </View>
                         <TouchableOpacity onPress={() => handleUnlinkBot(bot.id)} className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
                             <Trash2 size={20} color="#EF4444" />
@@ -263,7 +263,7 @@ export default function StudyDetailsScreen() {
 
         {/* Sources Section */}
         <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-bold text-gray-800 dark:text-starlight">Fontes de Estudo</Text>
+            <Text className={`text-lg font-bold ${themeClasses.textPrimary}`}>Fontes de Estudo</Text>
             <TouchableOpacity onPress={() => setSheetVisible(true)} className="flex-row items-center">
                 <Plus size={20} color="#818cf8" />
                 <Text className="text-indigo-500 font-bold ml-1">Adicionar</Text>
@@ -275,19 +275,19 @@ export default function StudyDetailsScreen() {
         ) : (
           <View>
             {files.length === 0 ? (
-                <Text className="text-gray-500 dark:text-gray-400 text-center py-4 italic">Nenhuma fonte adicionada.</Text>
+                <Text className={`${themeClasses.textMuted} text-center py-4 italic`}>Nenhuma fonte adicionada.</Text>
             ) : (
                 files.map((item) => (
-                    <View key={item.id} className="flex-row items-center justify-between bg-gray-50 dark:bg-white/5 p-3 rounded-xl mb-2 border border-gray-100 dark:border-white/5">
+                    <View key={item.id} className={`flex-row items-center justify-between ${themeClasses.softSurface} p-3 mb-2`}>
                         <View className="flex-row items-center flex-1 mr-2">
                             <View className="bg-white dark:bg-white/10 p-2 rounded-lg mr-3">
                                 {getIcon(item.source_type)}
                             </View>
                             <View className="flex-1">
-                                <Text className="text-gray-900 dark:text-starlight font-medium" numberOfLines={1}>{item.title}</Text>
+                                <Text className={`${themeClasses.textPrimary} font-medium`} numberOfLines={1}>{item.title}</Text>
 
                                 <View className="flex-row items-center mt-1">
-                                    <Text className="text-gray-400 text-xs mr-2">{item.source_type}</Text>
+                                    <Text className={`${themeClasses.textMuted} text-xs mr-2`}>{item.source_type}</Text>
 
                                     {/* Status Indicator */}
                                     {item.status === 'pending' && (
@@ -333,20 +333,20 @@ export default function StudyDetailsScreen() {
           onRequestClose={() => setIsBotModalVisible(false)}
       >
           <View className="flex-1 bg-black/60 justify-end">
-              <View className="bg-white dark:bg-space-dark rounded-t-3xl h-[80%]">
-                  <View className="p-4 border-b border-gray-100 dark:border-white/10 flex-row justify-between items-center">
-                      <Text className="text-xl font-bold text-gray-900 dark:text-starlight">Vincular Tutor</Text>
+              <View className={`rounded-t-3xl h-[80%] ${themeClasses.surface}`}>
+                  <View className={`p-4 ${themeClasses.headerBorder} flex-row justify-between items-center`}>
+                      <Text className={`text-xl font-bold ${themeClasses.textPrimary}`}>Vincular Tutor</Text>
                       <TouchableOpacity onPress={() => setIsBotModalVisible(false)} className="p-2">
                           <X size={24} color="#94a3b8" />
                       </TouchableOpacity>
                   </View>
 
                   {/* Search Input */}
-                  <View className="px-4 py-2 border-b border-gray-100 dark:border-white/5">
-                      <View className="flex-row items-center bg-gray-100 dark:bg-white/5 px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10">
+                  <View className={`px-4 py-2 ${themeClasses.headerBorder}`}>
+                      <View className={`flex-row items-center px-4 py-3 ${themeClasses.input}`}>
                           <Search size={20} color="#94a3b8" />
                           <TextInput
-                              className="flex-1 ml-3 text-gray-900 dark:text-starlight text-base"
+                              className={`flex-1 ml-3 text-base ${themeClasses.textPrimary}`}
                               placeholder="Pesquisar tutores..."
                               placeholderTextColor="#64748b"
                               value={searchQuery}
@@ -358,7 +358,7 @@ export default function StudyDetailsScreen() {
                   {isLinking ? (
                       <View className="flex-1 justify-center items-center">
                           <ActivityIndicator size="large" color="#818cf8" />
-                          <Text className="mt-4 text-gray-500">Vinculando...</Text>
+                          <Text className={`mt-4 ${themeClasses.textSecondary}`}>Vinculando...</Text>
                       </View>
                   ) : (
                       <FlatList
@@ -367,7 +367,7 @@ export default function StudyDetailsScreen() {
                           contentContainerStyle={{ padding: 16 }}
                           ListEmptyComponent={
                               <View className="items-center justify-center py-10">
-                                  <Text className="text-gray-500 text-center">
+                                  <Text className={`${themeClasses.textMuted} text-center`}>
                                       {availableBots.length === 0
                                           ? "Nenhum tutor disponível para vincular."
                                           : "Nenhum tutor encontrado."}
@@ -377,7 +377,7 @@ export default function StudyDetailsScreen() {
                           renderItem={({ item }) => (
                               <TouchableOpacity
                                   onPress={() => handleLinkBot(item.id)}
-                                  className="flex-row items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl mb-3 border border-gray-100 dark:border-white/5 active:bg-gray-100 dark:active:bg-white/10"
+                                  className={`flex-row items-center p-4 mb-3 ${themeClasses.softSurface} ${themeClasses.press}`}
                               >
                                   {item.avatar_url ? (
                                       <Image source={{ uri: item.avatar_url }} className="w-12 h-12 rounded-full mr-4" />
@@ -387,8 +387,8 @@ export default function StudyDetailsScreen() {
                                       </View>
                                   )}
                                   <View className="flex-1">
-                                      <Text className="text-lg font-bold text-gray-900 dark:text-starlight">{item.name}</Text>
-                                      <Text className="text-gray-500 dark:text-gray-400 text-sm" numberOfLines={1}>{item.description || "Sem descrição"}</Text>
+                                      <Text className={`text-lg font-bold ${themeClasses.textPrimary}`}>{item.name}</Text>
+                                      <Text className={`${themeClasses.textSecondary} text-sm`} numberOfLines={1}>{item.description || "Sem descrição"}</Text>
                                   </View>
                               </TouchableOpacity>
                           )}

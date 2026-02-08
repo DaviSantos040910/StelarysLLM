@@ -3,6 +3,7 @@ import { View, TextInput, Pressable, Text, Modal, SafeAreaView, Image } from 're
 import { Mic, Send, Paperclip, Image as ImageIcon, Camera, Trash2, Maximize2, Minimize2, X, File, Youtube } from 'lucide-react-native';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, withSequence, withTiming, FadeIn } from 'react-native-reanimated';
+import { themeClasses } from '../../theme/classes';
 
 export interface StagedAttachment {
   type: 'image' | 'video' | 'document' | 'youtube';
@@ -105,7 +106,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   // Card container styles
-  const cardContainerClass = "bg-space-light rounded-[28px] p-4";
+  const cardContainerClass = `bg-white dark:bg-space-light border border-gray-200 dark:border-white/10 rounded-[28px] p-4 shadow-sm`;
   const wrapperClass = "px-4 pb-2 pt-2";
   const iconColor = "#94a3b8";
 
@@ -130,13 +131,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
 
       return (
-          <View key={index} className="mr-2 mb-2 bg-white/5 border border-white/10 rounded-xl flex-row items-center p-2 pr-8 relative">
-              <View className="p-1.5 bg-white/5 rounded-lg mr-2">
+          <View key={index} className={`mr-2 mb-2 ${themeClasses.softSurface} flex-row items-center p-2 pr-8 relative`}>
+              <View className="p-1.5 bg-white/50 dark:bg-white/5 rounded-lg mr-2">
                   <IconComp size={16} color={color} />
               </View>
               <View>
-                  <Text className="text-starlight text-xs font-bold" numberOfLines={1}>{label}</Text>
-                  <Text className="text-gray-500 text-[10px]" numberOfLines={1}>{att.url || att.name}</Text>
+                  <Text className={`${themeClasses.textPrimary} text-xs font-bold`} numberOfLines={1}>{label}</Text>
+                  <Text className={`${themeClasses.textMuted} text-[10px]`} numberOfLines={1}>{att.url || att.name}</Text>
               </View>
 
               <Pressable
@@ -168,7 +169,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             <Animated.View
                                 style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', marginBottom: 2 }, animatedDotStyle]}
                             />
-                            <Text className="text-starlight text-lg font-mono font-bold">
+                            <Text className={`${themeClasses.textPrimary} text-lg font-mono font-bold`}>
                                 {formattedDuration}
                             </Text>
                         </View>
@@ -197,7 +198,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 <Pressable
                                     onPress={onPlusPress}
                                     disabled={disabled}
-                                    className="p-2 mr-2 bg-white/5 rounded-full"
+                                    className={`p-2 mr-2 rounded-full ${themeClasses.press}`}
                                     accessibilityLabel="Abrir menu de anexos"
                                 >
                                     <Paperclip color={iconColor} size={22} />
@@ -207,13 +208,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             {/* Center: Text Input */}
                             <TextInput
                                 placeholder="Peça ao Stelarys..."
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor="#94a3b8"
                                 value={value}
                                 onChangeText={onChangeText}
                                 multiline
                                 editable={!disabled}
                                 onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
-                                className="text-starlight text-base leading-5 min-h-[40px] max-h-[120px] flex-1 mr-2 pt-2"
+                                className={`${themeClasses.textPrimary} text-base leading-5 min-h-[40px] max-h-[120px] flex-1 mr-2 pt-2`}
                                 style={{ textAlignVertical: 'center' }}
                             />
 
@@ -256,13 +257,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             presentationStyle="fullScreen"
             onRequestClose={() => setIsExpanded(false)}
         >
-            <SafeAreaView className="flex-1 bg-space-dark">
+            <SafeAreaView className={themeClasses.screen}>
                 <View className="flex-1 px-4 pt-4">
                     {/* Header: Minimize */}
-                    <View className="flex-row justify-end mb-4 border-b border-white/5 pb-2">
+                    <View className={`flex-row justify-end mb-4 ${themeClasses.headerBorder} pb-2`}>
                         <Pressable
                             onPress={() => setIsExpanded(false)}
-                            className="p-2 bg-space-light rounded-full border border-white/10"
+                            className={`p-2 rounded-full ${themeClasses.softSurface}`}
                         >
                             <Minimize2 color="#94a3b8" size={20} />
                         </Pressable>
@@ -275,16 +276,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         multiline
                         autoFocus
                         placeholder="Digite sua mensagem..."
-                        placeholderTextColor="#64748b"
-                        className="flex-1 text-starlight text-lg leading-7 p-2"
+                        placeholderTextColor="#94a3b8"
+                        className={`flex-1 ${themeClasses.textPrimary} text-lg leading-7 p-2`}
                         style={{ textAlignVertical: 'top' }}
                     />
 
                     {/* Footer: Actions */}
-                    <View className="h-[80px] flex-row items-center justify-end border-t border-white/10 mt-4">
+                    <View className={`h-[80px] flex-row items-center justify-end ${themeClasses.headerBorder} border-t mt-4`}>
                          <Pressable
                             onPress={handleSendPress}
-                            className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                            className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-gray-100 dark:bg-white/10'}`}
                         >
                             <Send color="white" size={24} />
                         </Pressable>

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, MoreVertical, MessageSquarePlus, RefreshCw, History, FileText, X, Settings } from 'lucide-react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { UserAvatar } from '../UserAvatar';
+import { themeClasses } from '../../theme/classes';
 
 interface FloatingTutorCardProps {
   botName: string;
@@ -47,17 +48,17 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
         style={animatedStyle}
         pointerEvents="box-none"
         >
-        <View className="flex-row items-center bg-space-light/90 border border-white/10 rounded-full px-4 py-2 shadow-lg backdrop-blur-md w-full justify-between">
+        <View className="flex-row items-center bg-white/90 dark:bg-space-light/90 border border-gray-200 dark:border-white/10 rounded-full px-4 py-2 shadow-lg backdrop-blur-md w-full justify-between">
 
             <View className="flex-row items-center flex-1">
-            <Pressable onPress={handleBack} className="mr-3 p-1 rounded-full active:bg-white/10">
-                <ArrowLeft color="#fff" size={20} />
+            <Pressable onPress={handleBack} className={`mr-3 p-1 rounded-full ${themeClasses.press}`}>
+                <ArrowLeft className={themeClasses.iconPrimary} size={20} />
             </Pressable>
 
             <UserAvatar imageUri={botAvatar} size={32} className="mr-3" />
 
             <Text
-                className="text-starlight text-base font-bold flex-1"
+                className={`${themeClasses.textPrimary} text-base font-bold flex-1`}
                 numberOfLines={1}
             >
                 {botName || 'Tutor'}
@@ -67,7 +68,7 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
             <View className="flex-row items-center gap-2">
             <Pressable
                 onPress={onNewChat}
-                className="p-2 rounded-full active:bg-white/10"
+                className={`p-2 rounded-full ${themeClasses.press}`}
                 accessibilityLabel="Estúdio"
             >
                 <MessageSquarePlus color="#94a3b8" size={20} />
@@ -75,7 +76,7 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
 
             <Pressable
                 onPress={() => setMenuVisible(true)}
-                className="p-2 rounded-full active:bg-white/10"
+                className={`p-2 rounded-full ${themeClasses.press}`}
                 accessibilityLabel="Menu"
             >
                 <MoreVertical color="#94a3b8" size={20} />
@@ -98,11 +99,11 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
             >
                 <Animated.View
                     entering={SlideInDown.duration(200)}
-                    className="absolute bottom-0 left-0 right-0 bg-space-light rounded-t-3xl border-t border-white/10 p-6 pb-10"
+                    className={`absolute bottom-0 left-0 right-0 bg-white dark:bg-space-light rounded-t-3xl border-t border-gray-200 dark:border-white/10 p-6 pb-10`}
                 >
                     <View className="flex-row justify-between items-center mb-6">
-                        <Text className="text-gray-400 font-bold text-sm">Opções da Conversa</Text>
-                        <Pressable onPress={() => setMenuVisible(false)} className="p-1 bg-white/5 rounded-full">
+                        <Text className={`${themeClasses.textSecondary} font-bold text-sm`}>Opções da Conversa</Text>
+                        <Pressable onPress={() => setMenuVisible(false)} className={`p-1 rounded-full ${themeClasses.softSurface}`}>
                             <X color="#94a3b8" size={20} />
                         </Pressable>
                     </View>
@@ -148,14 +149,14 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
 const MenuItem = ({ icon: Icon, label, desc, onPress, color }: any) => (
     <Pressable
         onPress={onPress}
-        className="flex-row items-center p-4 bg-white/5 rounded-2xl mb-3 border border-white/5 active:bg-white/10"
+        className={`flex-row items-center p-4 rounded-2xl mb-3 ${themeClasses.softSurface} ${themeClasses.press}`}
     >
-        <View className="p-3 rounded-full bg-white/5 mr-4">
+        <View className="p-3 rounded-full bg-white/50 dark:bg-white/5 mr-4">
             <Icon size={24} color={color} />
         </View>
         <View className="flex-1">
-            <Text className="text-starlight font-bold text-base">{label}</Text>
-            <Text className="text-gray-500 text-xs">{desc}</Text>
+            <Text className={`${themeClasses.textPrimary} font-bold text-base`}>{label}</Text>
+            <Text className={`${themeClasses.textMuted} text-xs`}>{desc}</Text>
         </View>
     </Pressable>
 );

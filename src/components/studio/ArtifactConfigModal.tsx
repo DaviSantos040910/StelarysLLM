@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, Switch, Text, TextInput, View, Alert } from 'react-native';
 import { ArtifactGenerationOptions, ArtifactType } from '../../types/studio';
 import { SourceSelector } from './SourceSelector';
+import { themeClasses } from '../../theme/classes';
 
 interface ArtifactConfigModalProps {
     visible: boolean;
@@ -121,12 +122,12 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                         onSelectionChange={setSelectedSourceIds}
                     />
                 ) : (
-                    <View className="bg-space-light rounded-t-3xl border-t border-white/10 p-6 pb-10 max-h-[90%]">
+                    <View className={`rounded-t-3xl border-t border-gray-200 dark:border-white/10 p-6 pb-10 max-h-[90%] ${themeClasses.surface}`}>
 
                         {/* Header */}
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-starlight text-xl font-bold text-center flex-1">{getTitle()}</Text>
-                            <Pressable onPress={onClose} className="p-2 bg-white/5 rounded-full absolute right-0">
+                            <Text className={`${themeClasses.textPrimary} text-xl font-bold text-center flex-1`}>{getTitle()}</Text>
+                            <Pressable onPress={onClose} className={`p-2 rounded-full absolute right-0 ${themeClasses.softSurface}`}>
                                 <X size={24} color="#94a3b8" />
                             </Pressable>
                         </View>
@@ -136,7 +137,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             {/* 1. Quantity OR Duration */}
                             {artifactType === 'PODCAST' ? (
                                 <>
-                                    <Text className="text-starlight font-bold mb-3">Duração</Text>
+                                    <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Duração</Text>
                                     <View className="flex-row gap-3 mb-6">
                                         {DURATION_OPTIONS.map(opt => {
                                             const isSelected = duration === opt.id;
@@ -145,10 +146,10 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                                     key={opt.id}
                                                     onPress={() => setDuration(opt.id as any)}
                                                     className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                                                        isSelected ? 'bg-white text-black border-white' : 'bg-transparent border-white/20'
+                                                        isSelected ? 'bg-white dark:bg-white text-black border-white' : 'bg-transparent border-gray-300 dark:border-white/20'
                                                     }`}
                                                 >
-                                                    <Text className={`font-bold text-xs ${isSelected ? 'text-black' : 'text-gray-400'}`}>
+                                                    <Text className={`font-bold text-xs ${isSelected ? 'text-black' : themeClasses.textMuted}`}>
                                                         {opt.label}
                                                     </Text>
                                                 </Pressable>
@@ -158,7 +159,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                 </>
                             ) : (
                                 <>
-                                    <Text className="text-starlight font-bold mb-3">Número de {getUnitLabel()}</Text>
+                                    <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Número de {getUnitLabel()}</Text>
                                     <View className="flex-row gap-3 mb-6">
                                         {QUANTITY_OPTIONS.map(opt => {
                                             const isSelected = quantityOption === opt.id;
@@ -167,10 +168,10 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                                     key={opt.id}
                                                     onPress={() => setQuantityOption(opt.id)}
                                                     className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                                                        isSelected ? 'bg-white text-black border-white' : 'bg-transparent border-white/20'
+                                                        isSelected ? 'bg-white dark:bg-white text-black border-white' : 'bg-transparent border-gray-300 dark:border-white/20'
                                                     }`}
                                                 >
-                                                    <Text className={`font-bold ${isSelected ? 'text-black' : 'text-gray-400'}`}>
+                                                    <Text className={`font-bold ${isSelected ? 'text-black' : themeClasses.textMuted}`}>
                                                         {opt.label}
                                                     </Text>
                                                 </Pressable>
@@ -181,7 +182,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             )}
 
                             {/* 2. Difficulty (Shown for ALL types) */}
-                            <Text className="text-starlight font-bold mb-3">Nível de dificuldade</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Nível de dificuldade</Text>
                             <View className="flex-row gap-3 mb-6">
                                 {DIFFICULTY_LEVELS.map(level => {
                                     const isSelected = difficulty === level.id;
@@ -190,11 +191,11 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                             key={level.id}
                                             onPress={() => setDifficulty(level.id as any)}
                                             className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                                                isSelected ? 'bg-white/10 border-cosmic-purple' : 'bg-transparent border-white/20'
+                                                isSelected ? 'bg-white/10 border-cosmic-purple' : 'bg-transparent border-gray-300 dark:border-white/20'
                                             }`}
                                         >
                                             {isSelected && <View className="absolute left-3 w-2 h-2 rounded-full bg-cosmic-purple" />}
-                                            <Text className={`font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                                            <Text className={`font-medium ${isSelected ? themeClasses.textPrimary : themeClasses.textMuted}`}>
                                                 {level.label}
                                             </Text>
                                         </Pressable>
@@ -203,14 +204,14 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             </View>
 
                             {/* 3. Sources */}
-                            <Text className="text-starlight font-bold mb-3">Fontes de Conteúdo</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Fontes de Conteúdo</Text>
                             <Pressable
                                 onPress={() => setViewMode('sources')}
-                                className="flex-row items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mb-3 active:bg-white/10"
+                                className={`flex-row items-center justify-between p-4 rounded-xl mb-3 ${themeClasses.softSurface} ${themeClasses.press}`}
                             >
                                 <View className="flex-row items-center flex-1">
                                     <Layers size={20} color="#818cf8" />
-                                    <Text className="text-gray-300 ml-3" numberOfLines={1}>
+                                    <Text className={`${themeClasses.textSecondary} ml-3`} numberOfLines={1}>
                                         {selectedSourceIds.length === 0
                                             ? "Selecionar arquivos/fontes..."
                                             : `${selectedSourceIds.length} fontes selecionadas`}
@@ -220,10 +221,10 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             </Pressable>
 
                             {/* Chat History Toggle */}
-                            <View className="flex-row items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mb-6">
+                            <View className={`flex-row items-center justify-between p-4 rounded-xl mb-6 ${themeClasses.softSurface}`}>
                                 <View className="flex-row items-center flex-1">
                                     <MessageSquare size={20} color="#c084fc" />
-                                    <Text className="text-gray-300 ml-3">
+                                    <Text className={`${themeClasses.textSecondary} ml-3`}>
                                         Incluir contexto da conversa
                                     </Text>
                                 </View>
@@ -236,14 +237,14 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             </View>
 
                             {/* 4. Instructions */}
-                            <Text className="text-starlight font-bold mb-3">Comando (Opcional)</Text>
+                            <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Comando (Opcional)</Text>
                             <TextInput
                                 value={customInstructions}
                                 onChangeText={setCustomInstructions}
                                 placeholder="Ex: Foque nos conceitos avançados de..."
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor="#94a3b8"
                                 multiline
-                                className="bg-white/5 text-starlight p-4 rounded-xl border border-white/10 min-h-[100px] mb-6"
+                                className={`${themeClasses.input} p-4 min-h-[100px] mb-6`}
                                 textAlignVertical="top"
                             />
 

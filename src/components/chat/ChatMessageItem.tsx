@@ -8,6 +8,7 @@ import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 import { ReferencesSheet } from './ReferencesSheet';
+import { themeClasses } from '../../theme/classes';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -120,17 +121,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             return (
                 <Pressable
                     onPress={() => Linking.openURL(message.attachment_url!)}
-                    className={`flex-row items-center p-3 rounded-lg border ${isUser ? 'bg-white/10 border-white/20' : 'bg-space-light border-white/10'
+                    className={`flex-row items-center p-3 rounded-lg border ${isUser ? 'bg-white/10 border-white/20' : `${themeClasses.softSurface}`
                         }`}
                 >
-                    <View className={`p-2 rounded-full mr-3 ${isUser ? 'bg-white/20' : 'bg-space-dark'}`}>
+                    <View className={`p-2 rounded-full mr-3 ${isUser ? 'bg-white/20' : 'bg-white dark:bg-space-dark'}`}>
                         <FileText size={20} color={isUser ? 'white' : '#94a3b8'} />
                     </View>
                     <View className="flex-1">
-                        <Text className={`font-medium ${isUser ? 'text-white' : 'text-starlight'}`} numberOfLines={1}>
+                        <Text className={`font-medium ${isUser ? 'text-white' : themeClasses.textPrimary}`} numberOfLines={1}>
                             {message.original_filename || 'Document'}
                         </Text>
-                        <Text className={`text-xs ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
+                        <Text className={`text-xs ${isUser ? 'text-white/70' : themeClasses.textMuted}`}>
                             Attachment
                         </Text>
                     </View>
@@ -140,7 +141,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
         // Text
         return (
-            <Text className={`${isUser ? 'text-white' : 'text-starlight'} text-base leading-7`}>
+            <Text className={`${isUser ? 'text-white' : themeClasses.textPrimary} text-base leading-7`}>
                 {message.content}
             </Text>
         );
@@ -221,10 +222,10 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                             <View className="flex-1 items-end">
                                 <Pressable
                                     onPress={() => setShowReferences(true)}
-                                    className="flex-row items-center px-3 py-1.5 bg-space-light/50 border border-white/10 rounded-full active:bg-space-light"
+                                    className={`flex-row items-center px-3 py-1.5 rounded-full ${themeClasses.softSurface}`}
                                 >
                                     <BookOpen size={14} color="#fbbf24" className="mr-2" />
-                                    <Text className="text-starlight text-xs font-bold">
+                                    <Text className={`${themeClasses.textPrimary} text-xs font-bold`}>
                                         Fontes ({message.sources.length})
                                     </Text>
                                 </Pressable>
@@ -248,9 +249,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                                 <Pressable
                                     key={idx}
                                     onPress={() => onSuggestionPress?.(suggestion)}
-                                    className="mr-2 mb-2 px-3 py-1 rounded-full border border-white/10 bg-space-light/50 active:bg-space-light"
+                                    className={`mr-2 mb-2 px-3 py-1 rounded-full border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-space-light/50 active:bg-gray-100 dark:active:bg-space-light`}
                                 >
-                                    <Text className="text-gray-300 text-xs">{suggestion}</Text>
+                                    <Text className={`${themeClasses.textSecondary} text-xs`}>{suggestion}</Text>
                                 </Pressable>
                             ))}
                         </View>

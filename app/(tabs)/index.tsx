@@ -11,6 +11,7 @@ import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { chatListService } from '../../src/services/chatListService';
 import { useAuthStore } from '../../src/stores/authStore';
 import { ChatListItem } from '../../src/types/chat';
+import { themeClasses } from '../../src/theme/classes';
 
 // Wrapper component to apply entry animations
 const AnimatedChatRow = ({ item, index }: { item: ChatListItem; index: number }) => {
@@ -49,12 +50,12 @@ export default function ChatListScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+    <SafeAreaView className={themeClasses.screen} edges={['top']}>
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-4 mb-2 border-b border-white/5 bg-space-dark/95 backdrop-blur-md z-10">
+      <View className={`flex-row justify-between items-center px-4 py-4 mb-2 bg-white/95 dark:bg-space-dark/95 backdrop-blur-md z-10 ${themeClasses.headerBorder}`}>
         <View>
-          <Text className="text-starlight text-lg font-medium">Olá,</Text>
-          <Text className="text-2xl font-bold text-starlight">{user?.username || 'Viajante'}</Text>
+          <Text className={`${themeClasses.textPrimary} text-lg font-medium`}>Olá,</Text>
+          <Text className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{user?.username || 'Viajante'}</Text>
         </View>
       </View>
 
@@ -75,11 +76,11 @@ export default function ChatListScreen() {
           }
           ListEmptyComponent={
             <View className="items-center justify-center py-20 px-6">
-              <View className="w-16 h-16 bg-white/5 rounded-full items-center justify-center mb-4">
+              <View className={`w-16 h-16 rounded-full items-center justify-center mb-4 ${themeClasses.softSurface}`}>
                 <Text className="text-4xl">👋</Text>
               </View>
-              <Text className="text-starlight text-lg font-bold mb-2">Sem conversas ainda</Text>
-              <Text className="text-gray-400 text-center">
+              <Text className={`${themeClasses.textPrimary} text-lg font-bold mb-2`}>Sem conversas ainda</Text>
+              <Text className={`${themeClasses.textMuted} text-center`}>
                 Visite a aba Explorar para encontrar um Tutor e começar a aprender!
               </Text>
             </View>

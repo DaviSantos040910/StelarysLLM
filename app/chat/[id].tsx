@@ -19,6 +19,7 @@ import { chatService } from '../../src/services/chatService';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { ChatListItem, Message } from '../../src/types/chat';
+import { themeClasses } from '../../src/theme/classes';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
 
@@ -311,10 +312,10 @@ export default function ChatScreen() {
     // --- RENDER ---
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top', 'bottom']}>
+        <SafeAreaView className={themeClasses.screen} edges={['top', 'bottom']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View className="flex-1 bg-space-dark">
+            <View className={themeClasses.screen}>
                 {/* Floating Header */}
                 <FloatingTutorCard
                     botName={currentChat?.bot?.name || (botName as string) || 'Chat'}
@@ -359,7 +360,7 @@ export default function ChatScreen() {
                     {showScrollDown && (
                         <Pressable
                             onPress={scrollToBottom}
-                            className="absolute bottom-4 right-4 bg-space-light p-3 rounded-full border border-white/10 shadow-lg"
+                            className={`absolute bottom-4 right-4 p-3 rounded-full shadow-lg ${themeClasses.surface}`}
                         >
                             <ChevronDown color={themeColor} size={24} />
                         </Pressable>

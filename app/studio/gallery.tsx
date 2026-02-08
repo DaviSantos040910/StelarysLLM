@@ -33,6 +33,7 @@ import { QuizViewer } from '../../src/components/studio/QuizViewer';
 import { SlideViewer } from '../../src/components/studio/SlideViewer';
 import { SpreadsheetViewer } from '../../src/components/studio/SpreadsheetViewer';
 import { WorkbookViewer } from '../../src/components/studio/WorkbookViewer';
+import { themeClasses } from '../../src/theme/classes';
 
 const FILTER_TABS = [
     { id: 'ALL', label: 'Todos' },
@@ -78,10 +79,10 @@ const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtif
         >
             <Pressable
                 onPress={() => onPress(item)}
-                className="flex-1 p-4 bg-space-light rounded-2xl border border-white/10 min-h-[140px] justify-between active:bg-white/5 transition-colors"
+                className={`flex-1 p-4 rounded-2xl min-h-[140px] justify-between transition-colors ${themeClasses.surface} ${themeClasses.press}`}
             >
                 <View className="flex-row justify-between items-start">
-                    <View className="p-2 bg-white/5 rounded-full">
+                    <View className={`p-2 rounded-full ${themeClasses.softSurface}`}>
                         {icon}
                     </View>
                     {item.type === 'PODCAST' && (
@@ -97,18 +98,18 @@ const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtif
                 </View>
 
                 <View>
-                    <Text className="text-starlight font-bold text-base leading-tight mb-1" numberOfLines={2}>
+                    <Text className={`${themeClasses.textPrimary} font-bold text-base leading-tight mb-1`} numberOfLines={2}>
                         {item.title}
                     </Text>
-                    <Text className="text-gray-500 text-xs">{dateStr}</Text>
+                    <Text className={`${themeClasses.textMuted} text-xs`}>{dateStr}</Text>
                 </View>
 
-                <View className="mt-2 pt-2 border-t border-white/5">
-                    {item.type === 'PODCAST' && <Text className="text-gray-400 text-xs font-medium">{item.duration || '00:00'} min</Text>}
-                    {item.type === 'QUIZ' && <Text className="text-gray-400 text-xs font-medium">Revisar</Text>}
-                    {item.type === 'FLASHCARD' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
-                    {item.type === 'SLIDE' && <Text className="text-gray-400 text-xs font-medium">{Array.isArray(item.content) ? item.content.length : 0} slides</Text>}
-                    {['SPREADSHEET', 'WORKBOOK'].includes(item.type) && <Text className="text-gray-400 text-xs font-medium">Ver conteúdo</Text>}
+                <View className="mt-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                    {item.type === 'PODCAST' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{item.duration || '00:00'} min</Text>}
+                    {item.type === 'QUIZ' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>Revisar</Text>}
+                    {item.type === 'FLASHCARD' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{Array.isArray(item.content) ? item.content.length : 0} cards</Text>}
+                    {item.type === 'SLIDE' && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>{Array.isArray(item.content) ? item.content.length : 0} slides</Text>}
+                    {['SPREADSHEET', 'WORKBOOK'].includes(item.type) && <Text className={`${themeClasses.textMuted} text-xs font-medium`}>Ver conteúdo</Text>}
                 </View>
             </Pressable>
         </Animated.View>
@@ -260,7 +261,7 @@ export default function StudioGalleryScreen() {
 
         // Default Header for other types
         return (
-            <View className="flex-1 bg-space-dark relative">
+            <View className={`flex-1 relative ${themeClasses.screen}`}>
                 <View className="absolute top-4 right-4 z-50 flex-row gap-2">
                     {selectedArtifact.type === 'PODCAST' && (
                         <Pressable onPress={handleMinimizeViewer} className="p-2 bg-black/40 rounded-full">
@@ -284,13 +285,13 @@ export default function StudioGalleryScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
             {/* Header */}
-            <View className="px-4 py-4 flex-row items-center border-b border-white/10 mb-2">
-                <Pressable onPress={() => router.back()} className="p-2 -ml-2 rounded-full active:bg-white/10">
-                    <ArrowLeft color="#fff" size={24} />
+            <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
+                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                 </Pressable>
-                <Text className="text-starlight text-xl font-bold ml-2">Galeria do Studio</Text>
+                <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Galeria do Studio</Text>
             </View>
 
             {/* Filters */}
@@ -305,9 +306,9 @@ export default function StudioGalleryScreen() {
                         return (
                             <Pressable
                                 onPress={() => setActiveFilter(item.id)}
-                                className={`mr-3 px-4 py-2 rounded-full border ${isActive ? 'bg-cosmic-purple border-cosmic-purple' : 'bg-transparent border-white/20'}`}
+                                className={`mr-3 px-4 py-2 rounded-full border ${isActive ? 'bg-cosmic-purple border-cosmic-purple' : 'bg-transparent border-gray-300 dark:border-white/20'}`}
                             >
-                                <Text className={`${isActive ? 'text-white' : 'text-gray-400'} font-medium`}>{item.label}</Text>
+                                <Text className={`${isActive ? 'text-white' : themeClasses.textMuted} font-medium`}>{item.label}</Text>
                             </Pressable>
                         );
                     }}
@@ -330,7 +331,7 @@ export default function StudioGalleryScreen() {
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View className="items-center mt-20">
-                            <Text className="text-gray-500">Nenhum artefato encontrado.</Text>
+                            <Text className={themeClasses.textMuted}>Nenhum artefato encontrado.</Text>
                         </View>
                     }
                 />

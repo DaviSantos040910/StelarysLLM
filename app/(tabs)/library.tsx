@@ -10,6 +10,7 @@ import { StudySpace } from '../../src/types/studio';
 import { SpaceCard } from '../../src/components/library/SpaceCard';
 import { CreateSpaceModal } from '../../src/components/library/CreateSpaceModal';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function LibraryScreen() {
     const router = useRouter();
@@ -60,18 +61,18 @@ export default function LibraryScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
             <View className="px-6 py-4">
-                <Text className="text-starlight text-3xl font-bold mb-1">Biblioteca</Text>
-                <Text className="text-gray-400 text-base">Seus espaços de estudo</Text>
+                <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-1`}>Biblioteca</Text>
+                <Text className={`${themeClasses.textMuted} text-base`}>Seus espaços de estudo</Text>
             </View>
 
             {/* Search */}
             <View className="px-6 mb-6">
-                <View className="flex-row items-center bg-white/5 px-4 py-3 rounded-xl border border-white/10">
+                <View className={`flex-row items-center px-4 py-3 ${themeClasses.input}`}>
                     <Search size={20} color="#94a3b8" />
                     <TextInput
-                        className="flex-1 ml-3 text-starlight text-base"
+                        className={`flex-1 ml-3 ${themeClasses.textPrimary} text-base`}
                         placeholder="Buscar espaços..."
                         placeholderTextColor="#64748b"
                         value={searchQuery}

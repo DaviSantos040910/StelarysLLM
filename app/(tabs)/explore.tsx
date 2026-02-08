@@ -13,6 +13,7 @@ import { SearchHistory } from '../../src/components/explore/SearchHistory';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { Category, ExploreBotItem, exploreService } from '../../src/services/exploreService';
 import searchHistoryService, { SearchHistoryItem } from '../../src/services/searchHistoryService';
+import { themeClasses } from '../../src/theme/classes';
 
 // Wrapper for animated list items
 const AnimatedBotRow = ({ item, index }: { item: ExploreBotItem; index: number }) => (
@@ -142,20 +143,20 @@ export default function ExploreScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-space-dark" edges={['top']}>
+        <SafeAreaView className={themeClasses.screen} edges={['top']}>
             {/* Header / Search Bar */}
-            <View className="px-4 py-3 border-b border-white/5 bg-space-dark z-10">
+            <View className={`px-4 py-3 ${themeClasses.headerBorder} bg-white dark:bg-space-dark z-10`}>
                 <View className="flex-row items-center gap-2">
                     {isSearchMode && (
                         <AnimatedPressable onPress={handleSearchCancel} entering={FadeInDown} exiting={FadeOut}>
-                            <ArrowLeft color="#fff" size={24} />
+                            <ArrowLeft className={themeClasses.iconPrimary} size={24} />
                         </AnimatedPressable>
                     )}
 
-                    <View className="flex-1 flex-row items-center bg-space-light rounded-xl px-3 py-3 border border-white/10">
+                    <View className={`flex-1 flex-row items-center rounded-xl px-3 py-3 ${themeClasses.input}`}>
                         <Search color="#94a3b8" size={20} />
                         <TextInput
-                            className="flex-1 ml-2 text-starlight text-base h-full" // Ensure height for centering
+                            className={`flex-1 ml-2 ${themeClasses.textPrimary} text-base h-full`} // Ensure height for centering
                             placeholder="Busque por tutores..." // Translated to match
                             placeholderTextColor="#64748b"
                             value={searchQuery}
@@ -201,10 +202,10 @@ export default function ExploreScreen() {
                                                 onPress={() => handleCategoryPress(item.id)}
                                                 className={`mr-2 px-4 py-2 rounded-full border ${isActive
                                                     ? 'bg-cosmic-purple border-cosmic-purple'
-                                                    : 'bg-transparent border-white/20'
+                                                    : 'bg-transparent border-gray-300 dark:border-white/20'
                                                     }`}
                                             >
-                                                <Text className={`${isActive ? 'text-white' : 'text-gray-400'} font-medium`}>
+                                                <Text className={`${isActive ? 'text-white' : themeClasses.textMuted} font-medium`}>
                                                     {item.name}
                                                 </Text>
                                             </Pressable>
@@ -228,7 +229,7 @@ export default function ExploreScreen() {
                                 showsVerticalScrollIndicator={false}
                                 ListEmptyComponent={
                                     <View className="items-center mt-20">
-                                        <Text className="text-gray-500 text-lg">Nenhum tutor encontrado.</Text>
+                                        <Text className={`${themeClasses.textMuted} text-lg`}>Nenhum tutor encontrado.</Text>
                                     </View>
                                 }
                             />
