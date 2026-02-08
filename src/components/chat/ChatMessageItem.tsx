@@ -7,8 +7,8 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Message } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
-import { ReferencesSheet } from './ReferencesSheet';
 import { themeClasses } from '../../theme/classes';
+import { SourceRef } from '../../types/chat';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -18,6 +18,7 @@ interface ChatMessageItemProps {
     onRegenerate?: (id: string) => void;
     onTTS?: (id: string, text: string) => void;
     onSuggestionPress?: (text: string) => void;
+    onShowReferences?: (sources: SourceRef[]) => void;
     botName?: string;
     botAvatar?: string;
     themeColor?: string;
@@ -31,6 +32,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     onRegenerate,
     onTTS,
     onSuggestionPress,
+    onShowReferences,
     botName,
     botAvatar,
     themeColor = '#818cf8'
@@ -38,8 +40,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const router = useRouter();
     const isUser = message.role === 'user';
     const isStreaming = message.status === 'sending' && !isUser;
-
-    const [showReferences, setShowReferences] = useState(false);
 
     // Use global audio store to track state
     const { currentUri, isPlaying, stop, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
@@ -169,78 +169,69 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             {/* Actions */}
             {!isStreaming && (message.content?.length > 0 || message.attachment_url) && (
                 <View className="flex-col pl-1 mt-2">
-                    <View className="flex-row items-center space-x-2 mb-3">
-                        {message.content?.length > 0 && (
-                            <>
-                                <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
-                                    <Copy size={16} color="#94a3b8" />
-                                </Pressable>
+                    <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center space-x-2">
+                            {message.content?.length > 0 && (
+                                <>
+                                    <Pressable onPress={() => onCopy?.(message.content)} className="p-2">
+                                        <Copy size={16} color="#94a3b8" />
+                                    </Pressable>
 
-                                {/* Reader Mode Button */}
-                                <Pressable onPress={handleOpenReader} className="p-2">
-                                    <BookOpen size={16} color="#94a3b8" />
-                                </Pressable>
-                            </>
-                        )}
+                                    {/* Reader Mode Button */}
+                                    <Pressable onPress={handleOpenReader} className="p-2">
+                                        <BookOpen size={16} color="#94a3b8" />
+                                    </Pressable>
+                                </>
+                            )}
 
-                        {/* Feedback Buttons */}
-                        <Pressable onPress={handleLike} className="p-2">
-                            <ThumbsUp
-                                size={16}
-                                color={message.feedback === 'like' ? themeColor : "#94a3b8"}
-                                fill={message.feedback === 'like' ? themeColor : "none"}
-                            />
-                        </Pressable>
-                        <Pressable onPress={handleDislike} className="p-2">
-                            <ThumbsDown
-                                size={16}
-                                color={message.feedback === 'dislike' ? "#ef4444" : "#94a3b8"}
-                                fill={message.feedback === 'dislike' ? "#ef4444" : "none"}
-                            />
-                        </Pressable>
-
-                        {message.content?.length > 0 && (
-                            <Pressable onPress={handleTTSAction} className="p-2">
-                                {isThisMessageLoading ? (
-                                    <Loader2 size={16} color={themeColor} className="animate-spin" />
-                                ) : isThisMessagePlaying ? (
-                                    <Square size={16} color={themeColor} fill={themeColor} />
-                                ) : (
-                                    <Volume2 size={16} color="#94a3b8" />
-                                )}
+                            {/* Feedback Buttons */}
+                            <Pressable onPress={handleLike} className="p-2">
+                                <ThumbsUp
+                                    size={16}
+                                    color={message.feedback === 'like' ? themeColor : "#94a3b8"}
+                                    fill={message.feedback === 'like' ? themeColor : "none"}
+                                />
                             </Pressable>
-                        )}
-
-                        {isLastMessage && (
-                            <Pressable onPress={() => onRegenerate?.(message.id as string)} className="p-2">
-                                <RefreshCw size={16} color="#94a3b8" />
+                            <Pressable onPress={handleDislike} className="p-2">
+                                <ThumbsDown
+                                    size={16}
+                                    color={message.feedback === 'dislike' ? "#ef4444" : "#94a3b8"}
+                                    fill={message.feedback === 'dislike' ? "#ef4444" : "none"}
+                                />
                             </Pressable>
-                        )}
+
+                            {message.content?.length > 0 && (
+                                <Pressable onPress={handleTTSAction} className="p-2">
+                                    {isThisMessageLoading ? (
+                                        <Loader2 size={16} color={themeColor} className="animate-spin" />
+                                    ) : isThisMessagePlaying ? (
+                                        <Square size={16} color={themeColor} fill={themeColor} />
+                                    ) : (
+                                        <Volume2 size={16} color="#94a3b8" />
+                                    )}
+                                </Pressable>
+                            )}
+
+                            {isLastMessage && (
+                                <Pressable onPress={() => onRegenerate?.(message.id as string)} className="p-2">
+                                    <RefreshCw size={16} color="#94a3b8" />
+                                </Pressable>
+                            )}
+                        </View>
 
                         {/* References Chip (Right Aligned) */}
                         {message.sources && message.sources.length > 0 && (
-                            <View className="flex-1 items-end">
-                                <Pressable
-                                    onPress={() => setShowReferences(true)}
-                                    className={`flex-row items-center px-3 py-1.5 rounded-full ${themeClasses.softSurface}`}
-                                >
-                                    <BookOpen size={14} color="#fbbf24" className="mr-2" />
-                                    <Text className={`${themeClasses.textPrimary} text-xs font-bold`}>
-                                        Fontes ({message.sources.length})
-                                    </Text>
-                                </Pressable>
-                            </View>
+                            <Pressable
+                                onPress={() => onShowReferences?.(message.sources!)}
+                                className={`flex-row items-center px-3 py-1.5 rounded-full ${themeClasses.softSurface}`}
+                            >
+                                <BookOpen size={14} color="#fbbf24" className="mr-2" />
+                                <Text className={`${themeClasses.textPrimary} text-xs font-bold`}>
+                                    Fontes ({message.sources.length})
+                                </Text>
+                            </Pressable>
                         )}
                     </View>
-
-                    {/* References Sheet */}
-                    {message.sources && message.sources.length > 0 && (
-                        <ReferencesSheet
-                            sources={message.sources}
-                            isVisible={showReferences}
-                            onClose={() => setShowReferences(false)}
-                        />
-                    )}
 
                     {/* Suggestions Chips (Mini) */}
                     {isLastMessage && message.suggestions && message.suggestions.length > 0 && (

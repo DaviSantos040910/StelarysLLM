@@ -18,8 +18,9 @@ import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 import { useChatStore } from '../../src/stores/chatStore';
-import { ChatListItem, Message } from '../../src/types/chat';
+import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
 import { themeClasses } from '../../src/theme/classes';
+import { ReferencesSheet } from '../../src/components/chat/ReferencesSheet';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
 
@@ -40,6 +41,8 @@ export default function ChatScreen() {
     // Sheet Visibility States
     const [isAttachmentSheetVisible, setIsAttachmentSheetVisible] = useState(false);
     const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false);
+    const [isReferencesSheetVisible, setIsReferencesSheetVisible] = useState(false);
+    const [activeReferences, setActiveReferences] = useState<SourceRef[]>([]);
 
     const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
@@ -243,6 +246,11 @@ export default function ChatScreen() {
         }
     };
 
+    const handleShowReferences = (sources: SourceRef[]) => {
+        setActiveReferences(sources);
+        setIsReferencesSheetVisible(true);
+    };
+
     const renderItem: ListRenderItem<Message> = React.useCallback(({ item, index }) => {
         return (
             <ChatMessageItem
@@ -253,6 +261,7 @@ export default function ChatScreen() {
                 onFeedback={handleFeedback}
                 onRegenerate={handleRegenerate}
                 onTTS={handleTTS}
+                onShowReferences={handleShowReferences}
                 themeColor={themeColor}
             />
         );
@@ -399,6 +408,12 @@ export default function ChatScreen() {
                     <KnowledgeActionSheet onClose={() => setIsKnowledgeSheetVisible(false)} chatId={chatId} />
                 </View>
             )}
+
+            <ReferencesSheet
+                isVisible={isReferencesSheetVisible}
+                onClose={() => setIsReferencesSheetVisible(false)}
+                sources={activeReferences}
+            />
 
             {isPickerLoading && (
                 <View className="absolute inset-0 bg-black/50 justify-center items-center">
