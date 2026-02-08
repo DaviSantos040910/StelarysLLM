@@ -8,24 +8,27 @@ import Markdown from 'react-native-markdown-display';
 import { Send, Paperclip, Mic, ArrowLeft } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
+import { themeClasses } from '../../src/theme/classes';
+import { useColorScheme } from 'nativewind';
 
 function MessageBubble({ item }: { item: Message }) {
   const isUser = item.role === 'user';
+  const { colorScheme } = useColorScheme();
 
   return (
     <View className={`my-2 flex-row ${isUser ? 'justify-end' : 'justify-start'}`}>
       <View
         className={`max-w-[85%] rounded-2xl p-4 ${
-          isUser ? 'bg-blue-600 rounded-tr-sm' : 'bg-gray-100 rounded-tl-sm'
+          isUser ? 'bg-blue-600 rounded-tr-sm' : `${themeClasses.softSurface} rounded-tl-sm`
         }`}
       >
         {isUser ? (
           <Text className="text-white text-base leading-6">{item.content}</Text>
         ) : (
           <Markdown style={{
-             body: { color: '#1f2937', fontSize: 16, lineHeight: 24 },
-             code_inline: { backgroundColor: '#e5e7eb', borderRadius: 4, padding: 2 },
-             fence: { backgroundColor: '#e5e7eb', borderRadius: 8, padding: 8 }
+             body: { color: colorScheme === 'dark' ? '#f8fafc' : '#1f2937', fontSize: 16, lineHeight: 24 },
+             code_inline: { backgroundColor: colorScheme === 'dark' ? '#334155' : '#e5e7eb', borderRadius: 4, padding: 2, color: colorScheme === 'dark' ? '#f8fafc' : '#1f2937' },
+             fence: { backgroundColor: colorScheme === 'dark' ? '#334155' : '#e5e7eb', borderRadius: 8, padding: 8, color: colorScheme === 'dark' ? '#f8fafc' : '#1f2937' }
           }}>
             {item.content}
           </Markdown>
@@ -33,9 +36,9 @@ function MessageBubble({ item }: { item: Message }) {
 
         {/* Attachment Indicator */}
         {item.attachment && (
-           <View className="mt-2 bg-black/10 p-2 rounded flex-row items-center">
-             <Paperclip size={14} color={isUser ? "white" : "black"} />
-             <Text className={`text-xs ml-1 ${isUser ? "text-white" : "text-black"}`}>
+           <View className={`mt-2 p-2 rounded flex-row items-center ${isUser ? 'bg-black/10' : 'bg-black/5 dark:bg-white/10'}`}>
+             <Paperclip size={14} color={isUser ? "white" : (colorScheme === 'dark' ? '#94a3b8' : 'black')} />
+             <Text className={`text-xs ml-1 ${isUser ? "text-white" : themeClasses.textSecondary}`}>
                {item.attachment.split('/').pop()}
              </Text>
            </View>
@@ -50,6 +53,7 @@ export default function StudyChatScreen() {
   const router = useRouter();
   const { messages, loadMessages, sendMessage, uploadFile, isLoading, isStreaming } = useChatStore();
   const [inputText, setInputText] = useState('');
+  const { colorScheme } = useColorScheme();
 
   useEffect(() => {
     if (id) {
@@ -79,24 +83,21 @@ export default function StudyChatScreen() {
 
   const handleRecordAudio = async () => {
     // Placeholder for audio recording logic
-    // const { status } = await Audio.requestPermissionsAsync();
-    // if (status !== 'granted') return;
-    // ... logic to record and upload
     alert('Audio recording coming soon');
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+    <SafeAreaView className={themeClasses.screen} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="flex-row items-center p-4 border-b border-gray-100">
-        <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-          <ArrowLeft color="#374151" size={24} />
+      <View className={`flex-row items-center p-4 ${themeClasses.headerBorder}`}>
+        <TouchableOpacity onPress={() => router.back()} className={`p-2 mr-2 rounded-full ${themeClasses.press}`}>
+          <ArrowLeft color={colorScheme === 'dark' ? '#fff' : '#374151'} size={24} />
         </TouchableOpacity>
         <View>
-           <Text className="font-bold text-lg text-gray-900">Study Session</Text>
-           <Text className="text-gray-500 text-xs">Chat ID: {id}</Text>
+           <Text className={`font-bold text-lg ${themeClasses.textPrimary}`}>Study Session</Text>
+           <Text className={`${themeClasses.textMuted} text-xs`}>Chat ID: {id}</Text>
         </View>
       </View>
 
@@ -107,10 +108,10 @@ export default function StudyChatScreen() {
         keyExtractor={(item) => item.id.toString()}
         inverted
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20 }}
-        className="flex-1 bg-white"
+        className="flex-1"
         ListFooterComponent={
            isStreaming && !messages.some(m => m.id === 'temp-ai') ? (
-             <View className="py-2"><Text className="text-gray-400 text-xs text-center">AI is thinking...</Text></View>
+             <View className="py-2"><Text className={`${themeClasses.textMuted} text-xs text-center`}>AI is thinking...</Text></View>
            ) : null
         }
       />
@@ -120,14 +121,14 @@ export default function StudyChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <View className="flex-row items-end p-3 border-t border-gray-100 bg-white">
+        <View className={`flex-row items-end p-3 ${themeClasses.headerBorder} border-t ${themeClasses.surface}`}>
           <TouchableOpacity onPress={handlePickFile} className="p-3">
             <Paperclip color="#6b7280" size={22} />
           </TouchableOpacity>
 
-          <View className="flex-1 bg-gray-100 rounded-2xl min-h-[44px] px-4 py-2 mx-1 justify-center">
+          <View className={`flex-1 ${themeClasses.input} rounded-2xl min-h-[44px] px-4 py-2 mx-1 justify-center`}>
             <TextInput
-              className="text-base text-gray-900 leading-5"
+              className={`${themeClasses.textPrimary} text-base leading-5`}
               placeholder="Ask anything..."
               placeholderTextColor="#9ca3af"
               multiline
