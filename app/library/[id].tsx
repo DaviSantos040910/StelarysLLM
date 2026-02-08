@@ -7,6 +7,7 @@ import { StudySpace } from '../../src/types/studio';
 import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as BotIcon, X, AlertTriangle, Search } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
+import { themeClasses } from '../../src/theme/classes';
 
 export default function StudyDetailsScreen() {
   const { id } = useLocalSearchParams();
