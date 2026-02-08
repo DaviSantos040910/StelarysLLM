@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 import os
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -89,6 +89,33 @@ class VectorService:
 
         logger.error("Todos os modelos de embedding falharam.")
         return None
+
+    # =========================================================================
+    # HELPERS DE FILTRO (SAFE WHERE)
+    # =========================================================================
+
+    def _safe_and(self, conditions: List[Dict]) -> Dict:
+        """Retorna filtro $and seguro ou condição única."""
+        valid = [c for c in conditions if c]
+        if not valid:
+            return {}
+        if len(valid) == 1:
+            return valid[0]
+        return {"$and": valid}
+
+    def _safe_or(self, conditions: List[Dict]) -> Dict:
+        """Retorna filtro $or seguro ou condição única."""
+        valid = [c for c in conditions if c]
+        if not valid:
+            return {}
+        if len(valid) == 1:
+            return valid[0]
+        return {"$or": valid}
+
+    def _log_debug(self, msg: str, data: any = None):
+        """Loga apenas se RAG_DEBUG=1."""
+        if os.environ.get('RAG_DEBUG') == '1':
+            logger.info(f"[RAG_DEBUG] {msg} {data if data else ''}")
 
     # =========================================================================
     # MÉTODOS DE ADIÇÃO
@@ -240,24 +267,36 @@ class VectorService:
         if not self.collection:
             return []
 
-        # Constrói filtro OR para bot_id e study_space_ids
-        or_conditions = [{"bot_id": str(bot_id)}]
+        # 1. Construir lista de condições OR
+        or_list = [{"bot_id": str(bot_id)}]
+
+        # Inclusão de bot_id='0' (Biblioteca Global) para consistência
+        if str(bot_id) != "0":
+            or_list.append({"bot_id": "0"})
+
         if study_space_ids:
             for sid in study_space_ids:
-                 or_conditions.append({"study_space_id": str(sid)})
+                 or_list.append({"study_space_id": str(sid)})
 
-        # Se houver apenas uma condição, simplifica.
-        # Mas ChromaDB aceita "$or": [{"key": "val"}] normalmente.
+        # 2. Usar helper seguro para o OR
+        scope_condition = self._safe_or(or_list)
+
+        # 3. Construir lista de condições AND
+        and_list = [
+            {"user_id": str(user_id)},
+            {"type": "document"}
+        ]
+        if scope_condition:
+            and_list.append(scope_condition)
+
+        # 4. Usar helper seguro para o AND (where final)
+        where_clause = self._safe_and(and_list)
+
+        self._log_debug("get_available_documents where:", where_clause)
 
         try:
             results = self.collection.get(
-                where={
-                    "$and": [
-                        {"user_id": str(user_id)},
-                        {"type": "document"},
-                        {"$or": or_conditions}
-                    ]
-                },
+                where=where_clause,
                 include=["metadatas"]
             )
 
@@ -373,21 +412,24 @@ class VectorService:
 
     def _build_or_filter(self, user_id: int, bot_id: int, study_space_ids: Optional[List[int]]) -> dict:
         # Include current bot ID AND '0' (User Library/Global) in scope
-        or_conds = [
+        or_list = [
             {"bot_id": str(bot_id)},
             {"bot_id": "0"}
         ]
         if study_space_ids:
             for sid in study_space_ids:
-                or_conds.append({"study_space_id": str(sid)})
+                or_list.append({"study_space_id": str(sid)})
 
-        return {
-            "$and": [
-                {"user_id": str(user_id)},
-                {"type": "document"},
-                {"$or": or_conds}
-            ]
-        }
+        scope_condition = self._safe_or(or_list)
+
+        and_list = [
+            {"user_id": str(user_id)},
+            {"type": "document"}
+        ]
+        if scope_condition:
+            and_list.append(scope_condition)
+
+        return self._safe_and(and_list)
 
     def _search_specific_document(
         self, query: str, user_id: int, bot_id: int, source: str, limit: int, study_space_ids: Optional[List[int]] = None, allowed_source_ids: Optional[List[str]] = None
@@ -397,16 +439,33 @@ class VectorService:
         if not embedding:
             return []
 
+        # Recupera o filtro base (AND)
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
-        where_clause["$and"].append({"source": source})
+
+        # Como _build_or_filter retorna um dict seguro, se ele já tiver um $and, adicionamos a ele
+        # Se for uma condição única (raro aqui pois temos user+type+scope), transformamos em $and
+
+        # Normalização para lista de condições
+        if "$and" in where_clause:
+            and_conditions = where_clause["$and"]
+        else:
+            # Caso raro onde _safe_and retornou condição única ou vazia
+            and_conditions = [where_clause] if where_clause else []
+
+        and_conditions.append({"source": source})
 
         if allowed_source_ids:
-            where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
+            # $in operator handling
+            and_conditions.append({"source_id": {"$in": allowed_source_ids}})
+
+        final_where = {"$and": and_conditions}
+
+        self._log_debug("_search_specific where:", final_where)
 
         results = self.collection.query(
             query_embeddings=[embedding],
             n_results=limit,
-            where=where_clause
+            where=final_where
         )
 
         return self._format_doc_results(results)
@@ -425,16 +484,26 @@ class VectorService:
         per_doc_limit = max(2, limit // len(sources)) if sources else limit
 
         for source in sources[:4]:  # Máximo 4 documentos para comparação
+            # Reconstroi o filtro base para cada iteração para não acumular
             where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
-            where_clause["$and"].append({"source": source})
+
+            if "$and" in where_clause:
+                and_conditions = where_clause["$and"]
+            else:
+                and_conditions = [where_clause] if where_clause else []
+
+            and_conditions.append({"source": source})
 
             if allowed_source_ids:
-                where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
+                and_conditions.append({"source_id": {"$in": allowed_source_ids}})
+
+            final_where = {"$and": and_conditions}
+            self._log_debug(f"_search_comparative ({source}) where:", final_where)
 
             results = self.collection.query(
                 query_embeddings=[embedding],
                 n_results=per_doc_limit,
-                where=where_clause
+                where=final_where
             )
             all_results.extend(self._format_doc_results(results))
 
@@ -454,11 +523,21 @@ class VectorService:
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
 
         if allowed_source_ids is not None:
+            # Precisamos adicionar ao $and existente ou criar um
+            if "$and" in where_clause:
+                and_conditions = where_clause["$and"]
+            else:
+                and_conditions = [where_clause] if where_clause else []
+
             if len(allowed_source_ids) > 0:
-                where_clause["$and"].append({"source_id": {"$in": allowed_source_ids}})
+                and_conditions.append({"source_id": {"$in": allowed_source_ids}})
             else:
                 # Se lista vazia foi passada explicitamente, não retorna nada
                 return []
+
+            where_clause = {"$and": and_conditions}
+
+        self._log_debug("_search_general where:", where_clause)
 
         # Fetch candidates (3x limit) para reranking
         fetch_k = limit * 3
@@ -572,16 +651,21 @@ class VectorService:
         if not embedding:
             return []
 
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=limit,
-            where={
+        # Memórias são privadas do user+bot, sem complexidade de scopo
+        where_clause = {
                 "$and": [
                     {"user_id": str(user_id)},
                     {"bot_id": str(bot_id)},
                     {"type": "memory"}
                 ]
             }
+
+        self._log_debug("_search_memories where:", where_clause)
+
+        results = self.collection.query(
+            query_embeddings=[embedding],
+            n_results=limit,
+            where=where_clause
         )
 
         contexts = []
