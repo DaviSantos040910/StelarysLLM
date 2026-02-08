@@ -3,6 +3,8 @@ import { View, Text, Pressable, Linking } from 'react-native';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { SourceRef } from '../../types/chat';
 import { FileText, Link, Youtube, Image as ImageIcon, X } from 'lucide-react-native';
+import { themeClasses } from '../../theme/classes';
+import { useColorScheme } from 'nativewind';
 
 interface ReferencesSheetProps {
     sources: SourceRef[];
@@ -35,6 +37,7 @@ const getSubtitle = (source: SourceRef) => {
 export const ReferencesSheet = ({ sources, isVisible, onClose }: ReferencesSheetProps) => {
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ['50%'], []);
+    const { colorScheme } = useColorScheme();
 
     // Effect to open/close based on prop
     React.useEffect(() => {
@@ -64,16 +67,16 @@ export const ReferencesSheet = ({ sources, isVisible, onClose }: ReferencesSheet
             snapPoints={snapPoints}
             enablePanDownToClose
             onChange={handleSheetChanges}
-            backgroundStyle={{ backgroundColor: '#1e293b' }}
-            handleIndicatorStyle={{ backgroundColor: '#475569' }}
+            backgroundStyle={{ backgroundColor: colorScheme === 'dark' ? '#1e293b' : '#ffffff' }}
+            handleIndicatorStyle={{ backgroundColor: colorScheme === 'dark' ? '#475569' : '#cbd5e1' }}
             backdropComponent={(props) => (
                 <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
             )}
         >
             <View className="flex-1 px-4">
-                <View className="flex-row items-center justify-between mb-4 border-b border-white/10 pb-4">
-                    <Text className="text-white text-lg font-bold">Referências</Text>
-                    <Pressable onPress={() => bottomSheetRef.current?.close()} className="p-2 bg-white/5 rounded-full">
+                <View className={`flex-row items-center justify-between mb-4 ${themeClasses.headerBorder} pb-4`}>
+                    <Text className={`${themeClasses.textPrimary} text-lg font-bold`}>Referências</Text>
+                    <Pressable onPress={() => bottomSheetRef.current?.close()} className={`p-2 rounded-full ${themeClasses.softSurface}`}>
                         <X size={20} color="#94a3b8" />
                     </Pressable>
                 </View>
@@ -83,17 +86,17 @@ export const ReferencesSheet = ({ sources, isVisible, onClose }: ReferencesSheet
                         <Pressable
                             key={`${source.id}-${idx}`}
                             onPress={() => handlePressSource(source.url)}
-                            className="flex-row items-center p-3 mb-2 bg-white/5 rounded-xl border border-white/5 active:bg-white/10"
+                            className={`flex-row items-center p-3 mb-2 rounded-xl ${themeClasses.softSurface} ${themeClasses.press}`}
                         >
-                            <View className="w-10 h-10 items-center justify-center bg-space-dark rounded-lg mr-3">
+                            <View className="w-10 h-10 items-center justify-center bg-gray-200 dark:bg-space-dark rounded-lg mr-3">
                                 <Text className="text-xs text-gray-500 font-bold absolute top-0.5 right-1">{source.index}</Text>
                                 {getIcon(source.type)}
                             </View>
                             <View className="flex-1">
-                                <Text className="text-starlight font-bold" numberOfLines={1}>
+                                <Text className={`${themeClasses.textPrimary} font-bold`} numberOfLines={1}>
                                     {source.title}
                                 </Text>
-                                <Text className="text-gray-400 text-xs">
+                                <Text className={`${themeClasses.textMuted} text-xs`}>
                                     {getSubtitle(source)}
                                 </Text>
                             </View>

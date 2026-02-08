@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Play, Pause, ChevronDown } from 'lucide-react-native';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
+import { themeClasses } from '../../theme/classes';
 
 interface AudioMessagePlayerProps {
   uri: string;
@@ -69,6 +70,11 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // If it's a user message, we keep white text/icons (bubble is colored).
+  // If it's a bot message, we need to adapt to theme (textPrimary/Secondary).
+  // Bot message icon/active color: cosmic-purple in dark, maybe same in light or darker indigo?
+  // Let's stick to cosmic-purple for brand consistency in both modes for bot elements.
+
   const iconColor = isUser ? '#FFFFFF' : '#818cf8';
   const trackColor = isUser ? 'rgba(255,255,255,0.3)' : 'rgba(129, 140, 248, 0.3)';
   const thumbColor = isUser ? '#FFFFFF' : '#818cf8';
@@ -98,7 +104,7 @@ export const AudioMessagePlayer: React.FC<AudioMessagePlayerProps> = ({ uri, dur
         />
       </View>
 
-      <Text className={`text-xs ml-2 font-mono ${isUser ? 'text-white' : 'text-gray-400'}`}>
+      <Text className={`text-xs ml-2 font-mono ${isUser ? 'text-white' : themeClasses.textMuted}`}>
         {formatTime(position)} / {formatTime(localDuration)}
       </Text>
 
