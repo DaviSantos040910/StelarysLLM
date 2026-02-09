@@ -195,6 +195,14 @@ export const chatService = {
                if (data === '[DONE]') break;
                try {
                  const parsed = JSON.parse(data);
+                 // Defensive check for message_id == 0
+                 if (parsed.message_id === 0 || parsed.message_id === '0') {
+                     console.error("Critical: Received invalid message_id=0 from backend stream.");
+                     // Do not propagate this ID to avoid corrupting local state
+                     // We continue processing chunks but filter out the ID update if present
+                     delete parsed.message_id;
+                 }
+
                  if (parsed.type === 'chunk' && parsed.text) {
                      onChunk(parsed.text);
                  } else if (parsed.content) {
@@ -213,6 +221,12 @@ export const chatService = {
                if (data !== '[DONE]') {
                  try {
                    const parsed = JSON.parse(data);
+                   // Defensive check for message_id == 0
+                   if (parsed.message_id === 0 || parsed.message_id === '0') {
+                       console.error("Critical: Received invalid message_id=0 from backend stream.");
+                       delete parsed.message_id;
+                   }
+
                    if (parsed.type === 'chunk' && parsed.text) {
                        onChunk(parsed.text);
                    } else if (parsed.content) {

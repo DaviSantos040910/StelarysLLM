@@ -159,19 +159,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 isStreaming: false,
                 messages: state.messages.map((m) => {
                     if (m.localId === aiLocalId) {
+                        // Defensive: Ensure we don't overwrite temp ID with '0'
+                        const safeId = (meta.message_id && meta.message_id !== '0' && meta.message_id !== 0)
+                            ? meta.message_id
+                            : m.id;
+
                         return {
                             ...m,
                             status: 'sent',
-                            id: meta.message_id || m.id,
+                            id: safeId,
                             suggestions: meta.suggestions || m.suggestions,
                             sources: meta.sources || m.sources
                         };
                     }
                     if (m.localId === userLocalId) {
+                        const safeUserId = (meta.user_message_id && meta.user_message_id !== '0' && meta.user_message_id !== 0)
+                            ? meta.user_message_id
+                            : m.id;
+
                         return {
                             ...m,
                             status: 'sent',
-                            id: meta.user_message_id || m.id
+                            id: safeUserId
                         };
                     }
                     return m;
