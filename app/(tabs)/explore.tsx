@@ -24,6 +24,7 @@ const AnimatedBotRow = ({ item, index }: { item: ExploreBotItem; index: number }
 
 export default function ExploreScreen() {
     const miniPlayerHeight = useMiniPlayerHeight();
+    const { colorScheme } = useColorScheme();
     const [categories, setCategories] = useState<Category[]>([]);
     const [bots, setBots] = useState<ExploreBotItem[]>([]);
     const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
@@ -149,7 +150,7 @@ export default function ExploreScreen() {
                 <View className="flex-row items-center gap-2">
                     {isSearchMode && (
                         <AnimatedPressable onPress={handleSearchCancel} entering={FadeInDown} exiting={FadeOut}>
-                            <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                            <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                         </AnimatedPressable>
                     )}
 

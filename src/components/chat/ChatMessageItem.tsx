@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { BookOpen, Copy, FileText, Loader2, RefreshCw, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native';
-import React from 'react';
+import { BookOpen, Copy, FileText, RefreshCw, ThumbsDown, ThumbsUp, Volume2, Square, Loader2 } from 'lucide-react-native';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Message } from '../../types/chat';
+import { AudioMessagePlayer } from './AudioMessagePlayer';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 import { themeClasses } from '../../theme/classes';
-import { Message, SourceRef } from '../../types/chat';
-import { AudioMessagePlayer } from './AudioMessagePlayer';
+import { SourceRef } from '../../types/chat';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -41,7 +42,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const isStreaming = message.status === 'sending' && !isUser;
 
     // Use global audio store to track state
-    const { currentUri, isPlaying, close, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
+    const { currentUri, isPlaying, stop, isLoading: isAudioLoading, chatId: playingMessageId } = useAudioPlayerStore();
 
     // Determine if THIS message is playing (we use message.id as the identifier passed to store's chatId/artifactId slot or logic)
     // Actually, store uses `chatId` as a generic ID field sometimes, or we can check URI if we know it.
@@ -83,7 +84,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const handleTTSAction = () => {
         if (isThisMessagePlaying) {
             // Stop and unload if user clicks square
-            close();
+            stop?.() || useAudioPlayerStore.getState().close();
         } else {
             onTTS?.(String(message.id), message.content);
         }
@@ -219,14 +220,14 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         </View>
 
                         {/* References Chip (Right Aligned) */}
-                        {(message as any).sources && (message as any).sources.length > 0 && (
+                        {message.sources && message.sources.length > 0 && (
                             <Pressable
-                                onPress={() => onShowReferences?.((message as any).sources!)}
+                                onPress={() => onShowReferences?.(message.sources!)}
                                 className={`flex-row items-center px-3 py-1.5 rounded-full ${themeClasses.softSurface}`}
                             >
                                 <BookOpen size={14} color="#fbbf24" className="mr-2" />
                                 <Text className={`${themeClasses.textPrimary} text-xs font-bold`}>
-                                    Fontes ({(message as any).sources.length})
+                                    Fontes ({message.sources.length})
                                 </Text>
                             </Pressable>
                         )}

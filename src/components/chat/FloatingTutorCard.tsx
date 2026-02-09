@@ -5,6 +5,7 @@ import { ArrowLeft, MoreVertical, MessageSquarePlus, RefreshCw, History, FileTex
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { UserAvatar } from '../UserAvatar';
 import { themeClasses } from '../../theme/classes';
+import { useColorScheme } from 'nativewind';
 
 interface FloatingTutorCardProps {
   botName: string;
@@ -26,6 +27,7 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
   animatedStyle,
 }) => {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
   const [menuVisible, setMenuVisible] = useState(false);
 
   const handleBack = () => {
@@ -52,7 +54,7 @@ export const FloatingTutorCard: React.FC<FloatingTutorCardProps> = ({
 
             <View className="flex-row items-center flex-1">
             <Pressable onPress={handleBack} className={`mr-3 p-1 rounded-full ${themeClasses.press}`}>
-                <ArrowLeft className={themeClasses.iconPrimary} size={20} />
+                <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={20} />
             </Pressable>
 
             <UserAvatar imageUri={botAvatar} size={32} className="mr-3" />

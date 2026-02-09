@@ -20,6 +20,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { studioService } from '../../src/services/studioService';
@@ -118,6 +119,7 @@ const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtif
 
 export default function StudioGalleryScreen() {
     const router = useRouter();
+    const { colorScheme } = useColorScheme();
     const miniPlayerHeight = useMiniPlayerHeight();
     // Ensure chatId and openArtifactId are read from params
     const { chatId, openArtifactId } = useLocalSearchParams<{ chatId: string; openArtifactId?: string }>();
@@ -289,7 +291,7 @@ export default function StudioGalleryScreen() {
             {/* Header */}
             <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
                 <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                 </Pressable>
                 <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Galeria do Studio</Text>
             </View>

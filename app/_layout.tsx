@@ -55,12 +55,14 @@ export default function RootLayout() {
   // Determine status bar style based on theme mode
   const statusBarStyle = mode === 'dark' ? 'light' : (mode === 'light' ? 'dark' : 'auto');
   const backgroundColor = mode === 'dark' ? '#020617' : '#f8fafc'; // Matches tailwind config
+  const headerTintColor = mode === 'dark' ? '#f8fafc' : '#111827'; // starlight vs gray-900
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className={themeClasses.screen}>
         <Stack screenOptions={{
           headerShown: false,
+          headerTintColor: headerTintColor,
           contentStyle: { backgroundColor: 'transparent' }, // Let View handle bg
           animation: 'slide_from_right'
         }}>

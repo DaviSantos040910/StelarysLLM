@@ -5,6 +5,7 @@ import { ArrowLeft, History, MessageSquare } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { chatService } from '../../src/services/chatService';
 import { ChatListItem } from '../../src/types/chat';
@@ -12,6 +13,7 @@ import { themeClasses } from '../../src/theme/classes';
 
 export default function ChatHistoryScreen() {
     const router = useRouter();
+    const { colorScheme } = useColorScheme();
     const { botId, currentChatId } = useLocalSearchParams<{ botId: string; currentChatId?: string }>();
     const [chats, setChats] = useState<ChatListItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function ChatHistoryScreen() {
         <SafeAreaView className={themeClasses.screen} edges={['top']}>
             <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
                 <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                 </Pressable>
                 <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Histórico de Conversas</Text>
             </View>

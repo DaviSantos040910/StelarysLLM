@@ -3,6 +3,7 @@ import { ArrowLeft, Camera, FolderOpen, Globe, Layers, Sparkles, Trash2 } from '
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { botService } from '../../src/services/botService';
@@ -15,6 +16,7 @@ import { themeClasses } from '../../src/theme/classes';
 export default function CreateBotScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { colorScheme } = useColorScheme();
     const botId = params.botId as string;
     const isEditMode = !!botId;
 
@@ -230,7 +232,7 @@ export default function CreateBotScreen() {
             {/* Header */}
             <View className={`px-4 py-4 flex-row items-center justify-between ${themeClasses.headerBorder} ${themeClasses.screen} z-10`}>
                 <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                 </Pressable>
                 <Text className={`${themeClasses.textPrimary} text-xl font-bold`}>{isEditMode ? 'Editar Tutor' : 'Criar Novo Tutor'}</Text>
                 <Pressable

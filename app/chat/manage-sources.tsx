@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, You
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { chatService } from '../../src/services/chatService';
@@ -11,6 +12,7 @@ import { themeClasses } from '../../src/theme/classes';
 
 export default function ManageSourcesScreen() {
     const router = useRouter();
+    const { colorScheme } = useColorScheme();
     const { chatId } = useLocalSearchParams<{ chatId: string }>();
     const [sources, setSources] = useState<ChatSource[]>([]);
     const [loading, setLoading] = useState(true);
@@ -104,7 +106,7 @@ export default function ManageSourcesScreen() {
         <SafeAreaView className={themeClasses.screen} edges={['top']}>
             <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
                 <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                 </Pressable>
                 <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Gerenciar Fontes</Text>
             </View>

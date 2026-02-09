@@ -8,11 +8,13 @@ import { FileText, Trash2, ArrowLeft, Plus, Youtube, Link as LinkIcon, Bot as Bo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { themeClasses } from '../../src/theme/classes';
+import { useColorScheme } from 'nativewind';
 
 export default function StudyDetailsScreen() {
   const { id } = useLocalSearchParams();
   const spaceId = parseInt(id as string, 10);
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
 
   const [space, setSpace] = useState<StudySpace | null>(null);
   const [files, setFiles] = useState<any[]>([]);
@@ -202,7 +204,7 @@ export default function StudyDetailsScreen() {
       <View className={`flex-row items-center justify-between p-4 ${themeClasses.headerBorder}`}>
         <View className="flex-row items-center">
             <TouchableOpacity onPress={() => router.back()} className={`p-2 mr-2 rounded-full ${themeClasses.press}`}>
-            <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+            <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
             </TouchableOpacity>
             <Text className={`font-bold text-lg ${themeClasses.textPrimary}`}>Detalhes do Espaço</Text>
         </View>

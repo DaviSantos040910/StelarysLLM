@@ -3,6 +3,7 @@ import { ArrowLeft, Camera, Check } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { userService } from '../../src/services/userService';
@@ -11,6 +12,7 @@ import { themeClasses } from '../../src/theme/classes';
 
 export default function EditProfileScreen() {
     const router = useRouter();
+    const { colorScheme } = useColorScheme();
     const { user, setUser } = useAuthStore();
     const { pickImage } = useAttachmentPicker();
 
@@ -49,7 +51,7 @@ export default function EditProfileScreen() {
             {/* Header */}
             <View className={`px-4 py-4 flex-row items-center justify-between ${themeClasses.headerBorder}`}>
                 <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft className={themeClasses.iconPrimary} size={24} />
+                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
                 </Pressable>
                 <Text className={`${themeClasses.textPrimary} text-lg font-bold`}>Editar Perfil</Text>
                 <Pressable
