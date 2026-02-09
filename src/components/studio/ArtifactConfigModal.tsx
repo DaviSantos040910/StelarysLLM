@@ -1,6 +1,6 @@
-import { BookOpen, ChevronDown, FileText, Layers, X, MessageSquare } from 'lucide-react-native';
+import { BookOpen, ChevronDown, FileText, Layers, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, TextInput, View, Alert } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View, Alert } from 'react-native';
 import { ArtifactGenerationOptions, ArtifactType } from '../../types/studio';
 import { SourceSelector } from './SourceSelector';
 import { themeClasses } from '../../theme/classes';
@@ -44,7 +44,6 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
     const [duration, setDuration] = useState<'Short' | 'Medium' | 'Long'>('Medium');
     const [customInstructions, setCustomInstructions] = useState('');
     const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
-    const [includeChatHistory, setIncludeChatHistory] = useState(false);
 
     // UI State: Wizard Mode (Config vs Source Selection)
     const [viewMode, setViewMode] = useState<'config' | 'sources'>('config');
@@ -74,13 +73,13 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
     };
 
     const isValid = () => {
-        // Validation: Must select source OR history. Instructions alone are NOT enough.
-        return selectedSourceIds.length > 0 || includeChatHistory;
+        // Validation: Must select source. Instructions alone are NOT enough.
+        return selectedSourceIds.length > 0;
     };
 
     const handleGenerate = () => {
         if (!isValid()) {
-            Alert.alert("Atenção", "Selecione pelo menos uma fonte de conteúdo ou o histórico do chat.");
+            Alert.alert("Atenção", "Selecione pelo menos uma fonte de conteúdo.");
             return;
         }
 
@@ -90,8 +89,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
             difficulty,
             targetDuration: artifactType === 'PODCAST' ? duration : undefined,
             customInstructions,
-            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
-            includeChatHistory
+            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined
         });
         onClose();
     };
@@ -207,7 +205,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                             <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Fontes de Conteúdo</Text>
                             <Pressable
                                 onPress={() => setViewMode('sources')}
-                                className={`flex-row items-center justify-between p-4 rounded-xl mb-3 ${themeClasses.softSurface} ${themeClasses.press}`}
+                                className={`flex-row items-center justify-between p-4 rounded-xl mb-6 ${themeClasses.softSurface} ${themeClasses.press}`}
                             >
                                 <View className="flex-row items-center flex-1">
                                     <Layers size={20} color="#818cf8" />
@@ -219,22 +217,6 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                                 </View>
                                 <ChevronDown size={20} color="#64748b" />
                             </Pressable>
-
-                            {/* Chat History Toggle */}
-                            <View className={`flex-row items-center justify-between p-4 rounded-xl mb-6 ${themeClasses.softSurface}`}>
-                                <View className="flex-row items-center flex-1">
-                                    <MessageSquare size={20} color="#c084fc" />
-                                    <Text className={`${themeClasses.textSecondary} ml-3`}>
-                                        Incluir contexto da conversa
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={includeChatHistory}
-                                    onValueChange={setIncludeChatHistory}
-                                    trackColor={{ false: "#334155", true: "#818cf8" }}
-                                    thumbColor={includeChatHistory ? "#ffffff" : "#94a3b8"}
-                                />
-                            </View>
 
                             {/* 4. Instructions */}
                             <Text className={`${themeClasses.textPrimary} font-bold mb-3`}>Comando (Opcional)</Text>

@@ -63,7 +63,6 @@ export interface ArtifactGenerationOptions {
     difficulty?: 'Easy' | 'Medium' | 'Hard';
     sourceIds?: string[];
     customInstructions?: string;
-    includeChatHistory?: boolean;
     targetDuration?: 'Short' | 'Medium' | 'Long';
 }
 

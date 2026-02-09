@@ -47,8 +47,7 @@ export const studioService = {
                 difficulty: options?.difficulty,
                 selectedSourceIds: options?.sourceIds, // Backend expects 'selectedSourceIds' inside config
                 customInstructions: options?.customInstructions,
-                duration: options?.targetDuration,
-                includeChatHistory: options?.includeChatHistory
+                duration: options?.targetDuration
             }
         };
 
