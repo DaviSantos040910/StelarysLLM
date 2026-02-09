@@ -93,7 +93,7 @@ export default function StudyChatScreen() {
       {/* Header */}
       <View className={`flex-row items-center p-4 ${themeClasses.headerBorder}`}>
         <TouchableOpacity onPress={() => router.back()} className={`p-2 mr-2 rounded-full ${themeClasses.press}`}>
-          <ArrowLeft color={colorScheme === 'dark' ? '#fff' : '#374151'} size={24} />
+          <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
         </TouchableOpacity>
         <View>
            <Text className={`font-bold text-lg ${themeClasses.textPrimary}`}>Study Session</Text>
