@@ -254,7 +254,7 @@ export default function StudioGalleryScreen() {
                 case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;
                 case 'QUIZ': return <QuizViewer data={selectedArtifact.content as QuizQuestion[]} onFinish={handleCloseViewer} />;
                 case 'FLASHCARD': return <FlashcardViewer data={selectedArtifact.content as FlashcardItem[]} />;
-                case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.media_url} title={selectedArtifact.title} artifactId={selectedArtifact.id} chatId={chatId} />;
+                case 'PODCAST': return <PodcastPlayer uri={selectedArtifact.media_url} title={selectedArtifact.title} artifactId={selectedArtifact.id} chatId={chatId} chapters={selectedArtifact.chapters} transcript={selectedArtifact.transcript} />;
                 case 'SPREADSHEET': return <SpreadsheetViewer />;
                 case 'WORKBOOK': return <WorkbookViewer />;
                 default: return <View />;
