@@ -9,7 +9,64 @@ export const studioService = {
         const response = await apiClient.get<KnowledgeArtifact[]>('/api/v1/studio/artifacts/', {
             params: { chat_id: chatId }
         });
-        return response.data;
+
+        // Normalize artifacts, especially Podcast structured content
+        return response.data.map(artifact => {
+            if (artifact.type === 'PODCAST' && typeof artifact.content === 'object' && !Array.isArray(artifact.content)) {
+                const content = artifact.content as any; // Cast to access new fields safely
+                const transcript = content.transcript || [];
+
+                // 1. Process Transcript (ms -> seconds)
+                const mappedTranscript = transcript.length > 0
+                    ? transcript.map((t: any) => ({
+                        speaker: t.speaker || t.display_name || 'Host',
+                        text: t.text,
+                        start: (t.start_ms || 0) / 1000,
+                        end: (t.end_ms || 0) / 1000
+                    }))
+                    : (content.dialogue || []).map((d: any, i: number) => ({
+                        // Fallback: simple text list without timestamps if not available
+                        speaker: d.speaker,
+                        text: d.text,
+                        start: i * 5, // Fake timestamps for visual flow
+                        end: (i + 1) * 5
+                    }));
+
+                // 2. Process Chapters (turn index -> seconds via transcript)
+                const mappedChapters = (content.chapters || []).map((c: any) => {
+                    const turnIndex = c.start_turn_index || 0;
+                    // Find corresponding transcript segment to get time
+                    // If transcript exists and index is valid
+                    let startTime = 0;
+                    if (mappedTranscript.length > turnIndex) {
+                        startTime = mappedTranscript[turnIndex].start;
+                    }
+                    return {
+                        title: c.title,
+                        start: startTime,
+                        end: startTime + 60 // Default duration or calculate from next chapter?
+                        // Ideally, end is the start of next chapter or end of audio.
+                        // For simplicity in UI, start is most critical for seeking.
+                    };
+                });
+
+                // Calculate end times for chapters
+                for (let i = 0; i < mappedChapters.length; i++) {
+                    if (i < mappedChapters.length - 1) {
+                        mappedChapters[i].end = mappedChapters[i+1].start;
+                    } else if (mappedTranscript.length > 0) {
+                        mappedChapters[i].end = mappedTranscript[mappedTranscript.length - 1].end;
+                    }
+                }
+
+                return {
+                    ...artifact,
+                    transcript: mappedTranscript,
+                    chapters: mappedChapters
+                };
+            }
+            return artifact;
+        });
     },
 
     async getSources(chatId: string): Promise<ContextSource[]> {

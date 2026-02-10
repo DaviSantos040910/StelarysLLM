@@ -50,6 +50,14 @@ export interface TranscriptSegment {
   end: number;
 }
 
+export interface PodcastContent {
+    episode_title?: string;
+    episode_summary?: string;
+    chapters?: { title: string; start_turn_index: number }[];
+    dialogue?: { speaker: string; text: string }[];
+    transcript?: { speaker: string; text: string; start_ms: number; end_ms: number }[];
+}
+
 export interface KnowledgeArtifact {
   id: number;
   chat: number;
@@ -62,7 +70,7 @@ export interface KnowledgeArtifact {
   duration?: string;
   score?: string;
   // Polymorphic content
-  content?: SlidePage[] | QuizQuestion[] | FlashcardItem[] | string;
+  content?: SlidePage[] | QuizQuestion[] | FlashcardItem[] | string | PodcastContent;
   chapters?: PodcastChapter[];
   transcript?: TranscriptSegment[];
   created_at: string; // snake_case to match backend
