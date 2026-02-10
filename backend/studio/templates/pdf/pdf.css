@@ -1,0 +1,117 @@
+@page {
+    size: A4;
+    margin: 2cm;
+    @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: 'Helvetica', sans-serif;
+        font-size: 9pt;
+        color: #666;
+    }
+    @bottom-left {
+        content: "Stelarys LM";
+        font-family: 'Helvetica', sans-serif;
+        font-size: 9pt;
+        color: #666;
+    }
+}
+
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    color: #333;
+    line-height: 1.5;
+    font-size: 11pt;
+}
+
+h1 {
+    color: #4A148C; /* Deep Purple */
+    font-size: 24pt;
+    text-align: center;
+    margin-bottom: 5px;
+    border-bottom: 2px solid #4A148C;
+    padding-bottom: 10px;
+}
+
+.meta-info {
+    text-align: center;
+    color: #666;
+    font-size: 10pt;
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: #6A1B9A;
+    font-size: 16pt;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-left: 4px solid #AB47BC;
+    padding-left: 10px;
+}
+
+.card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    width: 45%; /* Approx 2 columns */
+    display: inline-block; /* WeasyPrint specific */
+    vertical-align: top;
+    margin-bottom: 15px;
+    background: #FAFAFA;
+    page-break-inside: avoid;
+}
+
+.card-front {
+    font-weight: bold;
+    color: #4A148C;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.question-block {
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+}
+
+.question-text {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.option {
+    display: block;
+    margin-left: 15px;
+    margin-bottom: 4px;
+}
+
+.answer-key {
+    margin-top: 40px;
+    page-break-before: always;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+th {
+    background-color: #4A148C;
+    color: white;
+    padding: 8px;
+    text-align: left;
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+
+tr:nth-child(even) {
+    background-color: #F3E5F5; /* Light Purple Zebra */
+}

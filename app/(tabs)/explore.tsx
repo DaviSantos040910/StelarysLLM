@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { ArrowLeft, Search, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Pressable, Text, TextInput, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,7 +24,7 @@ const AnimatedBotRow = ({ item, index }: { item: ExploreBotItem; index: number }
 
 export default function ExploreScreen() {
     const miniPlayerHeight = useMiniPlayerHeight();
-    const { colorScheme } = useColorScheme();
+    const colorScheme = useColorScheme();
     const [categories, setCategories] = useState<Category[]>([]);
     const [bots, setBots] = useState<ExploreBotItem[]>([]);
     const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);

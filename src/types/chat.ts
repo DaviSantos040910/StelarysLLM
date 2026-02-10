@@ -13,6 +13,7 @@ export type Message = {
   audioUri?: string | null;
   audio_url?: string | null; // TTS URL cached from backend
   suggestions?: string[];
+  sources?: SourceRef[];
   attachment_url?: string | null;
   attachment_type?: string | null;
   original_filename?: string | null;
@@ -80,22 +81,22 @@ export interface ChatContextValue {
 }
 
 export interface ChatSource {
-    id: number;
-    title: string;
-    name?: string;
-    type?: string;
-    source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
-    extracted_text?: string;
-    created_at?: string;
-    url?: string;
-    selected?: boolean;
-    status?: 'pending' | 'processed' | 'error'; // Added status
+  id: number;
+  title: string;
+  name?: string;
+  type?: string;
+  source_type?: 'FILE' | 'URL' | 'YOUTUBE' | 'kb';
+  extracted_text?: string;
+  created_at?: string;
+  url?: string;
+  selected?: boolean;
+  status?: 'pending' | 'processed' | 'error'; // Added status
 }
 
 export interface SourceRef {
-    id: string;
-    title: string;
-    type: string;
-    url?: string;
-    index: number;
+  id: string;
+  title: string;
+  type: string;
+  url?: string;
+  index: number;
 }

@@ -1,0 +1,20 @@
+{% extends "pdf/pdf_base.html" %}
+
+{% block content %}
+    {% if content.summary %}
+        <div style="text-align: justify;">
+            {{ content.summary|linebreaks }}
+        </div>
+    {% elif content.bullets %}
+        <ul>
+        {% for b in content.bullets %}
+            <li>{{ b }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <!-- Fallback for generic text -->
+        <div style="text-align: justify;">
+            {{ content|linebreaks }}
+        </div>
+    {% endif %}
+{% endblock %}
