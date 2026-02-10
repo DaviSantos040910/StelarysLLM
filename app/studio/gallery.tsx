@@ -143,13 +143,14 @@ export default function StudioGalleryScreen() {
     React.useEffect(() => {
         // Se o player foi maximizado (isMinimized === false) e temos um artifactId
         // e não temos nenhum artefato selecionado atualmente
+        // E TAMBÉM se o artefato atual for um Podcast (para evitar abrir viewer errado)
         if (!isMinimized && currentArtifactId && !selectedArtifact && artifacts.length > 0) {
             const artifact = artifacts.find(a => a.id === currentArtifactId);
-            if (artifact) {
+            if (artifact && artifact.type === 'PODCAST') {
                 setSelectedArtifact(artifact);
             }
         }
-    }, [isMinimized, currentArtifactId, artifacts]);
+    }, [isMinimized, currentArtifactId, artifacts, selectedArtifact]);
 
     const handleCloseViewer = () => {
         setSelectedArtifact(null);

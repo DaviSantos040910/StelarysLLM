@@ -42,31 +42,28 @@ export const MiniAudioPlayer = () => {
   const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 8;
 
   const handlePress = () => {
-    // Maximiza o player (tira do modo minimizado)
-    maximize();
-
-    // Se já estamos na galeria, não navegamos novamente
+    // 1. Navega PRIMEIRO (se necessário) para garantir que a galeria esteja montada antes de maximizar
     const isOnGallery = pathname?.includes('/studio/gallery');
 
-    if (isOnGallery) {
-      // Já estamos na galeria, não precisa navegar
-      // O maximize já vai abrir o modal com o artefato correto
-      return;
-    }
+    if (!isOnGallery) {
+        if (chatId) {
+            // Se tiver artifactId, passa na URL
+            const url = artifactId
+                ? `/studio/gallery?chatId=${chatId}&openArtifactId=${artifactId}`
+                : `/studio/gallery?chatId=${chatId}`;
 
-    // Navega para a galeria com o artefato selecionado
-    if (chatId && artifactId) {
-      try {
-        router.push(`/studio/gallery?chatId=${chatId}&openArtifactId=${artifactId}` as any);
-      } catch (error) {
-        console.error('Navigation error:', error);
-      }
-    } else if (chatId) {
-      try {
-        router.push(`/studio/gallery?chatId=${chatId}` as any);
-      } catch (error) {
-        console.error('Navigation error:', error);
-      }
+            try {
+                router.push(url as any);
+                // Pequeno delay para permitir a montagem da tela antes de disparar o maximize
+                // Isso garante que o useEffect da Galeria capture a mudança de isMinimized
+                setTimeout(() => maximize(), 300);
+            } catch (error) {
+                console.error('Navigation error:', error);
+            }
+        }
+    } else {
+        // Já estamos na galeria, só maximiza
+        maximize();
     }
   };
 
