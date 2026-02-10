@@ -37,6 +37,19 @@ export interface FlashcardItem {
   back: string;
 }
 
+export interface PodcastChapter {
+  title: string;
+  start: number; // seconds
+  end: number;
+}
+
+export interface TranscriptSegment {
+  text: string;
+  speaker: string;
+  start: number;
+  end: number;
+}
+
 export interface KnowledgeArtifact {
   id: number;
   chat: number;
@@ -50,6 +63,8 @@ export interface KnowledgeArtifact {
   score?: string;
   // Polymorphic content
   content?: SlidePage[] | QuizQuestion[] | FlashcardItem[] | string;
+  chapters?: PodcastChapter[];
+  transcript?: TranscriptSegment[];
   created_at: string; // snake_case to match backend
 }
 
