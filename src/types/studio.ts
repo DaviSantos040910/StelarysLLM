@@ -43,6 +43,8 @@ export interface KnowledgeArtifact {
   type: ArtifactType;
   title: string;
   status: 'processing' | 'ready' | 'error';
+  current_step?: string;
+  error_message?: string;
   media_url?: string; // snake_case to match backend
   duration?: string;
   score?: string;

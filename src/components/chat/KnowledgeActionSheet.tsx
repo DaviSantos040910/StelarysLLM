@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -51,6 +52,16 @@ const ALL_GENERATORS: { id: ArtifactType; label: string; icon: any; color: strin
   { id: 'SPREADSHEET', label: 'Tabelas', icon: Table, color: '#34d399', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
   { id: 'WORKBOOK', label: 'Apostila', icon: Book, color: '#60a5fa', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
 ];
+
+const STAGE_LABELS: Record<string, string> = {
+  queued: 'Na fila',
+  analyzing: 'Lendo...',
+  generating: 'Criando...',
+  validating: 'Validando',
+  formatting: 'Formatando',
+  uploading: 'Salvando',
+  processing: 'Gerando...'
+};
 
 // Filtrar generators baseado nas feature flags
 const GENERATORS = ALL_GENERATORS.filter(gen => {
@@ -92,7 +103,10 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
 
     if (hasProcessing) {
       interval = setInterval(() => {
-        fetchArtifacts(false);
+        // Intelligent Polling: Only poll if app is active
+        if (AppState.currentState === 'active') {
+          fetchArtifacts(false);
+        }
       }, 3000);
     }
 
@@ -173,6 +187,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     // Usa ALL_GENERATORS para encontrar o tipo correto, mesmo que esteja oculto
     const gen = ALL_GENERATORS.find(g => g.id === item.type) || ALL_GENERATORS[0];
     const Icon = gen.icon;
+    const isError = item.status === 'error';
 
     return (
       <Animated.View
@@ -181,21 +196,24 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
         className="mr-3"
       >
         <Pressable
-          onPress={() => handleOpenArtifact(item)}
+          onPress={() => isError ? Alert.alert("Erro na Geração", item.error_message || "Ocorreu um erro ao gerar o artefato.") : handleOpenArtifact(item)}
           disabled={item.status === 'processing'}
-          className={`items-center justify-center p-3 rounded-2xl bg-white dark:bg-space-light border border-gray-200 dark:border-white/10 w-[100px] h-[100px] relative overflow-hidden active:opacity-60 shadow-sm`}
+          className={`items-center justify-center p-3 rounded-2xl ${isError ? 'bg-red-50 dark:bg-red-900/10 border-red-500' : 'bg-white dark:bg-space-light border-gray-200 dark:border-white/10'} border w-[100px] h-[100px] relative overflow-hidden active:opacity-60 shadow-sm`}
         >
-          <View className="mb-2 opacity-80">
-            <Icon color={gen.color} size={28} />
+          <View className={`mb-2 opacity-80 ${isError ? 'opacity-50' : ''}`}>
+            <Icon color={isError ? '#ef4444' : gen.color} size={28} />
           </View>
 
           {item.status === 'processing' && (
-            <View className="absolute inset-0 items-center justify-center bg-white/60 dark:bg-space-dark/60 z-10">
-              <ActivityIndicator color="#818cf8" size="small" />
+            <View className="absolute inset-0 items-center justify-center bg-white/95 dark:bg-space-dark/95 z-10 px-1">
+              <ActivityIndicator color="#818cf8" size="small" className="mb-1" />
+              <Text className="text-[9px] text-center text-cosmic-purple font-medium" numberOfLines={2}>
+                 {STAGE_LABELS[item.current_step || 'processing'] || STAGE_LABELS['processing']}
+              </Text>
             </View>
           )}
 
-          <Text className={`${themeClasses.textPrimary} text-[10px] text-center font-medium leading-tight`} numberOfLines={2}>
+          <Text className={`${isError ? 'text-red-500' : themeClasses.textPrimary} text-[10px] text-center font-medium leading-tight`} numberOfLines={2}>
             {item.title}
           </Text>
         </Pressable>
