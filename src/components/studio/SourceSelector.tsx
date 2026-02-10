@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, FileText, Layers, Link as LinkIcon, Search, X } from 'lucide-react-native';
+import { CheckCircle2, Circle, FileText, Link as LinkIcon, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { chatService } from '../../services/chatService';

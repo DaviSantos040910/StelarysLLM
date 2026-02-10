@@ -1,4 +1,4 @@
-import { BookOpen, ChevronDown, FileText, Layers, X } from 'lucide-react-native';
+import { ChevronDown, Layers, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View, Alert } from 'react-native';
 import { ArtifactGenerationOptions, ArtifactType } from '../../types/studio';
