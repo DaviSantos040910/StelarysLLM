@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 class AudioMixerService:
     @staticmethod
-    def mix_podcast(script, bot_voice_enum: str = None) -> str:
+    def mix_podcast(script, bot_voice_enum: str = None) -> tuple[str, list, int]:
         """
         Mixes a podcast script into a single audio file using parallel TTS generation.
         script: List of dicts (Legacy) OR Dict with 'dialogue' key (New).
         bot_voice_enum: The Bot.voice value to map to a real Gemini voice for the Host.
-        Returns: Relative path to the generated audio file in MEDIA_ROOT.
+        Returns: (Relative path to the generated audio file in MEDIA_ROOT, transcript list, total_duration_ms)
         """
         if not script:
             raise ValueError("Script is empty.")
@@ -86,15 +86,37 @@ class AudioMixerService:
                         except Exception as e:
                             logger.error(f"Error reading WAV {path}: {e}")
 
-            # Mix in Order
+            # Mix in Order & Build Transcript
             full_audio = AudioSegment.empty()
             silence = AudioSegment.silent(duration=300)
+            transcript = []
+            current_ms = 0
 
             # Iterate by original index to preserve order
             for i in range(len(dialogue)):
                 if i in segments_map:
-                    full_audio += segments_map[i]
+                    segment = segments_map[i]
+                    turn = dialogue[i]
+
+                    start_ms = current_ms
+                    duration_ms = len(segment)
+                    end_ms = start_ms + duration_ms
+
+                    # Append to transcript
+                    transcript.append({
+                        "speaker": turn.get("speaker", "Unknown"),
+                        "display_name": turn.get("display_name", turn.get("speaker", "Unknown")),
+                        "text": turn.get("text", ""),
+                        "start_ms": start_ms,
+                        "end_ms": end_ms
+                    })
+
+                    full_audio += segment
+                    current_ms += duration_ms
+
+                    # Add silence between turns
                     full_audio += silence
+                    current_ms += len(silence)
 
             # Export Final Mix
             filename = f"podcast_mix_{uuid.uuid4().hex[:10]}.mp3"
@@ -105,7 +127,7 @@ class AudioMixerService:
 
             full_audio.export(output_path, format="mp3", bitrate="128k")
 
-            return f"podcasts/{filename}"
+            return f"podcasts/{filename}", transcript, len(full_audio)
 
         except Exception as e:
             logger.error(f"Error mixing podcast: {e}")

@@ -80,8 +80,8 @@ class ArtifactJobTest(TestCase):
         self.artifact.save()
 
         mock_get_context.return_value = "Context"
-        mock_script.return_value = [{"speaker": "Host", "text": "Hello"}]
-        mock_mix.return_value = "podcast.mp3"
+        mock_script.return_value = {"dialogue": [{"speaker": "Host", "text": "Hello"}]}
+        mock_mix.return_value = ("podcast.mp3", [], 60000)
 
         # Execute
         generate_artifact_job(self.artifact.id, self.options)
@@ -90,7 +90,10 @@ class ArtifactJobTest(TestCase):
         self.artifact.refresh_from_db()
         self.assertEqual(self.artifact.status, KnowledgeArtifact.Status.READY)
         self.assertEqual(self.artifact.media_url, "/media/podcast.mp3")
-        self.assertEqual(self.artifact.content, [{"speaker": "Host", "text": "Hello"}])
+        self.assertEqual(self.artifact.content, {
+            "dialogue": [{"speaker": "Host", "text": "Hello"}],
+            "transcript": []
+        })
 
     @patch('studio.jobs.artifact_jobs.SourceAssemblyService.get_context_from_config')
     @patch('studio.jobs.artifact_jobs.get_ai_client')

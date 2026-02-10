@@ -18,18 +18,17 @@ class PodcastGenerationTest(TestCase):
         self.bot = Bot.objects.create(name="TestBot", owner=self.user)
         self.chat = Chat.objects.create(user=self.user, bot=self.bot)
 
-    @patch('studio.views.threading.Thread')
-    @patch('studio.views.AudioMixerService.mix_podcast')
-    @patch('studio.views.PodcastScriptingService.generate_script')
+    @patch('studio.views.django_rq.enqueue')
+    @patch('studio.jobs.artifact_jobs.AudioMixerService.mix_podcast')
+    @patch('studio.jobs.artifact_jobs.PodcastScriptingService.generate_script')
     @patch('studio.services.source_assembler.SourceAssemblyService.get_context_from_config')
-    def test_generate_podcast_success(self, mock_assembler, mock_scripting, mock_mixer, mock_thread):
+    def test_generate_podcast_success(self, mock_assembler, mock_scripting, mock_mixer, mock_enqueue):
         """Testa o fluxo completo de geração de Podcast (Roteiro -> Áudio)."""
 
-        # Simula execução síncrona do thread
-        def side_effect(target, args):
-            target(*args)
-            return MagicMock()
-        mock_thread.side_effect = side_effect
+        # Simula execução síncrona do job via RQ mock
+        def side_effect(func, *args, **kwargs):
+            return func(*args, **kwargs)
+        mock_enqueue.side_effect = side_effect
 
         # Mocks
         mock_assembler.return_value = "Conteúdo do podcast."
@@ -39,7 +38,7 @@ class PodcastGenerationTest(TestCase):
             {"speaker": "Guest (Jamie)", "text": "Hi!"}
         ]
 
-        mock_mixer.return_value = "podcasts/test_mix.mp3"
+        mock_mixer.return_value = ("podcasts/test_mix.mp3", [], 60000)
 
         payload = {
             "chat": self.chat.id,
@@ -62,7 +61,10 @@ class PodcastGenerationTest(TestCase):
         mock_scripting.assert_called_once_with(
             title="My Podcast",
             context="Conteúdo do podcast.",
-            duration_constraint="Short"
+            duration_constraint="Short",
+            bot_name=self.bot.name,
+            bot_prompt=self.bot.prompt,
+            language=None
         )
         mock_mixer.assert_called_once()
 
@@ -87,11 +89,16 @@ class PodcastGenerationTest(TestCase):
 
         mock_segment_instance.__add__.return_value = mock_segment_instance
         mock_segment_instance.__iadd__.return_value = mock_segment_instance
+        mock_segment_instance.__len__.return_value = 5000 # 5 seconds
 
-        path = AudioMixerService.mix_podcast(script)
+        path, transcript, duration = AudioMixerService.mix_podcast(script)
 
         self.assertTrue(path.startswith("podcasts/podcast_mix_"))
         self.assertTrue(path.endswith(".mp3"))
+        self.assertEqual(len(transcript), 2)
+        self.assertEqual(transcript[0]['text'], "Hello")
+        self.assertEqual(transcript[0]['start_ms'], 0)
+        self.assertEqual(transcript[0]['end_ms'], 5000)
 
         self.assertEqual(mock_tts.call_count, 2)
         mock_segment_instance.export.assert_called_once()

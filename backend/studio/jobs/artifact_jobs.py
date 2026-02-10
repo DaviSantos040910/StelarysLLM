@@ -95,10 +95,25 @@ def _generate_podcast(artifact, context, options):
     artifact.stage = KnowledgeArtifact.Stage.RENDERING_EXPORT
     artifact.save(update_fields=['stage'])
 
-    audio_path = AudioMixerService.mix_podcast(script, bot_voice_enum=bot.voice)
+    audio_path, transcript, total_duration_ms = AudioMixerService.mix_podcast(script, bot_voice_enum=bot.voice)
 
     artifact.media_url = f"/media/{audio_path}"
-    artifact.duration = options.get('target_duration', '10:00')
+
+    # Calculate readable duration (MM:SS)
+    seconds = total_duration_ms / 1000
+    minutes = int(seconds // 60)
+    rem_seconds = int(seconds % 60)
+    artifact.duration = f"{minutes}:{rem_seconds:02d}"
+
+    # Inject transcript into content
+    if isinstance(artifact.content, list):
+        # Handle legacy list format: convert to dict structure
+        artifact.content = {
+            "dialogue": artifact.content,
+            "transcript": transcript
+        }
+    elif isinstance(artifact.content, dict):
+        artifact.content['transcript'] = transcript
 
 def _generate_standard_artifact(artifact, full_context, options):
     client = get_ai_client()

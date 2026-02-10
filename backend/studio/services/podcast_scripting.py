@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 
 class PodcastScriptingService:
     @staticmethod
-    def generate_script(title: str, context: str, duration_constraint: str = "Medium", bot_name: str = "Alex", bot_prompt: str = "", language: str = None) -> list:
+    def generate_script(title: str, context: str, duration_constraint: str = "Medium", bot_name: str = "Alex", bot_prompt: str = "", language: str = None) -> dict:
         """
         Generates a podcast script dialogue between the Bot (Host) and a Co-host.
-        Returns a list of dicts: [{"speaker": "Host (BotName)", "text": "..."}, ...]
+        Returns a dict: { "episode_title": ..., "chapters": [], "dialogue": [...] }
         """
         client = get_ai_client()
         model_name = GENAI_MODEL_TEXT
