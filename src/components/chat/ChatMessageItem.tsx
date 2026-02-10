@@ -22,6 +22,7 @@ interface ChatMessageItemProps {
     botName?: string;
     botAvatar?: string;
     themeColor?: string;
+    isTTSLoading?: boolean;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -35,7 +36,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     onShowReferences,
     botName,
     botAvatar,
-    themeColor = '#818cf8'
+    themeColor = '#818cf8',
+    isTTSLoading = false
 }) => {
     const router = useRouter();
     const isUser = message.role === 'user';
@@ -202,7 +204,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
                             {message.content?.length > 0 && (
                                 <Pressable onPress={handleTTSAction} className="p-2">
-                                    {isThisMessageLoading ? (
+                                    {isThisMessageLoading || isTTSLoading ? (
                                         <Loader2 size={16} color={themeColor} className="animate-spin" />
                                     ) : isThisMessagePlaying ? (
                                         <Square size={16} color={themeColor} fill={themeColor} />

@@ -11,6 +11,7 @@ export type Message = {
   feedback?: 'like' | 'dislike' | null; // Updated from liked?: boolean
   rewriting?: boolean;
   audioUri?: string | null;
+  audio_url?: string | null; // TTS URL cached from backend
   suggestions?: string[];
   attachment_url?: string | null;
   attachment_type?: string | null;

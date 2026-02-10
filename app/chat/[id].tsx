@@ -43,6 +43,7 @@ export default function ChatScreen() {
     const [isKnowledgeSheetVisible, setIsKnowledgeSheetVisible] = useState(false);
     const [isReferencesSheetVisible, setIsReferencesSheetVisible] = useState(false);
     const [activeReferences, setActiveReferences] = useState<SourceRef[]>([]);
+    const [ttsLoadingMap, setTtsLoadingMap] = useState<Record<string, boolean>>({});
 
     const [stagedAttachments, setStagedAttachments] = useState<StagedAttachment[]>([]);
 
@@ -232,17 +233,32 @@ export default function ChatScreen() {
     };
 
     const handleTTS = async (messageId: string, text: string) => {
+        // Prevent concurrent requests for the same message
+        if (ttsLoadingMap[messageId]) return;
+
+        const message = messages.find(m => m.id === messageId || m.localId === messageId);
+        if (!message) return;
+
+        // Use cached URL if available
+        if (message.audio_url) {
+            await play(message.audio_url, 'Voice Message', undefined, messageId);
+            return;
+        }
+
+        setTtsLoadingMap(prev => ({ ...prev, [messageId]: true }));
         try {
-            // Check if we already have the URL in the message object (optimistic or cached)
-            // If not, request it from backend
             const ttsUrl = await chatService.getMessageTTS(chatId, messageId);
             if (ttsUrl) {
+                // Save URL in state to prevent future requests
+                updateMessage(messageId, { audio_url: ttsUrl });
                 // Play using global store, passing messageId as context ID to track active message
                 await play(ttsUrl, 'Voice Message', undefined, messageId);
             }
         } catch (error) {
             console.error("TTS Error:", error);
             Alert.alert("Erro", "Não foi possível reproduzir o áudio.");
+        } finally {
+            setTtsLoadingMap(prev => ({ ...prev, [messageId]: false }));
         }
     };
 
@@ -263,6 +279,7 @@ export default function ChatScreen() {
                 onTTS={handleTTS}
                 onShowReferences={handleShowReferences}
                 themeColor={themeColor}
+                isTTSLoading={!!ttsLoadingMap[item.id] || !!ttsLoadingMap[item.localId || '']}
             />
         );
     }, [themeColor]);
