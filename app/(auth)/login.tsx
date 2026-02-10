@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Input } from '../../src/components/Input';
@@ -65,13 +65,11 @@ export default function LoginScreen() {
       />
 
       <Button
-        title={isLoading ? "Signing In..." : "Sign In"}
+        title="Sign In"
         onPress={handleLogin}
-        disabled={isLoading}
+        loading={isLoading}
         className="mt-4"
       />
-
-      {isLoading && <ActivityIndicator className="mt-4" color="#06b6d4" />}
 
       <View className="flex-row justify-center mt-6">
         <Text className={themeClasses.textMuted}>Don't have an account? </Text>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Input } from '../../src/components/Input';
@@ -77,14 +77,12 @@ export default function SignupScreen() {
       />
 
       <Button
-        title={isLoading ? "Creating Account..." : "Sign Up"}
+        title="Sign Up"
         onPress={handleSignup}
-        disabled={isLoading}
+        loading={isLoading}
         className="mt-4"
         variant="primary"
       />
-
-      {isLoading && <ActivityIndicator className="mt-4" color="#818cf8" />}
 
       <View className="flex-row justify-center mt-6">
         <Text className={themeClasses.textMuted}>Already have an account? </Text>
