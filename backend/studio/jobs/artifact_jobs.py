@@ -73,12 +73,21 @@ def generate_artifact_job(artifact_id, options):
 def _generate_podcast(artifact, context, options):
     # 1. Generate Script with Dynamic Host Persona
     bot = artifact.chat.bot
+
+    # Determine language preference
+    language = options.get('language')
+    if not language and hasattr(artifact.chat, 'language'):
+        language = artifact.chat.language
+    if not language and hasattr(bot, 'language'):
+        language = bot.language
+
     script = PodcastScriptingService.generate_script(
         title=artifact.title,
         context=context,
         duration_constraint=options.get('target_duration', 'Medium'),
         bot_name=bot.name,
-        bot_prompt=bot.prompt
+        bot_prompt=bot.prompt,
+        language=language
     )
     artifact.content = script
 
