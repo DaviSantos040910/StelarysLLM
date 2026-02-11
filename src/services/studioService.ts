@@ -19,14 +19,14 @@ export const studioService = {
                 // 1. Process Transcript (ms -> seconds)
                 const mappedTranscript = transcript.length > 0
                     ? transcript.map((t: any) => ({
-                        speaker: t.speaker || t.display_name || 'Host',
+                        speaker: t.display_name || t.speaker || 'Host',
                         text: t.text,
                         start: (t.start_ms || 0) / 1000,
                         end: (t.end_ms || 0) / 1000
                     }))
                     : (content.dialogue || []).map((d: any, i: number) => ({
                         // Fallback: simple text list without timestamps if not available
-                        speaker: d.speaker,
+                        speaker: d.display_name || d.speaker || 'Host',
                         text: d.text,
                         start: i * 5, // Fake timestamps for visual flow
                         end: (i + 1) * 5
@@ -38,15 +38,14 @@ export const studioService = {
                     // Find corresponding transcript segment to get time
                     // If transcript exists and index is valid
                     let startTime = 0;
+                    // Note: turnIndex matches mappedTranscript index because both are derived from the same sequential dialogue
                     if (mappedTranscript.length > turnIndex) {
                         startTime = mappedTranscript[turnIndex].start;
                     }
                     return {
                         title: c.title,
                         start: startTime,
-                        end: startTime + 60 // Default duration or calculate from next chapter?
-                        // Ideally, end is the start of next chapter or end of audio.
-                        // For simplicity in UI, start is most critical for seeking.
+                        end: startTime + 60 // Temporary end
                     };
                 });
 

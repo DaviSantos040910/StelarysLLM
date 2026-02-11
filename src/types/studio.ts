@@ -51,11 +51,12 @@ export interface TranscriptSegment {
 }
 
 export interface PodcastContent {
+    schema_version?: 1;
     episode_title?: string;
     episode_summary?: string;
     chapters?: { title: string; start_turn_index: number }[];
-    dialogue?: { speaker: string; text: string }[];
-    transcript?: { speaker: string; text: string; start_ms: number; end_ms: number }[];
+    dialogue?: { turn_index: number; speaker: "HOST" | "COHOST"; display_name: string; text: string }[];
+    transcript?: { turn_index: number; speaker: "HOST" | "COHOST"; display_name: string; text: string; start_ms: number; end_ms: number }[];
 }
 
 export interface KnowledgeArtifact {
