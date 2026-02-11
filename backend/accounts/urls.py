@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, VerifyEmailView, ResendVerificationView, LoginView, MeView, ChangePasswordView, ForgotPasswordView, ResetPasswordView
+from .views import RegisterView, VerifyEmailView, ResendVerificationView, LoginView, MeView, ChangePasswordView, ClaimGuestView, ForgotPasswordView, ResetPasswordView
 from django_ratelimit.decorators import ratelimit
 
 urlpatterns = [
@@ -9,6 +9,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("me/", MeView.as_view(), name="me"),
     path("change_password/", ChangePasswordView.as_view(), name="change_password"),
+    path("claim_guest/", ClaimGuestView.as_view(), name="claim_guest"),
     # Password reset URLs
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot-password"),
     path("reset-password/", ResetPasswordView.as_view(), name="reset-password"),

@@ -9,6 +9,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import RegisterSerializer, UserSerializer
 from .tokens import email_verification_token
 from .utils import send_verification_email, send_email
+from .services.claim_service import claim_guest_session
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import render
 from django.urls import reverse
@@ -145,6 +146,34 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({"message": "Senha alterada com sucesso."})
+
+
+class ClaimGuestView(APIView):
+    """
+    Endpoint to claim a guest session and migrate data to the authenticated user.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        guest_id = request.headers.get("X-Guest-Id")
+        if not guest_id:
+            return Response({"detail": "X-Guest-Id header is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = claim_guest_session(request.user, guest_id)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            # Service raises ValidationError (400) or PermissionDenied (403).
+            # We map generic exceptions to 400 or 409 appropriately if needed,
+            # but DRF handles APIExceptions well.
+            # If standard Python exceptions:
+            if "already claimed" in str(e):
+                return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
+            if "not found" in str(e):
+                return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+            # Default fallback
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # -----------------------
