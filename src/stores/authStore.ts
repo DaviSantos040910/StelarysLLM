@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
@@ -8,6 +9,7 @@ import { router } from 'expo-router';
 interface AuthState {
   user: User | null;
   token: string | null;
+  guestId: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -22,6 +24,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
+  guestId: null,
   isAuthenticated: false,
   isLoading: true, // Start as true to prevent flicker
   error: null,
@@ -66,6 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (e) {
       // ignore
     }
+    // Note: We do NOT clear guestId on logout
     set({ user: null, token: null, isAuthenticated: false, isLoading: false });
     router.replace('/(auth)/login');
   },
@@ -74,6 +78,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Only set loading if it's not already loading (though it starts as true)
     set({ isLoading: true });
     try {
+      // 1. Handle Guest ID
+      let guestId = await SecureStore.getItemAsync('guest_id');
+      if (!guestId) {
+        guestId = Crypto.randomUUID();
+        await SecureStore.setItemAsync('guest_id', guestId);
+      }
+      set({ guestId });
+
+      // 2. Handle User Token
       const token = await SecureStore.getItemAsync('token');
 
       if (token) {

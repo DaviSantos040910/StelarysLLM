@@ -19,9 +19,11 @@ client.interceptors.request.use(
   (config) => {
     // Dynamic require to avoid circular dependency
     const { useAuthStore } = require('../stores/authStore');
-    const token = useAuthStore.getState().token;
+    const { token, guestId } = useAuthStore.getState();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (guestId) {
+      config.headers['X-Guest-Id'] = guestId;
     }
     return config;
   },

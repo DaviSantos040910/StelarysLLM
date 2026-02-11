@@ -603,5 +603,43 @@ class VectorService:
 
         return contexts
 
+    def migrate_owner(self, old_owner_id: str, new_owner_id: str) -> int:
+        """Migra vetores de um usuário/guest para outro."""
+        if not self.collection:
+            return 0
+
+        try:
+            # 1. Fetch IDs owned by old_owner
+            # Limit is arbitrary but hopefully high enough for guest sessions.
+            # Ideally iterating, but simple get with where is safer.
+            results = self.collection.get(
+                where={"user_id": old_owner_id},
+                include=["metadatas"]
+            )
+
+            ids = results['ids']
+            metadatas = results['metadatas']
+
+            if not ids:
+                return 0
+
+            # 2. Update metadatas
+            new_metadatas = []
+            for meta in metadatas:
+                meta['user_id'] = new_owner_id
+                new_metadatas.append(meta)
+
+            self.collection.update(
+                ids=ids,
+                metadatas=new_metadatas
+            )
+
+            logger.info(f"[Vector Migration] Moved {len(ids)} chunks from {old_owner_id} to {new_owner_id}")
+            return len(ids)
+
+        except Exception as e:
+            logger.error(f"Erro ao migrar vetores: {e}")
+            return 0
+
 # Instância global singleton exportada
 vector_service = VectorService()

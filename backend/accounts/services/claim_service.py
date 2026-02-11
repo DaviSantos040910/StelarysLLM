@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from accounts.models import GuestSession
 from bots.models import Bot
 from chat.models import Chat
+from chat.vector_service import vector_service
 from studio.models import StudySpace, KnowledgeSource
 from explore.models import SearchHistory
 
@@ -95,6 +96,14 @@ def claim_guest_session(user, guest_id):
         session.claimed_at = timezone.now()
         session.is_active = False
         session.save()
+
+    # 7. Migrate Vector Embeddings (Non-transactional but safe to run after)
+    try:
+        migrated_vectors = vector_service.migrate_owner(str(session.id), str(user.id))
+        counts['vectors'] = migrated_vectors
+    except Exception as e:
+        logger.error(f"Failed to migrate vectors for guest {guest_id}: {e}")
+        counts['vectors'] = -1
 
     logger.info(f"User {user.id} claimed guest session {guest_id}. Stats: {counts}")
 
