@@ -57,3 +57,17 @@ def send_email(subject: str, html_content: str, to_email: str):
         print(f"E-mail enviado para {to_email}")
     except Exception as e:
         print(f"Erro ao enviar e-mail para {to_email}: {e}")
+
+def get_actor(request):
+    """
+    Returns (actor_type, actor_instance).
+    actor_type: 'user' or 'guest'
+    """
+    if request.user and request.user.is_authenticated:
+        return 'user', request.user
+
+    # Check for attached guest_session from GuestAuthentication
+    if hasattr(request, 'guest_session') and request.guest_session:
+        return 'guest', request.guest_session
+
+    return None, None

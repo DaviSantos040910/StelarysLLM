@@ -206,7 +206,7 @@ def get_ai_response(
 
         # FLUXO DE TEXTO
         client = get_ai_client()
-        chat = Chat.objects.select_related('bot', 'user').get(id=chat_id)
+        chat = Chat.objects.select_related('bot', 'user', 'guest_session').get(id=chat_id)
         bot = chat.bot
 
         # --- Recupera flag de Web Search e Strict Context ---
@@ -214,7 +214,16 @@ def get_ai_response(
         strict_context = getattr(bot, 'strict_context', False)
 
         user_defined_prompt = bot.prompt.strip() if bot.prompt else "Você é um assistente útil."
-        user_name = chat.user.first_name if chat.user.first_name else "Usuário"
+
+        user_name = "Usuário"
+        effective_user_id = None
+        if chat.user:
+            user_name = chat.user.first_name if chat.user.first_name else "Usuário"
+            effective_user_id = chat.user.id
+        elif chat.guest_session:
+            user_name = "Visitante"
+            effective_user_id = chat.guest_session.id
+
         current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M')
 
         exclude_id = user_message_obj.id if user_message_obj else None
@@ -225,7 +234,7 @@ def get_ai_response(
 
         doc_contexts, memory_contexts, available_doc_names = _get_smart_context(
             query=user_message_text,
-            user_id=chat.user_id,
+            user_id=effective_user_id,
             bot_id=bot.id,
             chat_id=chat_id,
             study_space_ids=study_space_ids
@@ -390,7 +399,7 @@ def get_ai_response(
         if result_data['content'] and len(user_message_text) > 10:
             threading.Thread(
                 target=process_memory_background,
-                args=(chat.user_id, bot.id, user_message_text, result_data['content'])
+                args=(effective_user_id, bot.id, user_message_text, result_data['content'])
             ).start()
 
         if reply_with_audio and result_data['content']:
@@ -410,7 +419,7 @@ def get_ai_response(
         return {'content': "Erro ao processar resposta.", 'suggestions': [], 'audio_path': None}
 
 
-def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
+def process_message_stream(chat_id: int, user_message_text: str, user_id: int = None, guest_id: str = None):
     """
     Generator que processa a mensagem e envia chunks via SSE.
     """
@@ -419,7 +428,23 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
     CHUNK_DELAY = 0.03
 
     # 1. Fetch Real Bot State (No Cache)
-    chat = Chat.objects.select_related('bot', 'user').get(id=chat_id, user_id=user_id)
+    try:
+        if user_id:
+            chat = Chat.objects.select_related('bot', 'user').get(id=chat_id, user_id=user_id)
+            effective_user_id = user_id
+            user_name = chat.user.first_name if chat.user.first_name else "Usuário"
+        elif guest_id:
+            chat = Chat.objects.select_related('bot', 'guest_session').get(id=chat_id, guest_session__id=guest_id)
+            effective_user_id = guest_id
+            user_name = "Visitante"
+        else:
+            yield f"data: {json.dumps({'type': 'error', 'detail': 'Missing user or guest ID'})}\n\n"
+            return
+
+    except Chat.DoesNotExist:
+        yield f"data: {json.dumps({'type': 'error', 'detail': 'Chat not found'})}\n\n"
+        return
+
     # Refresh bot from DB to get latest flags
     chat.bot.refresh_from_db()
     bot = chat.bot
@@ -431,7 +456,6 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
     yield f"data: {json.dumps({'type': 'start', 'status': 'processing'})}\n\n"
 
     try:
-        user_name = chat.user.first_name if chat.user.first_name else "Usuário"
         study_space_ids = list(bot.study_spaces.values_list('id', flat=True))
 
         # 2. Strict Boundary Decision (Centralized)
@@ -439,7 +463,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             user_text=user_message_text,
             strict_context=strict_context,
             allow_web_search=allow_web_search,
-            user_id=chat.user_id,
+            user_id=effective_user_id,
             bot_id=bot.id,
             study_space_ids=study_space_ids
         )
@@ -447,11 +471,11 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
         logger.info(f"[Decision] Chat {chat_id} | Mode: {mode.value} | Reason: {reason}")
 
         # Common Prep
-        available_docs = vector_service.get_available_documents(user_id, bot.id, study_space_ids)
+        available_docs = vector_service.get_available_documents(effective_user_id, bot.id, study_space_ids)
         
         # --- BRANCH 1: LIST SOURCES ---
         if mode == ResponseMode.LIST_SOURCES:
-            source_text = source_service.list_available_sources_for_bot(bot.id, user_id, study_space_ids)
+            source_text = source_service.list_available_sources_for_bot(bot.id, effective_user_id, study_space_ids)
             # Optional: Style rewrite? For now, static is safer and faster.
             # If we want style, call strict_style_service.rewrite_sources_list here.
 
@@ -626,7 +650,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             if len(clean_content) > 10:
                 threading.Thread(
                     target=process_memory_background,
-                    args=(chat.user_id, bot.id, user_message_text, clean_content)
+                    args=(effective_user_id, bot.id, user_message_text, clean_content)
                 ).start()
             return
 
@@ -644,7 +668,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
 
             doc_contexts, memory_contexts, available_docs = _get_smart_context(
                 query=user_message_text,
-                user_id=chat.user_id,
+                user_id=effective_user_id,
                 bot_id=bot.id,
                 chat_id=chat_id,
                 study_space_ids=study_space_ids
@@ -800,7 +824,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
             if len(full_clean_content) > 10:
                 threading.Thread(
                     target=process_memory_background,
-                    args=(chat.user_id, bot.id, user_message_text, full_clean_content)
+                    args=(effective_user_id, bot.id, user_message_text, full_clean_content)
                 ).start()
 
     except Exception as e:
@@ -810,7 +834,7 @@ def process_message_stream(user_id: int, chat_id: int, user_message_text: str):
 
 def _get_smart_context(
     query: str,
-    user_id: int,
+    user_id, # int or UUID
     bot_id: int,
     chat_id: int,
     study_space_ids: list = None,

@@ -9,7 +9,8 @@ class KnowledgeSource(models.Model):
         YOUTUBE = 'YOUTUBE', 'YouTube'
         IMAGE = 'IMAGE', 'Image'
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='knowledge_sources')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='knowledge_sources', null=True, blank=True)
+    guest_session = models.ForeignKey('accounts.GuestSession', on_delete=models.SET_NULL, null=True, blank=True, related_name='knowledge_sources')
     title = models.CharField(max_length=255)
     source_type = models.CharField(max_length=20, choices=SourceType.choices, default=SourceType.FILE)
 
@@ -34,7 +35,8 @@ class StudySpace(models.Model):
     """
     Groups Knowledge Sources into a study space.
     """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='study_spaces')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='study_spaces', null=True, blank=True)
+    guest_session = models.ForeignKey('accounts.GuestSession', on_delete=models.SET_NULL, null=True, blank=True, related_name='study_spaces')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     cover_image = models.ImageField(upload_to='study_spaces/', null=True, blank=True)

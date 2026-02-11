@@ -50,6 +50,10 @@ from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
 
+from accounts.permissions import IsUserOrGuest
+from accounts.utils import get_actor
+from accounts.models import GuestSession
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,27 +64,45 @@ logger = logging.getLogger(__name__)
 class ActiveChatListView(generics.ListAPIView):
     """Lista todos os chats ativos do usuário."""
     serializer_class = ChatListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
-        return Chat.objects.filter(
-            user=self.request.user,
-            status=Chat.ChatStatus.ACTIVE
-        ).order_by('-last_message_at')
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return Chat.objects.filter(
+                user=actor,
+                status=Chat.ChatStatus.ACTIVE
+            ).order_by('-last_message_at')
+        elif actor_type == 'guest':
+            return Chat.objects.filter(
+                guest_session=actor,
+                status=Chat.ChatStatus.ACTIVE
+            ).order_by('-last_message_at')
+        return Chat.objects.none()
 
 
 class ArchivedChatListView(generics.ListAPIView):
     """Lista chats arquivados de um bot específico."""
     serializer_class = ChatListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
         bot_id = self.kwargs['bot_id']
-        return Chat.objects.filter(
-            user=self.request.user,
-            bot_id=bot_id,
-            status=Chat.ChatStatus.ARCHIVED
-        ).order_by('-last_message_at')
+        actor_type, actor = get_actor(self.request)
+
+        filters = {
+            'bot_id': bot_id,
+            'status': Chat.ChatStatus.ARCHIVED
+        }
+
+        if actor_type == 'user':
+            filters['user'] = actor
+        elif actor_type == 'guest':
+            filters['guest_session'] = actor
+        else:
+            return Chat.objects.none()
+
+        return Chat.objects.filter(**filters).order_by('-last_message_at')
 
 
 # =============================================================================
@@ -89,22 +111,37 @@ class ArchivedChatListView(generics.ListAPIView):
 
 class ChatBootstrapView(APIView):
     """Inicializa ou retorna o chat ativo para um bot."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get(self, request, bot_id):
         bot = get_object_or_404(Bot, id=bot_id)
-        active_chat = Chat.objects.filter(
-            user=request.user,
-            bot=bot,
-            status=Chat.ChatStatus.ACTIVE
-        ).first()
+        actor_type, actor = get_actor(request)
+
+        filters = {'bot': bot, 'status': Chat.ChatStatus.ACTIVE}
+
+        if actor_type == 'user':
+            filters['user'] = actor
+        elif actor_type == 'guest':
+            filters['guest_session'] = actor
+        else:
+             return Response({"detail": "Not authorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        active_chat = Chat.objects.filter(**filters).first()
 
         if not active_chat:
-            active_chat = Chat.objects.create(
-                user=request.user,
-                bot=bot,
-                status=Chat.ChatStatus.ACTIVE
-            )
+            if actor_type == 'user':
+                active_chat = Chat.objects.create(
+                    user=actor,
+                    bot=bot,
+                    status=Chat.ChatStatus.ACTIVE
+                )
+            else:
+                active_chat = Chat.objects.create(
+                    guest_session=actor,
+                    user=None,
+                    bot=bot,
+                    status=Chat.ChatStatus.ACTIVE
+                )
 
         # Construir URL do avatar
         avatar_url_path = None
@@ -114,14 +151,20 @@ class ChatBootstrapView(APIView):
             except Exception:
                 avatar_url_path = bot.avatar_url.url
 
+        created_by_me = False
+        if actor_type == 'user':
+            created_by_me = (bot.owner == actor)
+        elif actor_type == 'guest':
+            created_by_me = (bot.guest_session == actor)
+
         return Response({
             "conversationId": str(active_chat.id),
             "bot": {
                 "name": bot.name,
-                "handle": f"@{bot.owner.username}",
+                "handle": f"@{bot.owner.username}" if bot.owner else "@guest",
                 "avatarUrl": avatar_url_path,
                 "avatar_url": avatar_url_path, # Legacy/Consistency alias
-                "createdByMe": bot.owner == request.user # Informa ao frontend se sou o dono
+                "createdByMe": created_by_me
             },
             "welcome": bot.description or "Hello! How can I help you today?",
             "suggestions": [s for s in [bot.suggestion1, bot.suggestion2, bot.suggestion3] if s]
@@ -131,12 +174,20 @@ class ChatBootstrapView(APIView):
 class ChatMessageListView(generics.ListCreateAPIView):
     """Lista e cria mensagens em um chat (modo não-streaming)."""
     serializer_class = ChatMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     pagination_class = StandardMessagePagination
 
     def get_queryset(self):
         chat_id = self.kwargs['chat_pk']
-        get_object_or_404(Chat, id=chat_id, user=self.request.user)
+        actor_type, actor = get_actor(self.request)
+
+        if actor_type == 'user':
+            get_object_or_404(Chat, id=chat_id, user=actor)
+        elif actor_type == 'guest':
+            get_object_or_404(Chat, id=chat_id, guest_session=actor)
+        else:
+            Chat.objects.none() # Just to be safe, though 404/403 would be raised by perm class
+
         return ChatMessage.objects.filter(chat_id=chat_id).order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
@@ -151,7 +202,15 @@ class ChatMessageListView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         chat_id = self.kwargs['chat_pk']
-        chat = get_object_or_404(Chat, id=chat_id, user=self.request.user)
+        actor_type, actor = get_actor(self.request)
+
+        chat = None
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_id, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_id, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
 
         if chat.status != Chat.ChatStatus.ACTIVE:
             return Response(
@@ -278,37 +337,59 @@ class StreamChatMessageView(View):
 
     def _authenticate(self, request):
         """
-        Autentica o usuário via JWT Bearer token.
-        Retorna o usuário ou None se falhar.
+        Autentica o usuário via JWT Bearer token OU Guest ID.
+        Retorna ('user', user_obj) ou ('guest', session_obj) ou None.
         """
+        # 1. Bearer Token Check
         auth_header = request.headers.get('Authorization', '')
-        if not auth_header.startswith('Bearer '):
-            return None
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+            jwt_auth = JWTAuthentication()
 
-        token = auth_header.split(' ', 1)[1]
-        jwt_auth = JWTAuthentication()
+            try:
+                validated_token = jwt_auth.get_validated_token(token)
+                user = jwt_auth.get_user(validated_token)
+                return ('user', user)
+            except (InvalidToken, TokenError) as e:
+                logger.warning(f"[Stream] JWT auth failed: {e}")
+                # Continue to check guest if token fails? Usually better to fail?
+                # But maybe mixed mode? Let's just return None for now if token present but invalid.
+                return None
 
-        try:
-            validated_token = jwt_auth.get_validated_token(token)
-            user = jwt_auth.get_user(validated_token)
-            return user
-        except (InvalidToken, TokenError) as e:
-            logger.warning(f"[Stream] JWT auth failed: {e}")
-            return None
+        # 2. Guest ID Check
+        guest_id = request.headers.get('X-Guest-Id')
+        if guest_id:
+            try:
+                uuid_obj = uuid.UUID(guest_id)
+                session = GuestSession.objects.get(id=uuid_obj)
+                if session.is_active:
+                    # Optionally check expiry
+                    if session.trial_expires_at and session.trial_expires_at < timezone.now():
+                        return None
+                    return ('guest', session)
+            except (ValueError, GuestSession.DoesNotExist):
+                pass
+
+        return None
 
     def post(self, request, pk):
         """Processa POST request e retorna SSE stream."""
         # 1. Autenticação manual
-        user = self._authenticate(request)
-        if not user:
+        auth_result = self._authenticate(request)
+        if not auth_result:
             return JsonResponse(
                 {"detail": "Authentication credentials were not provided."},
                 status=401
             )
 
-        # 2. Verificar se o chat pertence ao usuário
+        actor_type, actor = auth_result
+
+        # 2. Verificar se o chat pertence ao usuário/guest
         try:
-            chat = Chat.objects.get(id=pk, user=user)
+            if actor_type == 'user':
+                chat = Chat.objects.get(id=pk, user=actor)
+            else:
+                chat = Chat.objects.get(id=pk, guest_session=actor)
         except Chat.DoesNotExist:
             return JsonResponse({"detail": "Chat not found."}, status=404)
 
@@ -338,8 +419,13 @@ class StreamChatMessageView(View):
         chat.save()
 
         # 5. Criar e retornar StreamingHttpResponse
+        if actor_type == 'user':
+             stream_gen = process_message_stream(chat.id, content, user_id=actor.id)
+        else:
+             stream_gen = process_message_stream(chat.id, content, guest_id=str(actor.id))
+
         response = StreamingHttpResponse(
-            process_message_stream(user.id, chat.id, content),
+            stream_gen,
             content_type='text/event-stream'
         )
 
@@ -360,12 +446,20 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
     Suporta PDFs, DOCX e TXT para indexação vetorial.
     """
     serializer_class = ChatMessageAttachmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def create(self, request, *args, **kwargs):
         chat_id = self.kwargs['chat_pk']
-        chat = get_object_or_404(Chat, id=chat_id, user=self.request.user)
+        actor_type, actor = get_actor(self.request)
+
+        chat = None
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_id, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_id, guest_session=actor)
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
 
         if chat.status != Chat.ChatStatus.ACTIVE:
             return Response({"detail": "Archived."}, status=403)
@@ -417,8 +511,10 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
 
                             chunks = FileProcessor.chunk_text(text)
                             if chunks:
+                                # vector_service.add_document_chunks expects user_id
+                                # We pass actor.id (int or UUID)
                                 vector_service.add_document_chunks(
-                                    user_id=chat.user.id,
+                                    user_id=actor.id,
                                     chunks=chunks,
                                     source_name=obj.original_filename,
                                     source_id=f"msg_{obj.id}",
@@ -447,11 +543,18 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
 
 class AudioTranscriptionView(APIView):
     """Transcreve áudio usando Gemini."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def post(self, request, chat_pk):
-        get_object_or_404(Chat, id=chat_pk, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
+
         f = request.FILES.get('audio')
         if not f:
             return Response({"detail": "No audio."}, status=400)
@@ -464,17 +567,26 @@ class AudioTranscriptionView(APIView):
 
 class VoiceInteractionView(APIView):
     """Interação por voz sem resposta em áudio."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def post(self, request, chat_pk):
-        chat = get_object_or_404(Chat, id=chat_pk, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
         f = request.FILES.get('audio')
         if not f:
             return Response({"detail": "No audio."}, status=400)
 
         try:
-            res = handle_voice_interaction(chat.id, f, request.user)
+            # handle_voice_interaction uses user for TTS or something?
+            # It takes (chat_id, audio_file, user_obj)
+            res = handle_voice_interaction(chat.id, f, actor)
             return Response({
                 "transcription": res['transcription'],
                 "ai_response_text": res['ai_response_text'],
@@ -487,11 +599,18 @@ class VoiceInteractionView(APIView):
 
 class VoiceMessageView(APIView):
     """Processa mensagem de voz com resposta opcional em áudio."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def post(self, request, chat_pk):
-        chat = get_object_or_404(Chat, id=chat_pk, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
         f = request.FILES.get('audio') or request.FILES.get('file') or request.FILES.get('attachment')
         if not f:
             return Response({"detail": "No audio."}, status=400)
@@ -504,7 +623,7 @@ class VoiceMessageView(APIView):
             user_duration = 0
 
         try:
-            res = handle_voice_message(chat.id, f, reply_audio, request.user)
+            res = handle_voice_message(chat.id, f, reply_audio, actor)
             if user_duration > 0:
                 res['user_message'].duration = user_duration
                 res['user_message'].save()
@@ -523,34 +642,58 @@ class VoiceMessageView(APIView):
 
 class ArchiveChatView(APIView):
     """Arquiva chat atual e cria um novo."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def post(self, request, chat_id):
-        c = get_object_or_404(Chat, id=chat_id, user=request.user)
+        actor_type, actor = get_actor(request)
+
+        filters = {'id': chat_id}
+        if actor_type == 'user':
+            filters['user'] = actor
+        elif actor_type == 'guest':
+            filters['guest_session'] = actor
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
+        c = get_object_or_404(Chat, **filters)
         c.status = Chat.ChatStatus.ARCHIVED
         c.save()
 
-        n = Chat.objects.create(
-            user=request.user,
-            bot=c.bot,
-            status=Chat.ChatStatus.ACTIVE
-        )
+        # Create new chat
+        if actor_type == 'user':
+             n = Chat.objects.create(user=actor, bot=c.bot, status=Chat.ChatStatus.ACTIVE)
+        else:
+             n = Chat.objects.create(guest_session=actor, user=None, bot=c.bot, status=Chat.ChatStatus.ACTIVE)
+
         return Response({"new_chat_id": n.id}, status=201)
 
 
 class SetActiveChatView(APIView):
     """Define um chat arquivado como ativo."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def post(self, request, chat_id):
-        c = get_object_or_404(Chat, id=chat_id, user=request.user)
+        actor_type, actor = get_actor(request)
+
+        filters = {'id': chat_id}
+        archive_filters = {'bot': None, 'status': Chat.ChatStatus.ACTIVE} # Partial
+
+        if actor_type == 'user':
+            filters['user'] = actor
+            archive_filters['user'] = actor
+        elif actor_type == 'guest':
+            filters['guest_session'] = actor
+            archive_filters['guest_session'] = actor
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
+        c = get_object_or_404(Chat, **filters)
+
+        # Update archive_filters with the bot
+        archive_filters['bot'] = c.bot
 
         # Arquivar outros chats ativos do mesmo bot
-        Chat.objects.filter(
-            user=request.user,
-            bot=c.bot,
-            status=Chat.ChatStatus.ACTIVE
-        ).update(status=Chat.ChatStatus.ARCHIVED)
+        Chat.objects.filter(**archive_filters).update(status=Chat.ChatStatus.ARCHIVED)
 
         c.status = Chat.ChatStatus.ACTIVE
         c.last_message_at = timezone.now()
@@ -567,15 +710,21 @@ class MessageFeedbackView(APIView):
     Atualiza o feedback de uma mensagem (like/dislike/null).
     Substitui o antigo MessageLikeToggleView.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def post(self, request, chat_pk, message_id):
-        m = get_object_or_404(
-            ChatMessage,
-            id=message_id,
-            chat_id=chat_pk,
-            chat__user=request.user
-        )
+        actor_type, actor = get_actor(request)
+
+        filters = {'id': message_id, 'chat_id': chat_pk}
+
+        if actor_type == 'user':
+            filters['chat__user'] = actor
+        elif actor_type == 'guest':
+            filters['chat__guest_session'] = actor
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
+
+        m = get_object_or_404(ChatMessage, **filters)
 
         feedback = request.data.get('feedback')
         if feedback not in ['like', 'dislike', None]:
@@ -593,10 +742,16 @@ class RegenerateMessageView(APIView):
     Apaga as mensagens do assistente que seguiram a última mensagem do usuário
     e gera uma nova resposta.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def post(self, request, chat_pk):
-        chat = get_object_or_404(Chat, id=chat_pk, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
 
         # Encontra a última mensagem do usuário
         last_user_msg = chat.messages.filter(role=ChatMessage.Role.USER).order_by('-created_at').first()
@@ -681,7 +836,7 @@ class CleanupFileResponse(FileResponse):
 
 class MessageTTSView(APIView):
     """Gera áudio TTS para uma mensagem específica."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get(self, request, chat_pk, message_id):
         m = get_object_or_404(
@@ -696,7 +851,9 @@ class MessageTTSView(APIView):
 
         # We don't define a path here, we let the service manage cache paths
         # Passed user for rate limiting
-        res = generate_tts_audio(m.content, voice_name="Kore", user=request.user)
+        actor_type, actor = get_actor(request)
+        # Using actor as user for rate limiting (might need adapter if guest)
+        res = generate_tts_audio(m.content, voice_name="Kore", user=actor)
 
         if res.get('success'):
             file_path = res['file_path']
@@ -720,21 +877,30 @@ class ChatSourceView(APIView):
     POST: Upload/Link a source.
     DELETE: Remove a source.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def post(self, request, chat_id):
-        chat = get_object_or_404(Chat, id=chat_id, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_id, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_id, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
 
         # 1. Create KnowledgeSource
         title = request.data.get('title', 'Chat Upload')
         source_type = request.data.get('source_type', 'FILE')
 
         source = KnowledgeSource(
-            user=request.user,
             title=title,
             source_type=source_type
         )
+        if actor_type == 'user':
+            source.user = actor
+        else:
+            source.guest_session = actor
 
         if source_type == 'FILE' and request.FILES.get('file'):
             source.file = request.FILES['file']
@@ -757,8 +923,15 @@ class ChatSourceView(APIView):
         }, status=status.HTTP_201_CREATED)
 
     def delete(self, request, chat_id, source_id):
-        chat = get_object_or_404(Chat, id=chat_id, user=request.user)
-        source = get_object_or_404(KnowledgeSource, id=source_id, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_id, user=actor)
+            source = get_object_or_404(KnowledgeSource, id=source_id, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_id, guest_session=actor)
+            source = get_object_or_404(KnowledgeSource, id=source_id, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
 
         if source in chat.sources.all():
             chat.sources.remove(source)
@@ -771,45 +944,22 @@ class ContextSourcesView(APIView):
     Retorna a lista de fontes disponíveis para um chat (documentos indexados).
     Inclui fontes da KB do bot e fontes específicas do chat.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get(self, request, chat_id):
-        chat = get_object_or_404(Chat, id=chat_id, user=request.user)
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_id, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_id, guest_session=actor)
+        else:
+             return Response({"detail": "Unauthorized"}, status=401)
 
         sources_list = []
         seen_ids = set()
 
         # Helper para formatar
         def add_source(s, origin_type, prefix):
-            # Use prefixed ID to prevent collision between ChatMessage (source) and KnowledgeSource
-            # Actually Chat.sources links to KnowledgeSource model now?
-            # Wait. Chat.sources is ManyToMany to KnowledgeSource.
-            # StudySpace.sources is ManyToMany to KnowledgeSource.
-            # THEY ARE THE SAME MODEL.
-            # KnowledgeSource IDs are unique across the table.
-            # So collisions are NOT possible between a chat source and a space source because they are the same entity type.
-            # BUT, SourceAssemblyService currently looks at ChatMessage.
-            # Does Chat.sources link to ChatMessage or KnowledgeSource?
-            # backend/chat/models.py: sources = models.ManyToManyField('studio.KnowledgeSource', ...)
-            # So they ARE KnowledgeSource.
-
-            # HOWEVER, SourceAssemblyService (read in previous step) looks at ChatMessage.objects.filter(id__in=source_ids).
-            # This is WRONG if the sources are KnowledgeSource objects.
-            # Previously, "sources" were file attachments on messages.
-            # Now, we have a distinct KnowledgeSource model.
-            # The SourceAssemblyService must be updated to look at KnowledgeSource model, NOT ChatMessage (or both if we support legacy).
-
-            # Legacy support: Messages with attachments.
-            # New support: KnowledgeSource objects.
-
-            # Let's verify what `ContextSourcesView` returns.
-            # It iterates `chat.sources.all()` -> These are KnowledgeSource.
-            # It iterates `space.sources.all()` -> These are KnowledgeSource.
-            # So the IDs are consistent (KnowledgeSource IDs).
-
-            # The PROBLEM is SourceAssemblyService is querying ChatMessage with these IDs.
-            # I need to update SourceAssemblyService to query KnowledgeSource.
-
             if s.id in seen_ids: return
             seen_ids.add(s.id)
             sources_list.append({

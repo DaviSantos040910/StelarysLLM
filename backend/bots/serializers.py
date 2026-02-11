@@ -44,7 +44,7 @@ class BotSerializer(serializers.ModelSerializer):
     study_space_ids = MultipartListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
-    owner_username = serializers.ReadOnlyField(source='owner.username')
+    owner_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Bot
@@ -55,6 +55,9 @@ class BotSerializer(serializers.ModelSerializer):
             'categories', 'category_ids', 'study_space_ids'
         )
         read_only_fields = ('owner',)
+
+    def get_owner_username(self, obj):
+        return obj.owner.username if obj.owner else "Guest"
 
     def validate_category_ids(self, value):
         if len(value) > 3:
@@ -96,7 +99,7 @@ class BotDetailSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     createdByMe = serializers.SerializerMethodField()
     settings = serializers.SerializerMethodField()
-    handle = serializers.ReadOnlyField(source='owner.username')
+    handle = serializers.SerializerMethodField()
 
     avatarUrl = serializers.ImageField(source='avatar_url', read_only=True, use_url=True)
 
@@ -139,10 +142,20 @@ class BotDetailSerializer(serializers.ModelSerializer):
             tags.append(cat.name.lower())
         return tags
 
+    def get_handle(self, obj):
+        return f"@{obj.owner.username}" if obj.owner else "@guest"
+
     def get_createdByMe(self, obj):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
+        if not request:
+            return False
+
+        if request.user and request.user.is_authenticated:
             return obj.owner == request.user
+
+        if hasattr(request, 'guest_session') and request.guest_session:
+            return obj.guest_session == request.guest_session
+
         return False
 
     def get_settings(self, obj):

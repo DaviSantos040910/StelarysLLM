@@ -20,7 +20,8 @@ class Chat(models.Model):
         ACTIVE = 'active', 'Active'
         ARCHIVED = 'archived', 'Archived'
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chats', null=True, blank=True)
+    guest_session = models.ForeignKey('accounts.GuestSession', on_delete=models.SET_NULL, null=True, blank=True, related_name='chats')
     bot = models.ForeignKey(Bot, on_delete=models.CASCADE, related_name='chats')
 
     # --- NEW: Status field to manage active vs. archived conversations ---
@@ -42,7 +43,8 @@ class Chat(models.Model):
         ordering = ['-last_message_at'] # Order chats by the most recent message
 
     def __str__(self):
-        return f"Chat {self.id} between {self.user.username} and {self.bot.name} ({self.status})"
+        owner = self.user.username if self.user else "Guest"
+        return f"Chat {self.id} between {owner} and {self.bot.name} ({self.status})"
 
 class ChatMessage(models.Model):
     """

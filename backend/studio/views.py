@@ -25,6 +25,8 @@ from studio.jobs.artifact_jobs import generate_artifact_job
 
 from .models import KnowledgeArtifact, KnowledgeSource, StudySpace
 from .serializers import KnowledgeArtifactSerializer, KnowledgeSourceSerializer, StudySpaceSerializer
+from accounts.permissions import IsUserOrGuest
+from accounts.utils import get_actor
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +36,24 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
     """
     queryset = KnowledgeSource.objects.all()
     serializer_class = KnowledgeSourceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
-        return KnowledgeSource.objects.filter(user=self.request.user).order_by('-created_at')
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return KnowledgeSource.objects.filter(user=actor).order_by('-created_at')
+        elif actor_type == 'guest':
+            return KnowledgeSource.objects.filter(guest_session=actor).order_by('-created_at')
+        return KnowledgeSource.objects.none()
 
     def perform_create(self, serializer):
+        actor_type, actor = get_actor(self.request)
+
         # Save initially
-        instance = serializer.save(user=self.request.user)
+        if actor_type == 'user':
+            instance = serializer.save(user=actor)
+        else:
+            instance = serializer.save(guest_session=actor, user=None)
 
         # Ingest using centralized service
         # bot_id=0 signifies Global/Library context
@@ -56,11 +68,16 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
         source = self.get_object()
         chat_id = request.data.get('chat_id')
 
+        actor_type, actor = get_actor(request)
+
         if not chat_id:
             return Response({"error": "chat_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            chat = Chat.objects.get(id=chat_id, user=request.user)
+            if actor_type == 'user':
+                chat = Chat.objects.get(id=chat_id, user=actor)
+            else:
+                chat = Chat.objects.get(id=chat_id, guest_session=actor)
         except Chat.DoesNotExist:
             return Response({"error": "Chat not found or access denied"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -122,14 +139,23 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
     """
     queryset = StudySpace.objects.all()
     serializer_class = StudySpaceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
-        return StudySpace.objects.filter(user=self.request.user).order_by('-created_at')
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return StudySpace.objects.filter(user=actor).order_by('-created_at')
+        elif actor_type == 'guest':
+            return StudySpace.objects.filter(guest_session=actor).order_by('-created_at')
+        return StudySpace.objects.none()
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            serializer.save(user=actor)
+        else:
+            serializer.save(guest_session=actor, user=None)
 
     @action(detail=True, methods=['post'])
     def link_bot(self, request, pk=None):
@@ -180,10 +206,14 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
         # KnowledgeSource.SourceType: FILE, URL, YOUTUBE, TEXT
 
         source = KnowledgeSource(
-            user=request.user,
             title=title,
             source_type=source_type
         )
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            source.user = actor
+        else:
+            source.guest_session = actor
 
         if source_type == 'FILE' and request.FILES.get('file'):
             source.file = request.FILES['file']
@@ -209,8 +239,13 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
         if not source_id:
             return Response({"error": "source_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        actor_type, actor = get_actor(request)
         try:
-            source = KnowledgeSource.objects.get(id=source_id, user=request.user)
+            if actor_type == 'user':
+                source = KnowledgeSource.objects.get(id=source_id, user=actor)
+            else:
+                source = KnowledgeSource.objects.get(id=source_id, guest_session=actor)
+
             space.sources.remove(source)
             return Response({"status": "removed"}, status=status.HTTP_200_OK)
         except KnowledgeSource.DoesNotExist:
@@ -222,14 +257,20 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
     """
     queryset = KnowledgeArtifact.objects.all()
     serializer_class = KnowledgeArtifactSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
         """
         Filter artifacts by user and optionally by chat_id.
         """
-        user = self.request.user
-        queryset = KnowledgeArtifact.objects.filter(chat__user=user)
+        actor_type, actor = get_actor(self.request)
+
+        if actor_type == 'user':
+            queryset = KnowledgeArtifact.objects.filter(chat__user=actor)
+        elif actor_type == 'guest':
+            queryset = KnowledgeArtifact.objects.filter(chat__guest_session=actor)
+        else:
+             return KnowledgeArtifact.objects.none()
 
         chat_id = self.request.query_params.get('chat_id')
         if chat_id:
@@ -240,7 +281,15 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Ensure the chat belongs to the user
         chat = serializer.validated_data['chat']
-        if chat.user != self.request.user:
+        actor_type, actor = get_actor(self.request)
+
+        allowed = False
+        if actor_type == 'user':
+            allowed = (chat.user == actor)
+        elif actor_type == 'guest':
+            allowed = (chat.guest_session == actor)
+
+        if not allowed:
             raise permissions.PermissionDenied("You do not have access to this chat.")
 
         # Save initially (status is PROCESSING by default in model)

@@ -5,27 +5,34 @@ from rest_framework.views import APIView
 from .models import Bot
 from .serializers import BotSerializer, BotDetailSerializer
 from chat.services import generate_suggestions_for_bot
+from accounts.permissions import IsUserOrGuest
+from accounts.utils import get_actor
 
 class BotListCreateView(generics.ListCreateAPIView):
     """
     API view for listing user's CREATED bots and creating new ones.
     """
     serializer_class = BotSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
-        return Bot.objects.filter(owner=self.request.user)
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return Bot.objects.filter(owner=actor)
+        elif actor_type == 'guest':
+            return Bot.objects.filter(guest_session=actor)
+        return Bot.objects.none()
 
     def perform_create(self, serializer):
-        # --- CORREÇÃO APLICADA AQUI ---
-        # 1. First, we save the bot and assign the owner, as before.
-        bot = serializer.save(owner=self.request.user)
+        actor_type, actor = get_actor(self.request)
 
-        # 2. Then, we automatically add the owner to the subscribers list.
-        # This ensures the created bot appears on the user's "My Bots" screen.
-        bot.subscribers.add(self.request.user)
-        # --- NOVA LÓGICA: Gerar e guardar as sugestões ---
+        if actor_type == 'user':
+            bot = serializer.save(owner=actor)
+            bot.subscribers.add(actor)
+        else:
+            bot = serializer.save(guest_session=actor, owner=None)
+
         suggestions = generate_suggestions_for_bot(bot.prompt)
         bot.suggestion1 = suggestions[0] if len(suggestions) > 0 else ""
         bot.suggestion2 = suggestions[1] if len(suggestions) > 1 else ""
@@ -37,10 +44,14 @@ class SubscribedBotListView(generics.ListAPIView):
     API view for listing the user's SUBSCRIBED bots (their collection).
     """
     serializer_class = BotSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
-        return self.request.user.subscribed_bots.all()
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return actor.subscribed_bots.all()
+        # Guests don't have subscriptions yet
+        return Bot.objects.none()
 
 class BotDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -48,7 +59,7 @@ class BotDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Bot.objects.all()
     serializer_class = BotDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
@@ -64,12 +75,16 @@ class SubscribeBotView(APIView):
     """
     API view for a user to subscribe or unsubscribe from a bot.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def post(self, request, bot_id):
+        actor_type, actor = get_actor(request)
+        if actor_type != 'user':
+             return Response({"error": "Guests cannot subscribe to bots."}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             bot = Bot.objects.get(id=bot_id)
-            user = request.user
+            user = actor
             if bot in user.subscribed_bots.all():
                 user.subscribed_bots.remove(bot)
                 return Response({"status": "unsubscribed"}, status=status.HTTP_200_OK)
