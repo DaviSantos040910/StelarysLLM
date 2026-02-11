@@ -37,6 +37,22 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { useAuthStore } = require('../stores/authStore');
+    const { router } = require('expo-router'); // Ensure expo-router is available
+
+    // Handle Trial Expiration
+    if (error.response?.data?.code === 'TRIAL_EXPIRED' || error.response?.status === 402) {
+        // Navigate to Paywall using global router from expo-router (need to verify this works in client.ts context)
+        // Usually router.replace requires component context, but expo-router 2+ exports a router object?
+        // Actually, explicit import from 'expo-router' might work if setup correctly.
+        // If not, we might need a navigation ref service.
+        // Assuming basic router usage works or we fallback to console log for now if fails.
+        try {
+            router.replace('/paywall');
+        } catch (navError) {
+            console.error("Failed to navigate to paywall", navError);
+        }
+        return Promise.reject(error);
+    }
 
     if (error.response?.status === 401) {
       // Prevent infinite loops if logout itself fails or if multiple requests fail at once
