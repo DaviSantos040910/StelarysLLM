@@ -31,9 +31,10 @@ export default function SecurityScreen() {
             await userService.changePassword({ old_password: oldPassword, new_password: newPassword });
             Alert.alert("Sucesso", "Senha alterada com sucesso!");
             router.back();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", "Senha atual incorreta ou erro no servidor.");
+            const message = error.response?.data?.detail || "Senha atual incorreta ou erro no servidor.";
+            Alert.alert("Erro", message);
         } finally {
             setIsSubmitting(false);
         }
