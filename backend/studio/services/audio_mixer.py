@@ -104,6 +104,7 @@ class AudioMixerService:
 
                     # Append to transcript
                     transcript.append({
+                        "turn_index": turn.get("turn_index", i),
                         "speaker": turn.get("speaker", "Unknown"),
                         "display_name": turn.get("display_name", turn.get("speaker", "Unknown")),
                         "text": turn.get("text", ""),

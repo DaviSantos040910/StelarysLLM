@@ -55,7 +55,8 @@ class PodcastGenerationTest(TestCase):
         artifact = KnowledgeArtifact.objects.get(title="My Podcast")
         self.assertEqual(artifact.status, KnowledgeArtifact.Status.READY)
         self.assertEqual(artifact.media_url, "/media/podcasts/test_mix.mp3")
-        self.assertEqual(len(artifact.content), 2)
+        self.assertEqual(artifact.content['schema_version'], 1)
+        self.assertIn('transcript', artifact.content)
 
         # Verifica chamadas
         mock_scripting.assert_called_once_with(
@@ -99,6 +100,7 @@ class PodcastGenerationTest(TestCase):
         self.assertEqual(transcript[0]['text'], "Hello")
         self.assertEqual(transcript[0]['start_ms'], 0)
         self.assertEqual(transcript[0]['end_ms'], 5000)
+        self.assertIn('turn_index', transcript[0])
 
         self.assertEqual(mock_tts.call_count, 2)
         mock_segment_instance.export.assert_called_once()

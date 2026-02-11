@@ -91,6 +91,7 @@ class ArtifactJobTest(TestCase):
         self.assertEqual(self.artifact.status, KnowledgeArtifact.Status.READY)
         self.assertEqual(self.artifact.media_url, "/media/podcast.mp3")
         self.assertEqual(self.artifact.content, {
+            "schema_version": 1,
             "dialogue": [{"speaker": "Host", "text": "Hello"}],
             "transcript": []
         })

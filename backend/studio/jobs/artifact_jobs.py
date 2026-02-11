@@ -109,10 +109,17 @@ def _generate_podcast(artifact, context, options):
     if isinstance(artifact.content, list):
         # Handle legacy list format: convert to dict structure
         artifact.content = {
+            "schema_version": 1,
             "dialogue": artifact.content,
-            "transcript": transcript
+            "transcript": transcript,
+            # Legacy content might miss these, but they are required by new schema
+            "episode_title": artifact.title,
+            "episode_summary": "Legacy podcast",
+            "chapters": []
         }
     elif isinstance(artifact.content, dict):
+        # Enforce V1 Schema
+        artifact.content['schema_version'] = 1
         artifact.content['transcript'] = transcript
 
 def _generate_standard_artifact(artifact, full_context, options):
