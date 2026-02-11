@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Bell,
   CreditCard,
@@ -12,7 +12,7 @@ import {
   User,
   Globe
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ActionSheetIOS, Alert, Platform, ScrollView, View, Modal, Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
@@ -36,6 +36,20 @@ export default function ProfileScreen() {
   useEffect(() => {
       setColorScheme(mode);
   }, [mode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const refreshProfile = async () => {
+        try {
+          const updatedUser = await userService.getProfile();
+          setUser(updatedUser);
+        } catch (error) {
+          console.error("Failed to refresh profile", error);
+        }
+      };
+      refreshProfile();
+    }, [setUser])
+  );
 
   const handleLogout = async () => {
     Alert.alert("Sair", "Tem certeza que deseja sair?", [

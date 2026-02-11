@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { User } from '../types';
 import { authService } from '../services/authService';
+import { userService } from '../services/userService';
 import { router } from 'expo-router';
 
 interface AuthState {
@@ -77,7 +78,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (token) {
         set({ token, isAuthenticated: true });
-        // Optionally fetch user profile here if needed
+        try {
+            const user = await userService.getProfile();
+            set({ user, isAuthenticated: true });
+        } catch (profileError) {
+             // If token is invalid/expired, clear it
+             await SecureStore.deleteItemAsync('token');
+             set({ token: null, user: null, isAuthenticated: false });
+        }
       }
     } catch (error) {
       console.error('Failed to load user', error);
