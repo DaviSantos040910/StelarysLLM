@@ -39,6 +39,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false
       });
+
+      // Automatic Guest Claim
+      const { guestId } = get();
+      if (guestId) {
+        try {
+          await authService.claimGuest(guestId);
+          console.log('Guest session claimed successfully');
+          // Optional: clear guestId from store/storage as it's merged
+          set({ guestId: null });
+          await SecureStore.deleteItemAsync('guest_id');
+        } catch (claimError) {
+          console.error('Failed to claim guest session', claimError);
+          // Do not block login, just log error
+        }
+      }
+
     } catch (error: any) {
       set({
         error: error.response?.data?.detail || 'Failed to login',

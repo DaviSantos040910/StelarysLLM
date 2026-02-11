@@ -26,6 +26,16 @@ export const authService = {
     return response.data;
   },
 
+  claimGuest: async (guestId: string): Promise<void> => {
+    // Explicitly pass X-Guest-Id because client.ts only injects it if NO token is present.
+    // Here we are logged in (have token), so we must manually attach the header.
+    await client.post('/api/v1/accounts/claim_guest/', {}, {
+      headers: {
+        'X-Guest-Id': guestId
+      }
+    });
+  },
+
   logout: async () => {
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('refresh');
