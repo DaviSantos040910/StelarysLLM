@@ -105,22 +105,27 @@ def _generate_podcast(artifact, context, options):
     rem_seconds = int(seconds % 60)
     artifact.duration = f"{minutes}:{rem_seconds:02d}"
 
-    # Inject transcript into content
-    if isinstance(artifact.content, list):
-        # Handle legacy list format: convert to dict structure
+    # 3. Assemble Final Content (Schema V1)
+    if isinstance(script, dict):
+        # New Flow
         artifact.content = {
             "schema_version": 1,
-            "dialogue": artifact.content,
-            "transcript": transcript,
-            # Legacy content might miss these, but they are required by new schema
-            "episode_title": artifact.title,
-            "episode_summary": "Legacy podcast",
-            "chapters": []
+            "episode_title": script.get("episode_title", artifact.title),
+            "episode_summary": script.get("episode_summary", ""),
+            "chapters": script.get("chapters", []),
+            "dialogue": script.get("dialogue", []),
+            "transcript": transcript
         }
-    elif isinstance(artifact.content, dict):
-        # Enforce V1 Schema
-        artifact.content['schema_version'] = 1
-        artifact.content['transcript'] = transcript
+    else:
+        # Legacy Flow Fallback
+        artifact.content = {
+            "schema_version": 1,
+            "episode_title": artifact.title,
+            "episode_summary": "Generated Podcast",
+            "chapters": [],
+            "dialogue": script if isinstance(script, list) else [],
+            "transcript": transcript
+        }
 
 def _generate_standard_artifact(artifact, full_context, options):
     client = get_ai_client()

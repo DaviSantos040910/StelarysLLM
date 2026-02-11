@@ -71,11 +71,11 @@ STYLE / FLOW
 - HOST should explain clearly and teach.
 
 LANGUAGE
-- Write in: {language if language else "infer from the SOURCE MATERIAL and TITLE"}.
+- Write in the user's language: {language if language else "infer from the SOURCE MATERIAL and TITLE"}.
 
 HOST IDENTITY
 - HOST display name MUST be exactly: "{host_display}".
-- HOST personality (follow for tone only):
+- HOST personality (tone only):
   {persona_instruction}
 
 CONTEXT
@@ -83,13 +83,11 @@ You will receive SOURCE MATERIAL. It is the ONLY allowed source for factual stat
 
 OUTPUT FORMAT (STRICT)
 - Output MUST be valid JSON that matches the provided schema.
-- schema_version must be 1.
 - Do not include markdown.
 - Do not include citations like [1].
 - Do not include any extra keys outside the schema.
-- Chapters must be 3 to 7 items and must point to valid dialogue indexes.
-- Dialogue must have 12-60 turns.
-- turn_index must start at 0 and increment sequentially.
+- Chapters must be 3 to 7 items.
+- Dialogue must include turn_index starting at 0 and increment by 1.
 
 FACT POLICY (HARD RULES — MUST FOLLOW)
 - USE ONLY THE SOURCE MATERIAL FOR FACTS.
@@ -101,7 +99,7 @@ FACT POLICY (HARD RULES — MUST FOLLOW)
 
         # 2. USER PROMPT
         user_prompt = f"""TITLE: {title}
-TARGET DURATION: {duration_constraint}
+TARGET DURATION: {duration_constraint} minutes (approximately)
 AUDIENCE: A learner studying this topic.
 
 SOURCE MATERIAL:
@@ -110,17 +108,19 @@ SOURCE MATERIAL:
 >>>
 
 TASK
-Create a podcast script JSON using the required schema:
-1) schema_version: 1
-2) episode_title: a concise title derived from the material
-3) episode_summary: 2–4 lines describing what will be covered
-4) chapters: 3–7 short chapter titles with start_turn_index pointing into dialogue
-5) dialogue: 2-speaker conversation (HOST and COHOST), where HOST teaches from the material
+Return JSON using the required schema:
+- episode_title
+- episode_summary (2–4 lines)
+- chapters (3–7 items with start_turn_index)
+- dialogue: array of turns, each with:
+  - turn_index (0..N-1)
+  - speaker ("HOST" or "COHOST")
+  - display_name (HOST={host_display}, COHOST="Co-host")
+  - text
 
-Remember:
-- HOST display_name MUST be "{host_display}"
-- COHOST display_name MUST be "Co-host"
-- If the user’s question/topic is not supported by SOURCE MATERIAL, say that clearly instead of inventing.
+IMPORTANT
+- If the topic is not supported by SOURCE MATERIAL, say so clearly instead of inventing.
+- Keep turns short and natural.
 """
 
         try:
