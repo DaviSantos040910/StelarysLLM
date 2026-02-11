@@ -5,18 +5,19 @@ from bots.models import Bot, Category
 from bots.serializers import BotSerializer, CategorySerializer
 from .models import SearchHistory
 from .serializers import SearchHistorySerializer
-from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsUserOrGuest
+from accounts.utils import get_actor
 
 class ExploreCategoryListView(generics.ListAPIView):
     """View to list all categories for the explore screen."""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
 class ExploreBotListView(generics.ListAPIView):
     """View to list public bots, optionally filtered by category or search term."""
     serializer_class = BotSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
         # Start with only public bots
@@ -40,26 +41,50 @@ class ExploreBotListView(generics.ListAPIView):
 class SearchHistoryView(generics.ListCreateAPIView):
     """View to manage a user's search history."""
     serializer_class = SearchHistorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
-        return SearchHistory.objects.filter(user=self.request.user)[:5]
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return SearchHistory.objects.filter(user=actor)[:5]
+        elif actor_type == 'guest':
+            return SearchHistory.objects.filter(guest_session=actor)[:5]
+        return SearchHistory.objects.none()
 
     def perform_create(self, serializer):
+        actor_type, actor = get_actor(self.request)
         term = serializer.validated_data['term']
-        obj, created = SearchHistory.objects.update_or_create(
-            user=self.request.user, term=term,
-            defaults={'timestamp': serializer.validated_data.get('timestamp')}
-        )
+
+        defaults = {'timestamp': serializer.validated_data.get('timestamp')}
+
+        if actor_type == 'user':
+            SearchHistory.objects.update_or_create(
+                user=actor, term=term,
+                defaults=defaults
+            )
+        else:
+            SearchHistory.objects.update_or_create(
+                guest_session=actor, term=term,
+                defaults=defaults
+            )
 
     def delete(self, request, *args, **kwargs):
-        SearchHistory.objects.filter(user=self.request.user).delete()
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            SearchHistory.objects.filter(user=actor).delete()
+        elif actor_type == 'guest':
+            SearchHistory.objects.filter(guest_session=actor).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SearchHistoryDetailView(generics.DestroyAPIView):
     """View to delete a specific search history item."""
     serializer_class = SearchHistorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsUserOrGuest]
 
     def get_queryset(self):
-        return SearchHistory.objects.filter(user=self.request.user)
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return SearchHistory.objects.filter(user=actor)
+        elif actor_type == 'guest':
+            return SearchHistory.objects.filter(guest_session=actor)
+        return SearchHistory.objects.none()
