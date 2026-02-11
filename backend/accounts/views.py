@@ -5,6 +5,7 @@ from django.utils.encoding import force_bytes, force_str
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import RegisterSerializer, UserSerializer
 from .tokens import email_verification_token
 from .utils import send_verification_email, send_email
@@ -101,20 +102,21 @@ class LoginView(APIView):
         return Response({
             "token": access,
             "refresh": str(refresh),
-            "user": UserSerializer(user).data
+            "user": UserSerializer(user, context={'request': request}).data
         })
 
 
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     def patch(self, request):
         user = request.user
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        serializer = UserSerializer(user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
