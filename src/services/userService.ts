@@ -28,13 +28,11 @@ export const userService = {
             formData.append('avatar', {
                 uri: data.avatar.uri,
                 name: data.avatar.name || 'avatar.jpg',
-                type: data.avatar.mimeType || 'image/jpeg',
+                type: data.avatar.type || 'image/jpeg',
             } as any);
         }
 
-        const response = await client.patch<User>('/api/v1/accounts/me/', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const response = await client.patch<User>('/api/v1/accounts/me/', formData);
         return response.data;
     },
 
