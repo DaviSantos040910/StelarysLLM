@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
+import { useAppStore } from '../src/stores/appStore';
 import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 import { useThemeStore } from '../src/stores/themeStore';
 import { useColorScheme } from 'nativewind';
@@ -11,7 +12,8 @@ import { themeClasses } from '../src/theme/classes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
-  const { loadUser, isAuthenticated, isLoading } = useAuthStore();
+  const { loadUser, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { checkOnboarding, hasSeenOnboarding, isLoading: isAppLoading } = useAppStore();
   const { mode } = useThemeStore();
   const { setColorScheme } = useColorScheme();
 
@@ -24,6 +26,7 @@ export default function RootLayout() {
   // Initial load
   useEffect(() => {
     loadUser();
+    checkOnboarding();
     setColorScheme(mode);
   }, []);
 
@@ -41,16 +44,29 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isNavigationReady) return;
-    if (isLoading) return;
+    if (isAuthLoading || isAppLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboarding = segments[0] === 'onboarding';
 
-    if (isAuthenticated && inAuthGroup) {
-      router.replace('/(tabs)'); 
-    } else if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
+    if (!hasSeenOnboarding && !inOnboarding) {
+        // Force onboarding if not seen
+        router.replace('/onboarding');
+        return;
     }
-  }, [isAuthenticated, segments, isLoading, isNavigationReady]);
+
+    if (hasSeenOnboarding) {
+        if (isAuthenticated && inAuthGroup) {
+            // Logged in user trying to access auth pages -> redirect to home
+            router.replace('/(tabs)');
+        }
+        // Guest mode support:
+        // If !isAuthenticated, we do NOT force login anymore.
+        // We allow access to (tabs) or other routes.
+        // If user explicitly navigates to (auth), we allow it (handled by UI).
+    }
+
+  }, [isAuthenticated, segments, isAuthLoading, isAppLoading, isNavigationReady, hasSeenOnboarding]);
 
   // Determine status bar style based on theme mode
   const statusBarStyle = mode === 'dark' ? 'light' : (mode === 'light' ? 'dark' : 'auto');
@@ -95,7 +111,7 @@ export default function RootLayout() {
         <StatusBar style={statusBarStyle} backgroundColor={backgroundColor} />
 
         {/* Loading Overlay */}
-        {isLoading && (
+        {(isAuthLoading || isAppLoading) && (
           <View className={`absolute inset-0 z-50 justify-center items-center ${themeClasses.screen}`}>
             <ActivityIndicator size="large" color="#818cf8" />
           </View>
