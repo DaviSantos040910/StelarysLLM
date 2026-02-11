@@ -26,7 +26,8 @@ import { userService } from '../../src/services/userService';
 
 const FEATURES = {
   language: false,
-  notifications: false
+  notifications: false,
+  legal: false
 };
 
 export default function ProfileScreen() {
@@ -153,16 +154,20 @@ export default function ProfileScreen() {
                 label="Ajuda e Suporte"
                 onPress={() => Alert.alert("Suporte", "Entre em contato: suporte@stelarys.com")}
             />
-            <SettingsItem
-                icon={Shield}
-                label="Política de Privacidade"
-                onPress={() => {}}
-            />
-            <SettingsItem
-                icon={FileText}
-                label="Termos de Uso"
-                onPress={() => {}}
-            />
+            {FEATURES.legal && (
+                <>
+                    <SettingsItem
+                        icon={Shield}
+                        label="Política de Privacidade"
+                        onPress={() => {}}
+                    />
+                    <SettingsItem
+                        icon={FileText}
+                        label="Termos de Uso"
+                        onPress={() => {}}
+                    />
+                </>
+            )}
         </SettingsSection>
 
         <SettingsSection title="Zona de Perigo">
