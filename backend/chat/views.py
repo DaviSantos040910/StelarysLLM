@@ -365,7 +365,7 @@ class StreamChatMessageView(View):
                 if session.is_active:
                     # Optionally check expiry
                     if session.trial_expires_at and session.trial_expires_at < timezone.now():
-                        return None
+                        return ('expired', None)
                     return ('guest', session)
             except (ValueError, GuestSession.DoesNotExist):
                 pass
@@ -376,6 +376,13 @@ class StreamChatMessageView(View):
         """Processa POST request e retorna SSE stream."""
         # 1. Autenticação manual
         auth_result = self._authenticate(request)
+
+        if auth_result and auth_result[0] == 'expired':
+             return JsonResponse(
+                {"detail": "Trial expired", "code": "TRIAL_EXPIRED"},
+                status=402
+            )
+
         if not auth_result:
             return JsonResponse(
                 {"detail": "Authentication credentials were not provided."},

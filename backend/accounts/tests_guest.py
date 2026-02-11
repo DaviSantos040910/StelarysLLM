@@ -50,7 +50,7 @@ class GuestModeTests(TestCase):
 
     def test_guest_expired_session(self):
         """
-        Verify that expired guest session gets 403 TRIAL_EXPIRED.
+        Verify that expired guest session gets 402 TRIAL_EXPIRED.
         """
         # Create session manually and expire it
         session = GuestSession.objects.create(id=self.guest_id)
@@ -60,7 +60,7 @@ class GuestModeTests(TestCase):
         url = '/api/v1/bots/'
         response = self.client.get(url, **self.headers)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 402)
         # Check error code if available in detail
         # APIException responses usually have { "detail": "...", "code": "..." } or just detail.
         # But I used default_code in APIException.

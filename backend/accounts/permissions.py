@@ -3,7 +3,7 @@ from rest_framework.exceptions import PermissionDenied, APIException
 from django.utils import timezone
 
 class TrialExpired(APIException):
-    status_code = 403
+    status_code = 402
     default_detail = 'Trial expired'
     default_code = 'TRIAL_EXPIRED'
 
