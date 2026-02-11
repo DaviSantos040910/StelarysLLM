@@ -24,6 +24,11 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { useThemeStore } from '../../src/stores/themeStore';
 import { userService } from '../../src/services/userService';
 
+const FEATURES = {
+  language: false,
+  notifications: false
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, setUser } = useAuthStore();
@@ -109,13 +114,15 @@ export default function ProfileScreen() {
                 color="#818cf8"
             />
             {/* Placeholder for Language */}
-            <SettingsItem
-                icon={Globe}
-                label="Idioma"
-                value="Português"
-                onPress={() => {}}
-                color="#34d399"
-            />
+            {FEATURES.language && (
+                <SettingsItem
+                    icon={Globe}
+                    label="Idioma"
+                    value="Português"
+                    onPress={() => {}}
+                    color="#34d399"
+                />
+            )}
         </SettingsSection>
 
         <SettingsSection title="Conta">
@@ -129,13 +136,15 @@ export default function ProfileScreen() {
                 label="Segurança"
                 onPress={() => router.push('/profile/security')}
             />
-            <SettingsItem
-                icon={Bell}
-                label="Notificações"
-                isSwitch
-                switchValue={true} // Mock for now
-                onSwitchChange={() => {}}
-            />
+            {FEATURES.notifications && (
+                <SettingsItem
+                    icon={Bell}
+                    label="Notificações"
+                    isSwitch
+                    switchValue={true} // Mock for now
+                    onSwitchChange={() => {}}
+                />
+            )}
         </SettingsSection>
 
         <SettingsSection title="Suporte">
