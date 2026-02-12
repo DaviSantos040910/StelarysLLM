@@ -1,7 +1,24 @@
 from rest_framework.authentication import BaseAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
 from django.contrib.auth.models import AnonymousUser
 from .models import GuestSession
 import uuid
+
+class LenientJWTAuthentication(JWTAuthentication):
+    """
+    Extends JWTAuthentication to allow fallback to GuestAuthentication
+    if the JWT is invalid but a Guest ID is present.
+    """
+    def authenticate(self, request):
+        try:
+            return super().authenticate(request)
+        except (InvalidToken, AuthenticationFailed) as e:
+            # If X-Guest-Id is present, suppress the error so GuestAuthentication can run.
+            if request.headers.get('X-Guest-Id'):
+                return None
+            # Otherwise, raise the error as usual (blocked).
+            raise e
 
 class GuestAuthentication(BaseAuthentication):
     """
