@@ -5,6 +5,13 @@ import { User } from '../types';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { router } from 'expo-router';
+// We replicate isLikelyJwt logic or import it (circular dependency risk if imported from client.ts which imports store)
+// Safe to duplicate small helper
+const isLikelyJwt = (token: string | null): boolean => {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every(p => p.length > 0);
+};
 
 interface AuthState {
   user: User | null;
@@ -103,7 +110,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ guestId });
 
       // 2. Handle User Token
-      const token = await SecureStore.getItemAsync('token');
+      let token = await SecureStore.getItemAsync('token');
+
+      // Hardening: Validate token format before trusting it
+      if (token && !isLikelyJwt(token)) {
+          await SecureStore.deleteItemAsync('token');
+          token = null;
+      }
 
       if (token) {
         set({ token, isAuthenticated: true });
