@@ -49,6 +49,27 @@ image_service = ImageGenerationService()
 
 # Helper functions removed to avoid duplication with strict_boundary
 
+def normalize_available_docs(docs: list) -> list:
+    """
+    Normaliza a lista de documentos disponíveis para uma lista de strings (nomes).
+    Aceita lista de dicts (com chaves 'source' ou 'title') ou lista de strings.
+    """
+    if not docs:
+        return []
+
+    normalized = []
+    for d in docs:
+        if isinstance(d, dict):
+            name = d.get('source') or d.get('title')
+            if name:
+                normalized.append(str(name))
+        elif isinstance(d, str):
+            if d.strip():
+                normalized.append(d)
+        else:
+            normalized.append(str(d))
+
+    return sorted(list(set(normalized))) # Remove duplicates and sort
 
 def _calculate_metrics(response_text: str, context_sources: list) -> dict:
     """Calcula métricas de cobertura de fontes na resposta."""
@@ -286,7 +307,7 @@ def get_ai_response(
                 doc_contexts=formatted_doc_contexts,
                 memory_contexts=memory_contexts,
                 current_time=current_time_str,
-                available_docs=available_doc_names,
+                available_docs=normalize_available_docs(available_doc_names),
                 allow_web_search=allow_web_search,
                 strict_context=strict_context
             )
@@ -551,7 +572,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 doc_contexts=formatted_doc_contexts,
                 memory_contexts=[], # Memory fetch inside strict boundary if needed, or here
                 current_time=current_time_str,
-                available_docs=[d['source'] for d in available_docs],
+                available_docs=normalize_available_docs(available_docs),
                 allow_web_search=False,
                 strict_context=True
             )
@@ -695,7 +716,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 doc_contexts=formatted_doc_contexts,
                 memory_contexts=memory_contexts,
                 current_time=current_time_str,
-                available_docs=[d['source'] for d in available_docs],
+                available_docs=normalize_available_docs(available_docs),
                 allow_web_search=allow_web_search,
                 strict_context=False
             )
