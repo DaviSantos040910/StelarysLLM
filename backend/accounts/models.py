@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -25,7 +26,9 @@ class GuestSession(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.trial_expires_at:
-            self.trial_expires_at = timezone.now() + timedelta(days=3)
+            # Use configured trial duration (default 3 days = 4320 minutes)
+            minutes = getattr(settings, 'GUEST_TRIAL_MINUTES', 4320)
+            self.trial_expires_at = timezone.now() + timedelta(minutes=minutes)
         super().save(*args, **kwargs)
 
     def __str__(self):

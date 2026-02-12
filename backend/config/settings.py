@@ -200,3 +200,7 @@ RQ_QUEUES = {
         'DEFAULT_TIMEOUT': 360,
     },
 }
+
+# --- Guest Mode Configuration ---
+# Duração do trial do guest em minutos. Default: 3 dias (4320 minutos).
+GUEST_TRIAL_MINUTES = int(os.getenv("GUEST_TRIAL_MINUTES", "4320"))
