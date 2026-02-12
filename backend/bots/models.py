@@ -47,7 +47,7 @@ class Bot(models.Model):
     allow_web_search = models.BooleanField(default=False)
     strict_context = models.BooleanField(default=False)
 
-    publicity = models.CharField(max_length=10, choices=Publicity.choices, default=Publicity.PUBLIC)
+    publicity = models.CharField(max_length=10, choices=Publicity.choices, default=Publicity.PRIVATE)
     is_official = models.BooleanField(default=False)
     categories = models.ManyToManyField(Category, related_name='bots', blank=True)
 
