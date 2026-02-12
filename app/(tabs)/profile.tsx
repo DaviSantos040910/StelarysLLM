@@ -32,7 +32,7 @@ const FEATURES = {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, setUser } = useAuthStore();
+  const { user, logout, setUser, isAuthenticated } = useAuthStore();
   const { mode, setMode } = useThemeStore();
   const { colorScheme, setColorScheme } = useColorScheme();
 
@@ -46,6 +46,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       const refreshProfile = async () => {
+        if (!isAuthenticated) return; // Do not fetch profile for guests
         try {
           const updatedUser = await userService.getProfile();
           setUser(updatedUser);
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
         }
       };
       refreshProfile();
-    }, [setUser])
+    }, [setUser, isAuthenticated])
   );
 
   const handleLogout = async () => {
@@ -126,27 +127,47 @@ export default function ProfileScreen() {
             )}
         </SettingsSection>
 
-        <SettingsSection title="Conta">
-            <SettingsItem
-                icon={User}
-                label="Editar Perfil"
-                onPress={() => router.push('/profile/edit')}
-            />
-            <SettingsItem
-                icon={Lock}
-                label="Segurança"
-                onPress={() => router.push('/profile/security')}
-            />
-            {FEATURES.notifications && (
+        {/* Guest Mode Actions */}
+        {!isAuthenticated && (
+            <SettingsSection title="Modo Convidado">
                 <SettingsItem
-                    icon={Bell}
-                    label="Notificações"
-                    isSwitch
-                    switchValue={true} // Mock for now
-                    onSwitchChange={() => {}}
+                    icon={User}
+                    label="Criar conta agora"
+                    onPress={() => router.push('/(auth)/signup')}
+                    color="#6366f1"
                 />
-            )}
-        </SettingsSection>
+                <SettingsItem
+                    icon={LogOut}
+                    label="Já tenho conta (Entrar)"
+                    onPress={() => router.push('/(auth)/login')}
+                />
+            </SettingsSection>
+        )}
+
+        {/* Authenticated User Actions */}
+        {isAuthenticated && (
+            <SettingsSection title="Conta">
+                <SettingsItem
+                    icon={User}
+                    label="Editar Perfil"
+                    onPress={() => router.push('/profile/edit')}
+                />
+                <SettingsItem
+                    icon={Lock}
+                    label="Segurança"
+                    onPress={() => router.push('/profile/security')}
+                />
+                {FEATURES.notifications && (
+                    <SettingsItem
+                        icon={Bell}
+                        label="Notificações"
+                        isSwitch
+                        switchValue={true} // Mock for now
+                        onSwitchChange={() => {}}
+                    />
+                )}
+            </SettingsSection>
+        )}
 
         <SettingsSection title="Suporte">
             <SettingsItem
@@ -170,19 +191,21 @@ export default function ProfileScreen() {
             )}
         </SettingsSection>
 
-        <SettingsSection title="Zona de Perigo">
+        <SettingsSection title={isAuthenticated ? "Zona de Perigo" : "Sessão"}>
             <SettingsItem
                 icon={LogOut}
-                label="Sair"
+                label={isAuthenticated ? "Sair" : "Encerrar Sessão Convidado"}
                 onPress={handleLogout}
-                danger
+                danger={isAuthenticated}
             />
-            <SettingsItem
-                icon={Trash2}
-                label="Excluir Conta"
-                onPress={handleDeleteAccount}
-                danger
-            />
+            {isAuthenticated && (
+                <SettingsItem
+                    icon={Trash2}
+                    label="Excluir Conta"
+                    onPress={handleDeleteAccount}
+                    danger
+                />
+            )}
         </SettingsSection>
 
       </ScrollView>

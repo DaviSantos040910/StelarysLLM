@@ -14,13 +14,21 @@ const client = axios.create({
   },
 });
 
+// Simple JWT validation
+export const isLikelyJwt = (token: string | null): boolean => {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every(p => p.length > 0);
+};
+
 // Request Interceptor: Inject Token
 client.interceptors.request.use(
   (config) => {
     // Dynamic require to avoid circular dependency
     const { useAuthStore } = require('../stores/authStore');
     const { token, guestId } = useAuthStore.getState();
-    if (token) {
+
+    if (isLikelyJwt(token)) {
       config.headers.Authorization = `Bearer ${token}`;
     } else if (guestId) {
       config.headers['X-Guest-Id'] = guestId;
@@ -55,20 +63,25 @@ client.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Prevent infinite loops if logout itself fails or if multiple requests fail at once
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-           // Ensure we don't clear token if the request was to login!
-           // But normally 401 on other endpoints means token expired/invalid.
-           if (!error.config.url.includes('/login')) {
-               await useAuthStore.getState().logout();
-           }
-        } catch (logoutError) {
-          console.error("Logout failed during 401 handling:", logoutError);
-        } finally {
-          isRefreshing = false;
-        }
+      const token = useAuthStore.getState().token;
+
+      // Only logout if we actually sent a token that might be expired
+      // If we are guest (no token or invalid token), do NOT logout/redirect to login on 401
+      if (isLikelyJwt(token)) {
+          // Prevent infinite loops if logout itself fails or if multiple requests fail at once
+          if (!isRefreshing) {
+            isRefreshing = true;
+            try {
+               // Ensure we don't clear token if the request was to login!
+               if (!error.config.url.includes('/login')) {
+                   await useAuthStore.getState().logout();
+               }
+            } catch (logoutError) {
+              console.error("Logout failed during 401 handling:", logoutError);
+            } finally {
+              isRefreshing = false;
+            }
+          }
       }
     }
     return Promise.reject(error);

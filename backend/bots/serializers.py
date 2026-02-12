@@ -59,6 +59,17 @@ class BotSerializer(serializers.ModelSerializer):
     def get_owner_username(self, obj):
         return obj.owner.username if obj.owner else "Guest"
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        # Logic: If user is Guest (no user) OR User is not staff -> FORCE Private + Not Official
+        is_staff = request and request.user and request.user.is_authenticated and request.user.is_staff
+
+        if not is_staff:
+            attrs['publicity'] = Bot.Publicity.PRIVATE
+            attrs['is_official'] = False
+
+        return attrs
+
     def validate_category_ids(self, value):
         if len(value) > 3:
             raise serializers.ValidationError("You can select a maximum of 3 categories.")

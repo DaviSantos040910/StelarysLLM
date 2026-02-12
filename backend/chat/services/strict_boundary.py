@@ -91,8 +91,8 @@ class StrictBoundary:
 
         templates = {
             "pt": {
-                True: "{prefix}Não encontrei essa informação nas suas fontes para responder em modo restrito.\n\nPergunta: “{q}”\n\nPara eu ajudar com base nas fontes, você pode:\n- adicionar uma fonte relevante,\n- indicar onde isso aparece (arquivo/página/trecho),\n- ou reformular a pergunta usando termos presentes nos documentos.",
-                False: "{prefix}No modo restrito, eu só posso responder usando fontes.\n\nPergunta: “{q}”\n\nPara eu ajudar, adicione uma fonte (PDF, imagem, link, etc.) e tente novamente."
+                True: "Não encontrei essa informação nas suas fontes. Para eu ajudar em modo restrito, adicione uma fonte relevante ou indique onde isso aparece (página/trecho).",
+                False: "No modo restrito, eu só posso responder usando fontes. Adicione uma fonte (PDF, imagem, link) para começar."
             },
             "en": {
                 True: "{prefix}I couldn’t find this information in your sources to answer in strict mode.\n\nQuestion: “{q}”\n\nTo help based on your sources, you can:\n- add a relevant source,\n- point to where this appears (file/page/section),\n- or rephrase using terms present in the documents.",
@@ -104,16 +104,16 @@ class StrictBoundary:
             }
         }
 
-        template = templates.get(lang, templates["en"])[has_any_sources]
+        template = templates.get(lang, templates["pt"])[has_any_sources]
         return template.format(prefix=prefix, q=q_excerpt)
 
     def detect_lang(self, text: str) -> str:
         text = text.lower()
         es_markers = ["¿", "¡", "qué", "cómo", "por qué", "dónde", "fuente", "fuentes"]
         if any(m in text for m in es_markers): return "es"
-        pt_markers = ["você", "não", "por que", "onde", "fonte", "fontes", "documento", "documentos", "tutor", "quais", "quem", "qual"]
-        if any(m in text for m in pt_markers): return "pt"
-        return "en"
+        en_markers = ["you", "what", "where", "source", "why", "who", "which"]
+        if any(m in text for m in en_markers): return "en"
+        return "pt"
 
     def safe_excerpt(self, text: str, max_len: int = 120) -> str:
         if not text: return ""
