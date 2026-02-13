@@ -6,6 +6,7 @@ import { themeClasses } from '../../src/theme/classes';
 import { useColorScheme } from 'nativewind';
 import { Image } from 'expo-image';
 import { ArrowRight } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -68,6 +69,14 @@ export default function OnboardingScreen() {
   const currentSlide = slides[currentIndex];
   const bgSource = isDark ? currentSlide.imageDark : currentSlide.imageLight;
 
+  // Gradient colors for better text readability
+  // Dark mode: fade to black/dark blue at bottom
+  // Light mode: fade to white at bottom (or dark if using white text on image?)
+  // Assuming textPrimary is dark in light mode, we fade to white.
+  const gradientColors = isDark
+    ? ['transparent', 'rgba(2, 6, 23, 0.8)', '#020617'] // slate-950
+    : ['transparent', 'rgba(255, 255, 255, 0.8)', '#ffffff'];
+
   return (
     <View style={{ flex: 1 }}>
       <Image
@@ -75,6 +84,13 @@ export default function OnboardingScreen() {
         style={[StyleSheet.absoluteFillObject]}
         contentFit="cover"
         transition={200}
+      />
+
+      {/* Gradient Overlay at Bottom */}
+      <LinearGradient
+        colors={gradientColors}
+        style={[StyleSheet.absoluteFillObject, { top: '40%' }]}
+        pointerEvents="none"
       />
 
       <SafeAreaView className="flex-1 bg-transparent">
@@ -88,9 +104,8 @@ export default function OnboardingScreen() {
           className="flex-1"
         >
           {slides.map((slide) => (
-            <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-center items-center">
-              {/* Removed internal Image */}
-              <View className="flex-1 items-center justify-center pt-10 px-4">
+            <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-end pb-10">
+              <View className="items-center">
                 <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
                   {slide.title}
                 </Text>
