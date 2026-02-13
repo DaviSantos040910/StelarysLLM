@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppStore } from '../../src/stores/appStore';
 import { themeClasses } from '../../src/theme/classes';
@@ -65,77 +65,81 @@ export default function OnboardingScreen() {
   };
 
   const isDark = colorScheme === 'dark';
+  const currentSlide = slides[currentIndex];
+  const bgSource = isDark ? currentSlide.imageDark : currentSlide.imageLight;
 
   return (
-    <SafeAreaView className={`flex-1 ${themeClasses.screen}`}>
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        className="flex-1"
-      >
-        {slides.map((slide) => (
-          <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-center items-center">
-            <View className="flex-1 justify-center items-center w-full">
-              <Image
-                source={isDark ? slide.imageDark : slide.imageLight}
-                style={{ width: width * 0.8, height: width * 0.8 }}
-                contentFit="contain"
-                transition={200}
-              />
-            </View>
-            <View className="flex-1 items-center justify-start pt-10 px-4">
-              <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
-                {slide.title}
-              </Text>
-              <Text className={`text-lg text-center ${themeClasses.textSecondary} leading-6`}>
-                {slide.description}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+    <View style={{ flex: 1 }}>
+      <Image
+        source={bgSource}
+        style={[StyleSheet.absoluteFillObject]}
+        contentFit="cover"
+        transition={200}
+      />
 
-      <View className="px-6 pb-10">
-        {/* Pagination Dots */}
-        <View className="flex-row justify-center mb-8 gap-2">
-          {slides.map((_, index) => (
-            <View
-              key={index}
-              className={`h-2 rounded-full transition-all ${
-                index === currentIndex
-                  ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
-                  : 'w-2 bg-gray-300 dark:bg-gray-700'
-              }`}
-            />
+      <SafeAreaView className="flex-1 bg-transparent">
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          className="flex-1"
+        >
+          {slides.map((slide) => (
+            <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-center items-center">
+              {/* Removed internal Image */}
+              <View className="flex-1 items-center justify-center pt-10 px-4">
+                <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
+                  {slide.title}
+                </Text>
+                <Text className={`text-lg text-center ${themeClasses.textSecondary} leading-6`}>
+                  {slide.description}
+                </Text>
+              </View>
+            </View>
           ))}
-        </View>
+        </ScrollView>
 
-        {/* Buttons */}
-        <View className="gap-4">
-          <TouchableOpacity
-            onPress={handleNext}
-            className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
-          >
-            <Text className="text-white font-bold text-lg mr-2">
-              {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
-            </Text>
-            {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
-          </TouchableOpacity>
+        <View className="px-6 pb-10">
+          {/* Pagination Dots */}
+          <View className="flex-row justify-center mb-8 gap-2">
+            {slides.map((_, index) => (
+              <View
+                key={index}
+                className={`h-2 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
+                    : 'w-2 bg-gray-300 dark:bg-gray-700'
+                }`}
+              />
+            ))}
+          </View>
 
-          <TouchableOpacity
-            onPress={handleLogin}
-            className="py-3 items-center active:opacity-70"
-          >
-            <Text className="text-indigo-600 dark:text-indigo-400 font-semibold text-base">
-              Já tenho conta
-            </Text>
-          </TouchableOpacity>
+          {/* Buttons */}
+          <View className="gap-4">
+            <TouchableOpacity
+              onPress={handleNext}
+              className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
+            >
+              <Text className="text-white font-bold text-lg mr-2">
+                {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
+              </Text>
+              {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleLogin}
+              className="py-3 items-center active:opacity-70"
+            >
+              <Text className="text-indigo-600 dark:text-indigo-400 font-semibold text-base">
+                Já tenho conta
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
