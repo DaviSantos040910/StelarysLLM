@@ -25,8 +25,9 @@ export default function RootLayout() {
 
   // Initial load
   useEffect(() => {
-    loadUser();
-    checkOnboarding();
+    console.log('Starting loadUser and checkOnboarding');
+    loadUser().then(() => console.log('loadUser finished')).catch(e => console.error('loadUser failed', e));
+    checkOnboarding().then(() => console.log('checkOnboarding finished')).catch(e => console.error('checkOnboarding failed', e));
     setColorScheme(mode);
   }, []);
 

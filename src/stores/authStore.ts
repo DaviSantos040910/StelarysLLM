@@ -1,10 +1,35 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { router } from 'expo-router';
+
+// Helper to handle storage across platforms
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.setItem(key, value);
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  deleteItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.removeItem(key);
+    }
+    return SecureStore.deleteItemAsync(key);
+  }
+};
+
 // We replicate isLikelyJwt logic or import it (circular dependency risk if imported from client.ts which imports store)
 // Safe to duplicate small helper
 const isLikelyJwt = (token: string | null): boolean => {
@@ -55,7 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.log('Guest session claimed successfully');
           // Optional: clear guestId from store/storage as it's merged
           set({ guestId: null });
-          await SecureStore.deleteItemAsync('guest_id');
+          await storage.deleteItem('guest_id');
         } catch (claimError) {
           console.error('Failed to claim guest session', claimError);
           // Do not block login, just log error
@@ -102,19 +127,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       // 1. Handle Guest ID
-      let guestId = await SecureStore.getItemAsync('guest_id');
+      let guestId = await storage.getItem('guest_id');
       if (!guestId) {
         guestId = Crypto.randomUUID();
-        await SecureStore.setItemAsync('guest_id', guestId);
+        await storage.setItem('guest_id', guestId);
       }
       set({ guestId });
 
       // 2. Handle User Token
-      let token = await SecureStore.getItemAsync('token');
+      let token = await storage.getItem('token');
 
       // Hardening: Validate token format before trusting it
       if (token && !isLikelyJwt(token)) {
-          await SecureStore.deleteItemAsync('token');
+          await storage.deleteItem('token');
           token = null;
       }
 
@@ -125,7 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set({ user, isAuthenticated: true });
         } catch (profileError) {
              // If token is invalid/expired, clear it
-             await SecureStore.deleteItemAsync('token');
+             await storage.deleteItem('token');
              set({ token: null, user: null, isAuthenticated: false });
         }
       }

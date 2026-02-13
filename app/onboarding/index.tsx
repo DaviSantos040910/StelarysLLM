@@ -1,19 +1,61 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppStore } from '../../src/stores/appStore';
 import { themeClasses } from '../../src/theme/classes';
-import { ArrowRight, Check, BookOpen, GraduationCap, Zap } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { Image } from 'expo-image';
+import { ArrowRight } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
+
+const slides = [
+  {
+    id: 1,
+    title: 'Tutoria Inteligente',
+    description: 'Crie tutores personalizados que entendem seus arquivos e te ajudam a estudar.',
+    imageLight: require('../../src/assets/images/onboarding_1_light.png'),
+    imageDark: require('../../src/assets/images/onboarding_1_dark.png'),
+  },
+  {
+    id: 2,
+    title: 'Gere Conteúdo Automático',
+    description: 'Transforme PDFs e links em Quizzes, Flashcards e Resumos instantaneamente.',
+    imageLight: require('../../src/assets/images/onboarding_2_light.png'),
+    imageDark: require('../../src/assets/images/onboarding_2_dark.png'),
+  },
+  {
+    id: 3,
+    title: 'Aprenda em Qualquer Lugar',
+    description: 'Ouça seus resumos em formato de Podcast e estude onde estiver.',
+    imageLight: require('../../src/assets/images/onboarding_3_light.png'),
+    imageDark: require('../../src/assets/images/onboarding_3_dark.png'),
+  },
+];
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { setHasSeenOnboarding } = useAppStore();
-  const [step, setStep] = useState(1);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const { colorScheme } = useColorScheme();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const handleFinish = async () => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / width);
+    setCurrentIndex(index);
+  };
+
+  const handleNext = () => {
+    if (currentIndex < slides.length - 1) {
+      scrollViewRef.current?.scrollTo({ x: (currentIndex + 1) * width, animated: true });
+    } else {
+      handleFinishGuest();
+    }
+  };
+
+  const handleFinishGuest = async () => {
     await setHasSeenOnboarding(true);
-    // Proceed as Guest
     router.replace('/(tabs)');
   };
 
@@ -22,129 +64,73 @@ export default function OnboardingScreen() {
     router.push('/(auth)/login');
   };
 
-  const templates = [
-    { id: '1', name: 'Tutor Socrático', icon: GraduationCap, desc: 'Aprenda fazendo perguntas.' },
-    { id: '2', name: 'Resumidor Rápido', icon: Zap, desc: 'Resumos diretos ao ponto.' },
-    { id: '3', name: 'Explorador de Arquivos', icon: BookOpen, desc: 'Analise seus PDFs profundamente.' },
-  ];
+  const isDark = colorScheme === 'dark';
 
   return (
     <SafeAreaView className={`flex-1 ${themeClasses.screen}`}>
-      <View className="flex-1 px-6 py-8 justify-between">
-
-        {/* Content */}
-        <View className="flex-1">
-          {/* Header Progress */}
-          <View className="flex-row gap-2 mb-8">
-            {[1, 2, 3].map(i => (
-              <View key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-800'}`} />
-            ))}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        className="flex-1"
+      >
+        {slides.map((slide) => (
+          <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-center items-center">
+            <View className="flex-1 justify-center items-center w-full">
+              <Image
+                source={isDark ? slide.imageDark : slide.imageLight}
+                style={{ width: width * 0.8, height: width * 0.8 }}
+                contentFit="contain"
+                transition={200}
+              />
+            </View>
+            <View className="flex-1 items-center justify-start pt-10 px-4">
+              <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
+                {slide.title}
+              </Text>
+              <Text className={`text-lg text-center ${themeClasses.textSecondary} leading-6`}>
+                {slide.description}
+              </Text>
+            </View>
           </View>
+        ))}
+      </ScrollView>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {step === 1 && (
-              <View className="space-y-6">
-                <Text className={`text-3xl font-bold ${themeClasses.textPrimary}`}>
-                  Bem-vindo ao Stelarys
-                </Text>
-                <Text className={`text-lg ${themeClasses.textSecondary}`}>
-                  Sua plataforma de aprendizado assistida por Inteligência Artificial.
-                </Text>
-                <View className="space-y-4 mt-4">
-                  <View className="flex-row items-center gap-4">
-                    <View className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 justify-center items-center">
-                      <GraduationCap size={20} className="text-indigo-600 dark:text-indigo-400" />
-                    </View>
-                    <Text className={`flex-1 ${themeClasses.textSecondary}`}>Crie Tutores Personalizados</Text>
-                  </View>
-                  <View className="flex-row items-center gap-4">
-                    <View className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 justify-center items-center">
-                      <BookOpen size={20} className="text-emerald-600 dark:text-emerald-400" />
-                    </View>
-                    <Text className={`flex-1 ${themeClasses.textSecondary}`}>Estude com seus próprios arquivos (RAG)</Text>
-                  </View>
-                  <View className="flex-row items-center gap-4">
-                    <View className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900 justify-center items-center">
-                      <Zap size={20} className="text-amber-600 dark:text-amber-400" />
-                    </View>
-                    <Text className={`flex-1 ${themeClasses.textSecondary}`}>Gere Quizzes e Flashcards automaticamente</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {step === 2 && (
-              <View className="space-y-6">
-                <Text className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
-                  Escolha seu primeiro Tutor
-                </Text>
-                <Text className={`${themeClasses.textSecondary}`}>
-                  Comece com um template pronto. Você pode personalizar depois.
-                </Text>
-                <View className="space-y-3 mt-2">
-                  {templates.map(t => (
-                    <TouchableOpacity
-                      key={t.id}
-                      onPress={() => setSelectedTemplate(t.id)}
-                      className={`p-4 rounded-xl border ${selectedTemplate === t.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'}`}
-                    >
-                      <View className="flex-row items-center gap-3">
-                        <t.icon size={24} className={selectedTemplate === t.id ? 'text-indigo-500' : 'text-gray-500'} />
-                        <View className="flex-1">
-                          <Text className={`font-semibold ${themeClasses.textPrimary}`}>{t.name}</Text>
-                          <Text className={`text-sm ${themeClasses.textMuted}`}>{t.desc}</Text>
-                        </View>
-                        {selectedTemplate === t.id && <Check size={20} className="text-indigo-500" />}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {step === 3 && (
-              <View className="space-y-6">
-                <Text className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
-                  Adicione conhecimento
-                </Text>
-                <Text className={`${themeClasses.textSecondary}`}>
-                  Opcional: Envie um PDF ou link para seu tutor estudar agora.
-                </Text>
-
-                <View className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl h-40 justify-center items-center bg-gray-50 dark:bg-gray-900/50">
-                  <Text className={`text-center ${themeClasses.textMuted}`}>
-                    (Simulação de Upload)
-                  </Text>
-                  <Text className={`text-center mt-2 ${themeClasses.textSecondary} opacity-60`}>
-                    Toque para selecionar um arquivo
-                  </Text>
-                </View>
-              </View>
-            )}
-          </ScrollView>
+      <View className="px-6 pb-10">
+        {/* Pagination Dots */}
+        <View className="flex-row justify-center mb-8 gap-2">
+          {slides.map((_, index) => (
+            <View
+              key={index}
+              className={`h-2 rounded-full transition-all ${
+                index === currentIndex
+                  ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
+                  : 'w-2 bg-gray-300 dark:bg-gray-700'
+              }`}
+            />
+          ))}
         </View>
 
-        {/* Footer Actions */}
-        <View className="pt-6">
-          {step < 3 ? (
-            <TouchableOpacity
-              onPress={() => setStep(step + 1)}
-              className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30"
-            >
-              <Text className="text-white font-bold text-lg mr-2">Próximo</Text>
-              <ArrowRight size={20} color="white" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleFinish}
-              className="bg-indigo-600 py-4 rounded-full justify-center items-center shadow-lg shadow-indigo-500/30"
-            >
-              <Text className="text-white font-bold text-lg">Começar Agora (Guest)</Text>
-            </TouchableOpacity>
-          )}
+        {/* Buttons */}
+        <View className="gap-4">
+          <TouchableOpacity
+            onPress={handleNext}
+            className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
+          >
+            <Text className="text-white font-bold text-lg mr-2">
+              {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
+            </Text>
+            {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
+          </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleLogin} className="mt-4 py-3 items-center">
-            <Text className="text-indigo-600 dark:text-indigo-400 font-semibold">
+          <TouchableOpacity
+            onPress={handleLogin}
+            className="py-3 items-center active:opacity-70"
+          >
+            <Text className="text-indigo-600 dark:text-indigo-400 font-semibold text-base">
               Já tenho conta
             </Text>
           </TouchableOpacity>
