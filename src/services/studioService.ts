@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
 import apiClient, { BASE_URL } from '../api/client';
-import { useAuthStore } from '../stores/authStore';
+import { getAuthHeaders } from '../api/authHeaders';
 import { ArtifactType, KnowledgeArtifact, ContextSource, ArtifactGenerationOptions } from '../types/studio';
 
 export const studioService = {
@@ -129,16 +129,13 @@ export const studioService = {
     async exportArtifact(artifactId: number, format: string): Promise<string> {
         const fileName = `artifact_${artifactId}.${format}`;
         const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
-        const token = useAuthStore.getState().token;
 
         try {
             const downloadRes = await FileSystem.downloadAsync(
                 `${BASE_URL}/api/v1/studio/artifacts/${artifactId}/export/`,
                 fileUri,
                 {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: getAuthHeaders()
                 }
             );
 

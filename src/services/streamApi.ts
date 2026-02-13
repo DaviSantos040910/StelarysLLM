@@ -1,6 +1,6 @@
 // src/services/streamApi.ts
 import EventSource, { EventSourceListener } from "react-native-sse";
-import { useAuthStore } from '../stores/authStore';
+import { getAuthHeaders } from '../api/authHeaders';
 import { BASE_URL } from '../api/client';
 import { SourceRef } from "../types/chat";
 
@@ -27,10 +27,10 @@ export const streamMessage = async (
     content: string,
     callbacks: StreamCallbacks
 ): Promise<(() => void) | undefined> => {
-    const token = useAuthStore.getState().token;
+    const authHeaders = getAuthHeaders();
 
-    if (!token) {
-        callbacks.onError(new Error('Authentication failed: No token'));
+    if (!authHeaders.Authorization && !authHeaders['X-Guest-Id']) {
+        callbacks.onError(new Error('Authentication failed: No token or guest session'));
         return undefined;
     }
 
@@ -41,8 +41,8 @@ export const streamMessage = async (
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',
+            ...authHeaders,
         },
         body: JSON.stringify({ content }),
         pollingInterval: 0,

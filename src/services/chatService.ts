@@ -1,5 +1,5 @@
 import apiClient, { BASE_URL } from '../api/client';
-import { useAuthStore } from '../stores/authStore';
+import { getAuthHeaders } from '../api/authHeaders';
 import { Message, ChatListItem, ChatSource } from '../types/chat';
 
 interface PaginatedResponse<T> {
@@ -8,13 +8,6 @@ interface PaginatedResponse<T> {
     previous: string | null;
     results: T[];
 }
-
-const getHeaders = async () => {
-    const token = useAuthStore.getState().token;
-    return {
-        'Authorization': `Bearer ${token}`,
-    };
-};
 
 export const chatService = {
   getMessages: async (chatId: string | number): Promise<Message[]> => {
@@ -43,12 +36,10 @@ export const chatService = {
     }
     formData.append('reply_with_audio', 'false');
 
-    const headers = await getHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/voice-message/`, {
         method: 'POST',
-        headers: {
-            ...headers,
-        },
+        headers,
         body: formData as any,
     });
 
@@ -65,12 +56,10 @@ export const chatService = {
     } as any);
     formData.append('content', '');
 
-    const headers = await getHeaders();
+    const headers = getAuthHeaders();
     const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/messages/attach/`, {
         method: 'POST',
-        headers: {
-            ...headers,
-        },
+        headers,
         body: formData as any,
     });
 
@@ -114,12 +103,10 @@ export const chatService = {
           if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
       }
 
-      const headers = await getHeaders();
+      const headers = getAuthHeaders();
       const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/sources/`, {
           method: 'POST',
-          headers: {
-              ...headers,
-          },
+          headers,
           body: formData as any,
       });
 
@@ -160,15 +147,12 @@ export const chatService = {
     onError: (error: any) => void,
     onComplete: () => void
   ) => {
-    const headers = await getHeaders();
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
 
     try {
       const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
+        headers,
         body: JSON.stringify({ content }),
         // @ts-ignore
         reactNative: { textStreaming: true },

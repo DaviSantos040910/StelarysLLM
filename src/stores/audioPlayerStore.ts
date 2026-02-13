@@ -1,6 +1,6 @@
 import { Audio } from 'expo-av';
 import { create } from 'zustand';
-import { useAuthStore } from './authStore'; // Import auth store for headers
+import { getAuthHeaders } from '../api/authHeaders';
 
 interface AudioPlayerState {
   sound: Audio.Sound | null;
@@ -89,9 +89,8 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         playThroughEarpieceAndroid: false,
       });
 
-      // Get token for auth headers
-      const token = useAuthStore.getState().token;
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      // Get auth headers (handles user or guest)
+      const headers = getAuthHeaders();
 
       // 3. Race Condition com Timeout de 15s para evitar spinner eterno
       // IMPORTANT: shouldPlay: false to prevent ghost audio if timeout occurs

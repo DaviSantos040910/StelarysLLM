@@ -1,5 +1,5 @@
 import client from '../api/client';
-import { useAuthStore } from '../stores/authStore';
+import { getAuthHeaders } from '../api/authHeaders';
 import { ChatBootstrap } from '../types/chat';
 
 export interface CreateBotData {
@@ -57,12 +57,9 @@ export const botService = {
           } as any);
       }
 
-      const token = useAuthStore.getState().token;
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/`, {
           method: 'POST',
-          headers: {
-              'Authorization': `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: formData as any,
       });
 
@@ -128,12 +125,9 @@ export const botService = {
           } as any);
       }
 
-      const token = useAuthStore.getState().token;
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/${botId}/`, {
           method: 'PATCH',
-          headers: {
-              'Authorization': `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
           body: formData as any,
       });
 

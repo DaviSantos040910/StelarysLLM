@@ -1,13 +1,6 @@
 import apiClient, { BASE_URL } from '../api/client';
-import { useAuthStore } from '../stores/authStore';
+import { getAuthHeaders } from '../api/authHeaders';
 import { CreateSpaceParams, StudySpace } from '../types/studio';
-
-const getHeaders = async () => {
-    const token = useAuthStore.getState().token;
-    return {
-        'Authorization': `Bearer ${token}`,
-    };
-};
 
 export const libraryService = {
     async getSpaces(): Promise<StudySpace[]> {
@@ -35,13 +28,9 @@ export const libraryService = {
                 data.bot_ids.forEach(id => formData.append('bot_ids', id.toString()));
             }
 
-            const headers = await getHeaders();
             const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/`, {
                 method: 'POST',
-                headers: {
-                    ...headers,
-                    // Content-Type must be undefined for FormData
-                },
+                headers: getAuthHeaders(),
                 body: formData as any,
             });
 
@@ -79,12 +68,9 @@ export const libraryService = {
             if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
         }
 
-        const headers = await getHeaders();
         const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/${spaceId}/add_source/`, {
             method: 'POST',
-            headers: {
-                ...headers,
-            },
+            headers: getAuthHeaders(),
             body: formData as any,
         });
 
