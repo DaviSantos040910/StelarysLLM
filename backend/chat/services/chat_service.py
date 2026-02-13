@@ -732,6 +732,20 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                  config.tools = [types.Tool(google_search=types.GoogleSearch())]
 
             prompt_text = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
+
+            # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
+            if not strict_context and not doc_contexts and allow_web_search:
+                prompt_text = (
+                    f"{user_message_text}\n\n"
+                    "Responda normalmente com base em conhecimento geral.\n\n"
+                    "Ao final da resposta, adicione exatamente o seguinte aviso:\n"
+                    "---\n"
+                    "Nota: Não encontrei informações sobre isso nas suas fontes. "
+                    "A resposta acima foi gerada com base em conhecimento geral.\n"
+                    "O aviso deve aparecer SOMENTE no final da resposta.\n\n"
+                    "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
+                )
+
             contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
 
             # STREAM CALL
@@ -776,18 +790,6 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             if buffer and not is_collecting_suggestions:
                 full_clean_content += buffer
                 yield f"data: {json.dumps({'type': 'chunk', 'text': buffer})}\n\n"
-
-            # --- MIXED MODE DISCLAIMER (STREAMING) ---
-            # If strict is OFF, web is ON, and NO doc contexts were used, append disclaimer.
-            # We assume "no doc contexts" if source_map is empty or doc_contexts was empty.
-            if not strict_context and allow_web_search and not doc_contexts:
-                # Check if citations were used in the stream (unlikely if no doc_contexts, but safe check)
-                has_citation = bool(re.search(r'\[\d+\]', full_clean_content))
-                if not has_citation:
-                    disclaimer = "\n\n---\nNota sobre fontes: não encontrei essa informação nas suas fontes; a resposta acima foi gerada fora do contexto dos documentos."
-                    full_clean_content += disclaimer
-                    yield f"data: {json.dumps({'type': 'chunk', 'text': disclaimer})}\n\n"
-                    logger.info("[Stream] Mixed Mode: Appended source disclaimer.")
 
             final_suggestions = []
             if suggestions_json_str:
