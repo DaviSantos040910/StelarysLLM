@@ -79,6 +79,14 @@ export default function OnboardingScreen() {
     ? ['transparent', 'rgba(2, 6, 23, 0.8)', '#020617'] // slate-950
     : ['transparent', 'rgba(255, 255, 255, 0.8)', '#ffffff'];
 
+  // Glass card styles
+  const glassStyle = {
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : 'rgba(255, 255, 255, 0.85)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)',
+    borderWidth: 1,
+    borderRadius: 24,
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <Image
@@ -107,7 +115,10 @@ export default function OnboardingScreen() {
         >
           {slides.map((slide) => (
             <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-end pb-48">
-              <View className="items-center">
+              <View
+                className="items-center p-6"
+                style={glassStyle}
+              >
                 <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
                   {slide.title}
                 </Text>
