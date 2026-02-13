@@ -341,6 +341,20 @@ def get_ai_response(
             except Exception: pass
 
         final_user_prompt = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
+
+        # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
+        if not strict_context and not doc_contexts and allow_web_search:
+            final_user_prompt = (
+                f"{user_message_text}\n\n"
+                "Responda normalmente com base em conhecimento geral.\n\n"
+                "Ao final da resposta, adicione exatamente o seguinte aviso:\n"
+                "---\n"
+                "Nota: Não encontrei informações sobre isso nas suas fontes. "
+                "A resposta acima foi gerada com base em conhecimento geral.\n"
+                "O aviso deve aparecer SOMENTE no final da resposta.\n\n"
+                "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
+            )
+
         input_parts.append({"text": final_user_prompt})
         contents = gemini_history + [{"role": "user", "parts": input_parts}]
 
@@ -362,20 +376,6 @@ def get_ai_response(
                 result_data = _parse_ai_response(refusal_text)
                 # Clear citations legend logic triggers below since content changed
                 source_map = {} 
-
-        # --- MIXED MODE DISCLAIMER (Strict OFF + Web ON + No Context) ---
-        # If the answer was generated without context in mixed mode, append a disclaimer.
-        if not strict_context and allow_web_search and not doc_contexts and result_data['content']:
-            has_citation = bool(re.search(r'\[\d+\]', result_data['content']))
-            if not has_citation: # Only append if no sources were cited (just to be safe)
-                disclaimer = "\n\n---\nNota sobre fontes: não encontrei essa informação nas suas fontes; a resposta acima foi gerada fora do contexto dos documentos."
-
-                # Careful insertion before suggestions if they exist textually (though _parse_ai_response separates them)
-                # result_data['content'] is clean content without suggestions block usually if parsed correctly.
-                # However, _parse_ai_response strips explicit JSON blocks but might leave text.
-                # Since we already parsed suggestions into result_data['suggestions'], we append to content.
-                result_data['content'] += disclaimer
-                logger.info(f"[Sync] Mixed Mode: Appended source disclaimer to response.")
 
         # Build Sources list for frontend
         sources_list = []
