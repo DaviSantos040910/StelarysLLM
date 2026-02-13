@@ -7,6 +7,7 @@ import { useColorScheme } from 'nativewind';
 import { Image } from 'expo-image';
 import { ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +41,7 @@ export default function OnboardingScreen() {
   const { colorScheme } = useColorScheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -104,7 +106,7 @@ export default function OnboardingScreen() {
           className="flex-1"
         >
           {slides.map((slide) => (
-            <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-end pb-10">
+            <View key={slide.id} style={{ width }} className="flex-1 px-6 justify-end pb-48">
               <View className="items-center">
                 <Text className={`text-3xl font-bold text-center mb-4 ${themeClasses.textPrimary}`}>
                   {slide.title}
@@ -116,45 +118,49 @@ export default function OnboardingScreen() {
             </View>
           ))}
         </ScrollView>
-
-        <View className="px-6 pb-10">
-          {/* Pagination Dots */}
-          <View className="flex-row justify-center mb-8 gap-2">
-            {slides.map((_, index) => (
-              <View
-                key={index}
-                className={`h-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
-                    : 'w-2 bg-gray-300 dark:bg-gray-700'
-                }`}
-              />
-            ))}
-          </View>
-
-          {/* Buttons */}
-          <View className="gap-4">
-            <TouchableOpacity
-              onPress={handleNext}
-              className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
-            >
-              <Text className="text-white font-bold text-lg mr-2">
-                {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
-              </Text>
-              {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              className="py-3 items-center active:opacity-70"
-            >
-              <Text className="text-indigo-600 dark:text-indigo-400 font-semibold text-base">
-                Já tenho conta
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </SafeAreaView>
+
+      {/* Absolute Footer */}
+      <View
+        className="absolute bottom-0 left-0 right-0 px-6"
+        style={{ paddingBottom: Math.max(insets.bottom, 24) }} // Ensure safe area + padding
+      >
+        {/* Pagination Dots */}
+        <View className="flex-row justify-center mb-8 gap-2">
+          {slides.map((_, index) => (
+            <View
+              key={index}
+              className={`h-2 rounded-full transition-all ${
+                index === currentIndex
+                  ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
+                  : 'w-2 bg-gray-300 dark:bg-gray-700'
+              }`}
+            />
+          ))}
+        </View>
+
+        {/* Buttons */}
+        <View className="gap-4">
+          <TouchableOpacity
+            onPress={handleNext}
+            className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
+          >
+            <Text className="text-white font-bold text-lg mr-2">
+              {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
+            </Text>
+            {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleLogin}
+            className="py-3 items-center active:opacity-70"
+          >
+            <Text className="text-indigo-600 dark:text-indigo-400 font-semibold text-base">
+              Já tenho conta
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
