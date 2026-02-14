@@ -40,8 +40,9 @@ class LocalStorageProvider(StorageProvider):
         full_dest_path = os.path.join(settings.MEDIA_ROOT, dest_path)
         os.makedirs(os.path.dirname(full_dest_path), exist_ok=True)
 
-        # Copy file
-        shutil.copy2(local_path, full_dest_path)
+        # Check if source and dest are the same file
+        if os.path.abspath(local_path) != os.path.abspath(full_dest_path):
+            shutil.copy2(local_path, full_dest_path)
 
         return self.get_download_url(dest_path)
 
