@@ -312,12 +312,16 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
         # Generate Real Content via RQ (Async)
         instance.stage = KnowledgeArtifact.Stage.QUEUED
         instance.correlation_id = uuid.uuid4()
+        instance.enqueued_at = timezone.now()
         instance.save()
 
         t0 = now_ms()
         try:
             job = django_rq.enqueue(generate_artifact_job, instance.id, options)
+            instance.job_id = job.id
+            instance.save(update_fields=['job_id'])
             log_perf("artifact.enqueue", instance.id, job_id=job.id, queue_name='default', elapsed_ms=ms_since(t0))
+            print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} job_id={job.id} queue=default", flush=True)
         except Exception as e:
             logger.error(f"Error enqueueing artifact generation job: {e}", exc_info=True)
             log_perf("artifact.enqueue_error", instance.id, error=str(e))

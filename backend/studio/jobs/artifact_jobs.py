@@ -18,17 +18,32 @@ from rq import get_current_job
 
 logger = logging.getLogger(__name__)
 
+def _p(msg):
+    print(msg, flush=True)
+
 @job('default', timeout=360, result_ttl=86400, retry=Retry(max=3))
 def generate_artifact_job(artifact_id, options):
     job = get_current_job()
     job_id = job.id if job else 'unknown'
+    t0 = time.perf_counter()
     t_start = now_ms()
+
+    _p(f"[JOB_START] artifact_id={artifact_id} job_id={job_id} payload_keys={list(options.keys())} elapsed_ms=0")
     log_perf("artifact.job_start", artifact_id, job_id=job_id)
 
     try:
         artifact = KnowledgeArtifact.objects.get(id=artifact_id)
+        owner_id = artifact.chat.user.id if artifact.chat.user else (artifact.chat.guest_session.id if artifact.chat.guest_session else 'unknown')
+        _p(f"[JOB_DETAILS] artifact_type={artifact.type} owner_id={owner_id} chat_id={artifact.chat.id}")
+
+        # Queue Latency
+        if artifact.enqueued_at:
+            latency_ms = int((timezone.now() - artifact.enqueued_at).total_seconds() * 1000)
+            _p(f"[QUEUE_LATENCY] artifact_id={artifact_id} job_id={job_id} queue_latency_ms={latency_ms}")
+
     except KnowledgeArtifact.DoesNotExist:
         logger.error(f"Artifact {artifact_id} not found.")
+        _p(f"[JOB_ERROR] artifact_id={artifact_id} error=Artifact not found")
         log_perf("artifact.job_error", artifact_id, job_id=job_id, error="Artifact not found")
         return
 
@@ -41,6 +56,8 @@ def generate_artifact_job(artifact_id, options):
     try:
         # 1. ASSEMBLING CONTEXT
         t_ctx = now_ms()
+        t_ctx_perf = time.perf_counter()
+        _p(f"[STEP_START] Assembling Context artifact_id={artifact_id}")
         log_perf("artifact.load_sources_start", artifact_id, job_id=job_id)
         config = {
             'selectedSourceIds': options.get('source_ids', []),
@@ -51,28 +68,46 @@ def generate_artifact_job(artifact_id, options):
             config,
             query=artifact.title
         )
+        ctx_ms = int((time.perf_counter() - t_ctx_perf) * 1000)
+        _p(f"[STEP_END] Assembling Context artifact_id={artifact_id} elapsed_ms={ctx_ms} context_len={len(full_context)}")
         log_perf("artifact.load_sources_end", artifact_id, job_id=job_id, elapsed_ms=ms_since(t_ctx), context_len=len(full_context))
 
         # 2. GENERATING CONTENT
         artifact.stage = KnowledgeArtifact.Stage.GENERATING
         artifact.save(update_fields=['stage'])
 
+        t_gen_perf = time.perf_counter()
+        _p(f"[STEP_START] Generating Content ({artifact.type}) artifact_id={artifact_id}")
+
         if artifact.type == KnowledgeArtifact.ArtifactType.PODCAST:
             _generate_podcast(artifact, full_context, options, job_id)
         else:
             _generate_standard_artifact(artifact, full_context, options, job_id)
 
+        gen_ms = int((time.perf_counter() - t_gen_perf) * 1000)
+        _p(f"[STEP_END] Generating Content artifact_id={artifact_id} elapsed_ms={gen_ms}")
+
         # 3. READY
         artifact.stage = KnowledgeArtifact.Stage.READY
         artifact.status = KnowledgeArtifact.Status.READY
         artifact.finished_at = timezone.now()
-        artifact.save(update_fields=['stage', 'status', 'finished_at', 'media_url', 'duration', 'content'])
 
-        duration = ms_since(t_start)
-        logger.info(f"[{artifact.correlation_id}] Artifact {artifact_id} generated successfully in {duration}ms")
-        log_perf("artifact.job_done", artifact_id, job_id=job_id, elapsed_ms=duration)
+        t_save_perf = time.perf_counter()
+        artifact.save(update_fields=['stage', 'status', 'finished_at', 'media_url', 'duration', 'content'])
+        save_ms = int((time.perf_counter() - t_save_perf) * 1000)
+        _p(f"[STEP_END] Save Artifact artifact_id={artifact_id} elapsed_ms={save_ms}")
+
+        total_duration = int((time.perf_counter() - t0) * 1000)
+        _p(f"[JOB_DONE] artifact_id={artifact_id} job_id={job_id} total_ms={total_duration} status=READY")
+
+        logger.info(f"[{artifact.correlation_id}] Artifact {artifact_id} generated successfully in {total_duration}ms")
+        log_perf("artifact.job_done", artifact_id, job_id=job_id, elapsed_ms=total_duration)
 
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        _p(f"[JOB_ERROR] artifact_id={artifact_id} job_id={job_id} error={str(e)}\n{tb}")
+
         logger.error(f"[{artifact.correlation_id}] Job failed for artifact {artifact_id}: {e}", exc_info=True)
         log_perf("artifact.job_error", artifact_id, job_id=job_id, error=str(e), elapsed_ms=ms_since(t_start))
         artifact.stage = KnowledgeArtifact.Stage.ERROR

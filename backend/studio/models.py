@@ -101,6 +101,8 @@ class KnowledgeArtifact(models.Model):
     )
     correlation_id = models.UUIDField(null=True, blank=True)
     attempts = models.IntegerField(default=0)
+    job_id = models.CharField(max_length=255, null=True, blank=True)
+    enqueued_at = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(null=True, blank=True)
