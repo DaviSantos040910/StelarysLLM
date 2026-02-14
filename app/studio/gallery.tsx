@@ -257,21 +257,6 @@ export default function StudioGalleryScreen() {
     };
 
     const handleArtifactPress = useCallback((item: KnowledgeArtifact) => {
-        if (item.status === 'processing') {
-            Alert.alert("Aguarde", "Este artefato ainda está sendo gerado. Por favor, aguarde.");
-            return;
-        }
-        if (item.status === 'error') {
-            Alert.alert(
-                "Erro",
-                "Falha na geração do artefato. Deseja tentar recarregar?",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Recarregar", onPress: () => loadData(true) }
-                ]
-            );
-            return;
-        }
         setSelectedArtifact(item);
     }, []);
 
@@ -279,10 +264,78 @@ export default function StudioGalleryScreen() {
         <GalleryItem item={item} index={index} onPress={handleArtifactPress} />
     ), [handleArtifactPress]);
 
+    // Polling inside viewer
+    React.useEffect(() => {
+        let pollInterval: ReturnType<typeof setInterval>;
+
+        if (selectedArtifact && selectedArtifact.status === 'processing') {
+            pollInterval = setInterval(async () => {
+                try {
+                    const updated = await studioService.getArtifact(selectedArtifact.id);
+                    // If status changed or processing details updated
+                    if (updated.status !== 'processing' || updated.stage !== selectedArtifact.stage) {
+                        setSelectedArtifact(updated);
+                        // Update in list as well
+                        setArtifacts(prev => prev.map(p => p.id === updated.id ? updated : p));
+                    }
+                } catch (e) {
+                    console.error("Polling error", e);
+                }
+            }, 2000);
+        }
+
+        return () => {
+            if (pollInterval) clearInterval(pollInterval);
+        };
+    }, [selectedArtifact]);
+
     // Render Content based on Type
     const renderViewer = () => {
         if (!selectedArtifact) return null;
 
+        // 1. Loading State
+        if (selectedArtifact.status === 'processing') {
+            return (
+                <View className={`flex-1 justify-center items-center ${themeClasses.screen}`}>
+                    <ActivityIndicator size="large" color="#818cf8" />
+                    <Text className={`${themeClasses.textPrimary} mt-4 text-lg font-medium`}>
+                        Gerando Artefato...
+                    </Text>
+                    <Text className={`${themeClasses.textMuted} mt-2 text-sm`}>
+                        Isso pode levar alguns segundos.
+                    </Text>
+                    <Pressable onPress={handleCloseViewer} className="mt-8 p-3 bg-gray-700 rounded-full">
+                        <X color="#fff" size={24} />
+                    </Pressable>
+                </View>
+            );
+        }
+
+        // 2. Error State
+        if (selectedArtifact.status === 'error') {
+            return (
+                <View className={`flex-1 justify-center items-center ${themeClasses.screen} px-6`}>
+                    <View className="bg-red-500/10 p-4 rounded-full mb-4">
+                        <X color="#ef4444" size={40} />
+                    </View>
+                    <Text className={`${themeClasses.textPrimary} text-xl font-bold text-center mb-2`}>
+                        Falha na Geração
+                    </Text>
+                    <Text className={`${themeClasses.textMuted} text-center mb-8`}>
+                        Não foi possível criar o artefato. Tente novamente mais tarde.
+                    </Text>
+
+                    <Pressable
+                        onPress={handleCloseViewer}
+                        className="bg-gray-700 py-3 px-6 rounded-xl w-full mb-3"
+                    >
+                        <Text className="text-white text-center font-bold">Fechar</Text>
+                    </Pressable>
+                </View>
+            );
+        }
+
+        // 3. Ready State
         const ViewerContent = () => {
             switch (selectedArtifact.type) {
                 case 'SLIDE': return <SlideViewer data={selectedArtifact.content as SlidePage[]} />;

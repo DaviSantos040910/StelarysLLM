@@ -68,6 +68,59 @@ export const studioService = {
         });
     },
 
+    async getArtifact(artifactId: number): Promise<KnowledgeArtifact> {
+        const response = await apiClient.get<KnowledgeArtifact>(`/api/v1/studio/artifacts/${artifactId}/`);
+        const artifact = response.data;
+
+        // Normalization logic specific to Podcast
+        if (artifact.type === 'PODCAST' && typeof artifact.content === 'object' && !Array.isArray(artifact.content)) {
+            const content = artifact.content as any;
+            const transcript = content.transcript || [];
+
+            const mappedTranscript = transcript.length > 0
+                ? transcript.map((t: any) => ({
+                    speaker: t.display_name || t.speaker || 'Host',
+                    text: t.text,
+                    start: (t.start_ms || 0) / 1000,
+                    end: (t.end_ms || 0) / 1000
+                }))
+                : (content.dialogue || []).map((d: any, i: number) => ({
+                    speaker: d.display_name || d.speaker || 'Host',
+                    text: d.text,
+                    start: i * 5,
+                    end: (i + 1) * 5
+                }));
+
+            const mappedChapters = (content.chapters || []).map((c: any) => {
+                const turnIndex = c.start_turn_index || 0;
+                let startTime = 0;
+                if (mappedTranscript.length > turnIndex) {
+                    startTime = mappedTranscript[turnIndex].start;
+                }
+                return {
+                    title: c.title,
+                    start: startTime,
+                    end: startTime + 60
+                };
+            });
+
+            for (let i = 0; i < mappedChapters.length; i++) {
+                if (i < mappedChapters.length - 1) {
+                    mappedChapters[i].end = mappedChapters[i+1].start;
+                } else if (mappedTranscript.length > 0) {
+                    mappedChapters[i].end = mappedTranscript[mappedTranscript.length - 1].end;
+                }
+            }
+
+            return {
+                ...artifact,
+                transcript: mappedTranscript,
+                chapters: mappedChapters
+            };
+        }
+        return artifact;
+    },
+
     async getSources(chatId: string): Promise<ContextSource[]> {
         try {
             // Updated URL to match nested backend route: /api/v1/chats/<id>/context-sources/
