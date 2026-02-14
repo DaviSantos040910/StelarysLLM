@@ -204,3 +204,13 @@ RQ_QUEUES = {
 # --- Guest Mode Configuration ---
 # Duração do trial do guest em minutos. Default: 3 dias (4320 minutos).
 GUEST_TRIAL_MINUTES = int(os.getenv("GUEST_TRIAL_MINUTES", "4320"))
+
+# --- Async Task Queue Configuration (Dual Backend) ---
+# 'thread' = Local Development (no Redis/Cloud required)
+# 'cloud_tasks' = Production (Google Cloud Tasks)
+QUEUE_BACKEND = os.getenv('QUEUE_BACKEND', 'thread')
+
+# Google Cloud Tasks Configuration (Required if QUEUE_BACKEND='cloud_tasks')
+GCP_PROJECT = os.getenv('GCP_PROJECT', '')
+GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
+GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')

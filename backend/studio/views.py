@@ -2,8 +2,8 @@ import io
 import json
 import logging
 import uuid
-import django_rq
 import os
+from django.utils import timezone
 from django.conf import settings
 from rest_framework import viewsets, permissions, status, parsers
 from rest_framework.decorators import action
@@ -309,7 +309,7 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             'includeChatHistory': request_config.get('includeChatHistory', False)
         }
 
-        # Generate Real Content via RQ (Async)
+        # Generate Real Content via Runner (Thread or Cloud Task)
         instance.stage = KnowledgeArtifact.Stage.QUEUED
         instance.correlation_id = uuid.uuid4()
         instance.enqueued_at = timezone.now()
@@ -317,11 +317,12 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
 
         t0 = now_ms()
         try:
-            job = django_rq.enqueue(generate_artifact_job, instance.id, options)
-            instance.job_id = job.id
-            instance.save(update_fields=['job_id'])
-            log_perf("artifact.enqueue", instance.id, job_id=job.id, queue_name='default', elapsed_ms=ms_since(t0))
-            print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} job_id={job.id} queue=default", flush=True)
+            from .runners import get_runner
+            runner = get_runner()
+            runner.dispatch(instance.id, options)
+
+            log_perf("artifact.enqueue", instance.id, backend=settings.QUEUE_BACKEND, elapsed_ms=ms_since(t0))
+            print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} backend={settings.QUEUE_BACKEND}", flush=True)
         except Exception as e:
             logger.error(f"Error enqueueing artifact generation job: {e}", exc_info=True)
             log_perf("artifact.enqueue_error", instance.id, error=str(e))
