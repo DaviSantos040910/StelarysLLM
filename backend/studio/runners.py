@@ -1,6 +1,7 @@
 import threading
 import json
 import logging
+import os
 from django.conf import settings
 from google.cloud import tasks_v2
 from studio.jobs.artifact_jobs import generate_artifact_job
@@ -69,6 +70,11 @@ class CloudTasksRunner(ArtifactRunner):
                     'body': json.dumps(payload).encode()
                 }
             }
+
+            # Add Secret Header for Security
+            secret = os.getenv('CLOUD_TASKS_SECRET')
+            if secret:
+                task['http_request']['headers']['X-CloudTasks-Secret'] = secret
 
             response = client.create_task(request={"parent": parent, "task": task})
             logger.info(f"[CloudTasksRunner] Dispatched artifact {artifact_id} to {response.name}")

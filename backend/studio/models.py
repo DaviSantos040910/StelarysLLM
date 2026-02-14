@@ -85,6 +85,9 @@ class KnowledgeArtifact(models.Model):
     # Polymorphic content (JSON structure differs by type)
     content = models.JSONField(null=True, blank=True)
 
+    # Configuration options used for generation (e.g. difficulty, source_ids)
+    options_json = models.JSONField(null=True, blank=True)
+
     # Specific fields for Podcast or other media
     media_url = models.URLField(null=True, blank=True)
     duration = models.CharField(max_length=20, null=True, blank=True) # "5:30", "10:00"

@@ -313,6 +313,7 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
         instance.stage = KnowledgeArtifact.Stage.QUEUED
         instance.correlation_id = uuid.uuid4()
         instance.enqueued_at = timezone.now()
+        instance.options_json = options
         instance.save()
 
         t0 = now_ms()
