@@ -174,7 +174,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                             status: 'sent',
                             id: safeId,
                             content: finalContent,
-                            suggestions: meta.suggestions || m.suggestions,
+                            suggestions: meta.suggestions && meta.suggestions.length > 0 ? meta.suggestions : m.suggestions,
                             sources: meta.sources || m.sources
                         };
                     }

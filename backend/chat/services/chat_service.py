@@ -764,33 +764,36 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 if not isinstance(text_chunk, str) or not text_chunk: continue
                 buffer += text_chunk
 
-                if not is_collecting_suggestions and SEPARATOR in buffer:
-                    # Valid if near end (trust unique token)
-                    # Split buffer
-                    parts = buffer.split(SEPARATOR)
-                    text_part = parts[0]
-                    suggestion_part = "".join(parts[1:])
+                # Check for separator
+                if not is_collecting_suggestions:
+                    if SEPARATOR in buffer:
+                        parts = buffer.split(SEPARATOR)
+                        text_part = parts[0]
 
-                    if text_part:
-                        full_clean_content += text_part
-                        yield f"data: {json.dumps({'type': 'chunk', 'text': text_part})}\n\n"
-                        time.sleep(CHUNK_DELAY)
+                        # Flush text part
+                        if text_part:
+                            full_clean_content += text_part
+                            yield f"data: {json.dumps({'type': 'chunk', 'text': text_part})}\n\n"
+                            time.sleep(CHUNK_DELAY)
 
-                    is_collecting_suggestions = True
-                    suggestions_json_str = suggestion_part
-                    buffer = ""
-
-                elif is_collecting_suggestions:
+                        # Start collecting suggestions
+                        is_collecting_suggestions = True
+                        suggestions_json_str = "".join(parts[1:])
+                        buffer = ""
+                    else:
+                        # Safe buffer logic
+                        if len(buffer) > SEPARATOR_LEN:
+                            safe_chunk = buffer[:-SEPARATOR_LEN]
+                            buffer = buffer[-SEPARATOR_LEN:]
+                            full_clean_content += safe_chunk
+                            yield f"data: {json.dumps({'type': 'chunk', 'text': safe_chunk})}\n\n"
+                            time.sleep(CHUNK_DELAY)
+                else:
+                    # Collecting suggestions
                     suggestions_json_str += buffer
                     buffer = ""
-                else:
-                    if len(buffer) > SEPARATOR_LEN:
-                        safe_chunk = buffer[:-SEPARATOR_LEN]
-                        buffer = buffer[-SEPARATOR_LEN:]
-                        full_clean_content += safe_chunk
-                        yield f"data: {json.dumps({'type': 'chunk', 'text': safe_chunk})}\n\n"
-                        time.sleep(CHUNK_DELAY)
 
+            # Flush remaining buffer if NOT collecting suggestions
             if buffer and not is_collecting_suggestions:
                 full_clean_content += buffer
                 yield f"data: {json.dumps({'type': 'chunk', 'text': buffer})}\n\n"
@@ -810,17 +813,18 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             final_suggestions = []
             if suggestions_json_str:
                 try:
-                    s_json = re.sub(r'^```\w*', '', suggestions_json_str, flags=re.MULTILINE)
-                    s_json = re.sub(r'\s*```$', '', s_json, flags=re.MULTILINE).strip()
-                    parsed = json.loads(s_json)
-                    if isinstance(parsed, list):
-                        final_suggestions = [str(s) for s in parsed][:3]
-                    else: raise ValueError
-                except:
-                    # Fallback for mid-stream hallucination
-                    recov = SEPARATOR + suggestions_json_str
-                    full_clean_content += recov
-                    yield f"data: {json.dumps({'type': 'chunk', 'text': recov})}\n\n"
+                    s_json = suggestions_json_str.strip()
+                    # Extract JSON array [ ... ]
+                    start_idx = s_json.find('[')
+                    end_idx = s_json.rfind(']')
+                    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                        s_json = s_json[start_idx:end_idx+1]
+                        parsed = json.loads(s_json)
+                        if isinstance(parsed, list):
+                            final_suggestions = [str(s) for s in parsed][:3]
+                except Exception as e:
+                    logger.warning(f"[Stream] Failed to parse suggestions: {e}")
+                    # Do NOT append raw string to content
 
             # Extract Sources
             final_sources_list = []
