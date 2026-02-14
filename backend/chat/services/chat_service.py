@@ -791,6 +791,18 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 full_clean_content += buffer
                 yield f"data: {json.dumps({'type': 'chunk', 'text': buffer})}\n\n"
 
+            # --- Validation: Ensure consistency in Mixed Mode ---
+            if not strict_context and not doc_contexts and allow_web_search:
+                if not full_clean_content.strip().endswith("conhecimento geral."):
+                    if "---" not in full_clean_content:
+                        disclaimer = (
+                            "\n\n---\n"
+                            "Nota: Não encontrei informações sobre isso nas suas fontes. "
+                            "A resposta acima foi gerada com base em conhecimento geral."
+                        )
+                        full_clean_content += disclaimer
+                        yield f"data: {json.dumps({'type': 'chunk', 'text': disclaimer})}\n\n"
+
             final_suggestions = []
             if suggestions_json_str:
                 try:
