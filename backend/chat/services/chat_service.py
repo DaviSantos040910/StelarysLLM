@@ -516,6 +516,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 'suggestions': [],
                 'sources': []
             }
+            # Yield full chunk before end to ensure UI updates immediately
+            yield f"data: {json.dumps({'type': 'chunk', 'text': source_text})}\n\n"
             yield f"data: {json.dumps(end_payload)}\n\n"
             return
 
@@ -546,6 +548,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 'suggestions': [],
                 'sources': []
             }
+            # Yield full chunk before end to ensure UI updates immediately
+            yield f"data: {json.dumps({'type': 'chunk', 'text': refusal_text})}\n\n"
             yield f"data: {json.dumps(end_payload)}\n\n"
             return
 
