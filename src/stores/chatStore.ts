@@ -175,7 +175,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
                             id: safeId,
                             content: finalContent,
                             suggestions: meta.suggestions && meta.suggestions.length > 0 ? meta.suggestions : m.suggestions,
-                            sources: meta.sources || m.sources
+                            sources: meta.sources || m.sources,
+                            warning: meta.warning
                         };
                     }
                     if (m.localId === userLocalId) {

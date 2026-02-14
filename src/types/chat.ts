@@ -13,6 +13,7 @@ export type Message = {
   audioUri?: string | null;
   audio_url?: string | null; // TTS URL cached from backend
   suggestions?: string[];
+  warning?: string | null; // Added warning field for mixed mode disclaimers
   sources?: SourceRef[];
   attachment_url?: string | null;
   attachment_type?: string | null;

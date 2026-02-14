@@ -741,12 +741,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             if not strict_context and not doc_contexts and allow_web_search:
                 prompt_text = (
                     f"{user_message_text}\n\n"
-                    "Responda normalmente com base em conhecimento geral.\n\n"
-                    "Ao final da resposta, adicione exatamente o seguinte aviso:\n"
-                    "---\n"
-                    "Nota: Não encontrei informações sobre isso nas suas fontes. "
-                    "A resposta acima foi gerada com base em conhecimento geral.\n"
-                    "O aviso deve aparecer SOMENTE no final da resposta.\n\n"
+                    "Responda normalmente com base em conhecimento geral.\n"
+                    "Não mencione que não encontrou fontes no texto da resposta.\n\n"
                     "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
                 )
 
@@ -798,18 +794,6 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 full_clean_content += buffer
                 yield f"data: {json.dumps({'type': 'chunk', 'text': buffer})}\n\n"
 
-            # --- Validation: Ensure consistency in Mixed Mode ---
-            if not strict_context and not doc_contexts and allow_web_search:
-                if not full_clean_content.strip().endswith("conhecimento geral."):
-                    if "---" not in full_clean_content:
-                        disclaimer = (
-                            "\n\n---\n"
-                            "Nota: Não encontrei informações sobre isso nas suas fontes. "
-                            "A resposta acima foi gerada com base em conhecimento geral."
-                        )
-                        full_clean_content += disclaimer
-                        yield f"data: {json.dumps({'type': 'chunk', 'text': disclaimer})}\n\n"
-
             final_suggestions = []
             if suggestions_json_str:
                 try:
@@ -855,12 +839,17 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             chat.last_message_at = timezone.now()
             chat.save()
 
+            warning_msg = None
+            if not strict_context and not doc_contexts and allow_web_search:
+                warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
+
             end_payload = {
                 'type': 'end',
                 'message_id': ai_message.id,
                 'clean_content': full_clean_content,
                 'suggestions': final_suggestions,
-                'sources': final_sources_list
+                'sources': final_sources_list,
+                'warning': warning_msg
             }
             yield f"data: {json.dumps(end_payload)}\n\n"
 
