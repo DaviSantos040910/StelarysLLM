@@ -76,10 +76,11 @@ class ArtifactGenerationTaskView(APIView):
             # 3. Load Options (Prefer DB, Fallback to Payload)
             options = artifact.options_json if artifact.options_json else payload_options
 
-            logger.info(f"[TaskHandler] Executing task for artifact {artifact_id}")
+            task_name = request.META.get('HTTP_X_CLOUDTASKS_TASKNAME', 'unknown_task')
+            logger.info(f"[TaskHandler] Executing task for artifact {artifact_id} (task={task_name})")
 
             # Execute the job logic synchronously
-            generate_artifact_job(artifact_id, options)
+            generate_artifact_job(artifact_id, options, job_id=task_name)
 
             return Response({"status": "executed"}, status=status.HTTP_200_OK)
 

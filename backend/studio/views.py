@@ -325,7 +325,16 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
                 instance.job_id = task_id
                 instance.save(update_fields=['job_id'])
 
-            log_perf("artifact.enqueue", instance.id, backend=settings.QUEUE_BACKEND, elapsed_ms=ms_since(t0))
+            owner_type, owner = get_actor(self.request)
+            owner_id = owner.id if hasattr(owner, 'id') else 'unknown'
+
+            log_perf("artifact.enqueue", instance.id,
+                     backend=settings.QUEUE_BACKEND,
+                     elapsed_ms=ms_since(t0),
+                     job_ref=task_id,
+                     owner_type=owner_type,
+                     owner_id=owner_id,
+                     type=instance.type)
             print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} backend={settings.QUEUE_BACKEND}", flush=True)
         except Exception as e:
             logger.error(f"Error enqueueing artifact generation job: {e}", exc_info=True)

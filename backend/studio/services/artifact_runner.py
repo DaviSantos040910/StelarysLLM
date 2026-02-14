@@ -61,14 +61,19 @@ def generate_artifact(artifact_id: int, options: dict, ctx: dict = None, job_ref
             'selectedSourceIds': options.get('source_ids', []),
             'includeChatHistory': options.get('includeChatHistory', False)
         }
+
+        t_build = now_ms()
+        log_perf("artifact.build_context_start", artifact_id, job_id=job_id)
         full_context = SourceAssemblyService.get_context_from_config(
             artifact.chat.id,
             config,
             query=artifact.title
         )
+        log_perf("artifact.build_context_end", artifact_id, job_id=job_id, elapsed_ms=ms_since(t_build), context_chars=len(full_context))
+
         ctx_ms = int((time.perf_counter() - t_ctx_perf) * 1000)
         _p(f"[STEP_END] Assembling Context artifact_id={artifact_id} elapsed_ms={ctx_ms} context_len={len(full_context)}")
-        log_perf("artifact.load_sources_end", artifact_id, job_id=job_id, elapsed_ms=ms_since(t_ctx), context_len=len(full_context))
+        log_perf("artifact.load_sources_end", artifact_id, job_id=job_id, elapsed_ms=ms_since(t_ctx))
 
         # 2. GENERATING CONTENT
         artifact.stage = KnowledgeArtifact.Stage.GENERATING
@@ -162,7 +167,10 @@ def _generate_podcast(artifact, context, options, job_id):
     dest_path = relative_path
 
     # Persist via provider
+    t_save = now_ms()
+    log_perf("artifact.save_output_start", artifact.id, job_id=job_id, path=dest_path)
     final_url = storage.save_file(full_local_path, dest_path, content_type="audio/mpeg")
+    log_perf("artifact.save_output_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_save), url=final_url)
 
     artifact.media_url = final_url
 
@@ -213,7 +221,7 @@ def _generate_standard_artifact(artifact, full_context, options, job_id):
     last_error = None
 
     t_gen = now_ms()
-    log_perf("artifact.gemini_generate_start", artifact.id, job_id=job_id, model=model_name)
+    log_perf("artifact.llm_generate_start", artifact.id, job_id=job_id, model=model_name)
 
     for attempt in range(max_retries):
         try:
@@ -252,7 +260,7 @@ def _generate_standard_artifact(artifact, full_context, options, job_id):
                 model=model_name
             )
 
-            log_perf("artifact.gemini_generate_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_gen), attempt=attempt+1)
+            log_perf("artifact.llm_generate_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_gen), attempt=attempt+1)
 
             artifact.content = content
             return # Success
