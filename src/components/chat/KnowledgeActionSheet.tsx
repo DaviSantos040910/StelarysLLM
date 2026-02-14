@@ -130,13 +130,28 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
   };
 
   const executeGenerate = async (gen: typeof GENERATORS[0], options?: ArtifactGenerationOptions) => {
+    // Determine title base
+    // If options.title is present (from dynamic generator), use it appended to Type
+    // e.g. "Podcast — Aula 1"
+    // Otherwise fallback to "Podcast — Chat History" or just "Podcast"
+    let displayTitle = 'Gerando...';
+    let requestTitle = gen.label;
+
+    if (options?.title) {
+        requestTitle = `${gen.label} — ${options.title}`;
+        displayTitle = requestTitle;
+    } else {
+        // Fallback for direct generation without modal (if any)
+        requestTitle = `${gen.label}`;
+    }
+
     // Optimistic Update
     const tempId = -Date.now();
     const tempArtifact: KnowledgeArtifact = {
       id: tempId,
       chat: parseInt(chatId, 10) || 0,
       type: gen.id,
-      title: 'Gerando...',
+      title: displayTitle,
       status: 'processing',
       created_at: new Date().toISOString()
     };
@@ -145,15 +160,7 @@ export const KnowledgeActionSheet: React.FC<KnowledgeActionSheetProps> = ({ onCl
     setArtifacts(prev => [tempArtifact, ...prev]);
 
     try {
-      // Call Service
-      // Note: Backend now generates the title.
-      const created = await studioService.generateArtifact(chatId, gen.id, gen.label, options);
-
-      // Wait for next polling cycle to update or update immediately if returned?
-      // studioService.generateArtifact usually returns the Created (Processing) artifact or the result if synchronous (unlikely).
-      // Since it's async thread, it returns Processing state.
-      // We rely on polling to flip it to Ready.
-      // But we update the ID here so key matches.
+      const created = await studioService.generateArtifact(chatId, gen.id, requestTitle, options);
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setArtifacts(prev => prev.map(a => a.id === tempId ? created : a));

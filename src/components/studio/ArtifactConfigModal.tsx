@@ -47,6 +47,7 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
 
     // UI State: Wizard Mode (Config vs Source Selection)
     const [viewMode, setViewMode] = useState<'config' | 'sources'>('config');
+    const [sourceNames, setSourceNames] = useState<Record<string, string>>({});
 
     // Dynamic Labels based on Type
     const getUnitLabel = () => {
@@ -83,13 +84,29 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
             return;
         }
 
+        // Construct Dynamic Title
+        let dynamicTitle = '';
+        if (selectedSourceIds.length > 0) {
+            const firstId = selectedSourceIds[0];
+            const firstName = sourceNames[firstId] || 'Arquivo';
+
+            if (selectedSourceIds.length > 1) {
+                dynamicTitle = `${firstName} (+${selectedSourceIds.length - 1})`;
+            } else {
+                dynamicTitle = firstName;
+            }
+        } else {
+            dynamicTitle = 'Chat History';
+        }
+
         onGenerate({
             // Default to 1 for Podcast if not specified
             quantity: artifactType === 'PODCAST' ? 1 : getQuantityValue(quantityOption),
             difficulty,
             targetDuration: artifactType === 'PODCAST' ? duration : undefined,
             customInstructions,
-            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined
+            sourceIds: selectedSourceIds.length > 0 ? selectedSourceIds : undefined,
+            title: dynamicTitle
         });
         onClose();
     };
@@ -117,7 +134,13 @@ export const ArtifactConfigModal: React.FC<ArtifactConfigModalProps> = ({
                         onClose={() => setViewMode('config')}
                         chatId={chatId}
                         selectedIds={selectedSourceIds}
-                        onSelectionChange={setSelectedSourceIds}
+                        onSelectionChange={(ids, names) => {
+                            setSelectedSourceIds(ids);
+                            // Merge new names into map
+                            if (names) {
+                                setSourceNames(prev => ({...prev, ...names}));
+                            }
+                        }}
                     />
                 ) : (
                     <View className={`rounded-t-3xl border-t border-gray-200 dark:border-white/10 p-6 pb-10 max-h-[90%] ${themeClasses.surface}`}>
