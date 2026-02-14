@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+import datetime
 from abc import ABC, abstractmethod
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -58,6 +59,9 @@ class LocalStorageProvider(StorageProvider):
         """
         Returns the MEDIA_URL for the given path.
         """
+        if not path_or_gs:
+            return None
+
         # If it's a full URL or gs://, strip it or handle it
         if path_or_gs.startswith('http'):
             return path_or_gs
@@ -70,16 +74,71 @@ class LocalStorageProvider(StorageProvider):
 
 class GCSStorageProvider(StorageProvider):
     """
-    Placeholder for Google Cloud Storage implementation.
+    Implements Google Cloud Storage backend.
+    Requires google-cloud-storage library and GCS_BUCKET_NAME setting.
     """
+    def __init__(self):
+        from google.cloud import storage
+        self.bucket_name = settings.GCS_BUCKET_NAME
+        if not self.bucket_name:
+            raise ValueError("GCS_BUCKET_NAME setting is required for GCSStorageProvider")
+
+        # Assuming Application Default Credentials are set in the environment
+        self.client = storage.Client()
+        self.bucket = self.client.bucket(self.bucket_name)
+
     def save_file(self, local_path, dest_path, content_type=None):
-        raise NotImplementedError("GCS Storage not yet implemented")
+        dest_path = dest_path.lstrip('/')
+        blob = self.bucket.blob(dest_path)
+
+        if content_type:
+            blob.content_type = content_type
+
+        blob.upload_from_filename(local_path)
+
+        return f"gs://{self.bucket_name}/{dest_path}"
 
     def save_bytes(self, data, dest_path, content_type=None):
-        raise NotImplementedError("GCS Storage not yet implemented")
+        dest_path = dest_path.lstrip('/')
+        blob = self.bucket.blob(dest_path)
+
+        if content_type:
+            blob.content_type = content_type
+
+        blob.upload_from_string(data)
+
+        return f"gs://{self.bucket_name}/{dest_path}"
 
     def get_download_url(self, path_or_gs, expires_seconds=3600):
-        raise NotImplementedError("GCS Storage not yet implemented")
+        if not path_or_gs:
+            return None
+
+        # If it's already http, return as is
+        if path_or_gs.startswith('http'):
+            return path_or_gs
+
+        # Parse gs:// uri
+        blob_path = path_or_gs
+        if path_or_gs.startswith("gs://"):
+            parts = path_or_gs.replace("gs://", "").split("/", 1)
+            if len(parts) == 2:
+                # bucket = parts[0] # We assume configured bucket usually, but gs uri has it
+                blob_path = parts[1]
+            else:
+                return path_or_gs # Invalid format?
+
+        # Generate Signed URL
+        blob = self.bucket.blob(blob_path)
+        try:
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(seconds=expires_seconds),
+                method="GET"
+            )
+            return url
+        except Exception as e:
+            logger.error(f"Error generating signed URL for {blob_path}: {e}")
+            return None
 
 def get_storage_provider(backend_name=None):
     if backend_name is None:

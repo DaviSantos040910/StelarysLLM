@@ -8,7 +8,7 @@ from django.conf import settings
 from rest_framework import viewsets, permissions, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.http import HttpResponse, FileResponse, Http404
+from django.http import HttpResponse, FileResponse, Http404, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.db import transaction
 from django.core.files import File
@@ -347,6 +347,16 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             if not artifact.media_url:
                 raise Http404("Audio file not available.")
 
+            # Check for GCS or other remote URL
+            if artifact.media_url.startswith("gs://") or artifact.media_url.startswith("http"):
+                from studio.services.storage_provider import get_storage_provider
+                download_url = get_storage_provider().get_download_url(artifact.media_url)
+                if download_url:
+                    return HttpResponseRedirect(download_url)
+                else:
+                    raise Http404("Unable to generate download link.")
+
+            # Fallback to Local Storage
             # Construct absolute path
             # artifact.media_url usually starts with /media/
             # Remove /media/ prefix if present to join with MEDIA_ROOT

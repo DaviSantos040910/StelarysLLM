@@ -214,3 +214,9 @@ QUEUE_BACKEND = os.getenv('QUEUE_BACKEND', 'thread')
 GCP_PROJECT = os.getenv('GCP_PROJECT', '')
 GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
 GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
+
+# --- Storage Configuration ---
+# 'local' = Local Filesystem (default)
+# 'gcs' = Google Cloud Storage
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local')
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
