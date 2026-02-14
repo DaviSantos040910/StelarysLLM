@@ -86,15 +86,29 @@ const GalleryItem = React.memo(({ item, index, onPress }: { item: KnowledgeArtif
                     <View className={`p-2 rounded-full ${themeClasses.softSurface}`}>
                         {icon}
                     </View>
-                    {item.type === 'PODCAST' && (
-                        <View className="p-1.5 bg-cosmic-purple/20 rounded-full">
-                            <Play size={12} color="#818cf8" fill="#818cf8" />
+
+                    {/* Status Badges */}
+                    {item.status === 'processing' ? (
+                        <View className="px-2 py-1 bg-yellow-500/20 rounded-lg">
+                            <Text className="text-yellow-500 text-xs font-bold">Gerando...</Text>
                         </View>
-                    )}
-                    {item.type === 'QUIZ' && item.score && (
-                        <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
-                            <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
+                    ) : item.status === 'error' ? (
+                        <View className="px-2 py-1 bg-red-500/20 rounded-lg">
+                            <Text className="text-red-500 text-xs font-bold">Falhou</Text>
                         </View>
+                    ) : (
+                        <>
+                            {item.type === 'PODCAST' && (
+                                <View className="p-1.5 bg-cosmic-purple/20 rounded-full">
+                                    <Play size={12} color="#818cf8" fill="#818cf8" />
+                                </View>
+                            )}
+                            {item.type === 'QUIZ' && item.score && (
+                                <View className="px-2 py-1 bg-teal-500/20 rounded-lg">
+                                    <Text className="text-teal-400 text-xs font-bold">{item.score}</Text>
+                                </View>
+                            )}
+                        </>
                     )}
                 </View>
 
@@ -242,9 +256,28 @@ export default function StudioGalleryScreen() {
         }
     };
 
+    const handleArtifactPress = useCallback((item: KnowledgeArtifact) => {
+        if (item.status === 'processing') {
+            Alert.alert("Aguarde", "Este artefato ainda está sendo gerado. Por favor, aguarde.");
+            return;
+        }
+        if (item.status === 'error') {
+            Alert.alert(
+                "Erro",
+                "Falha na geração do artefato. Deseja tentar recarregar?",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Recarregar", onPress: () => loadData(true) }
+                ]
+            );
+            return;
+        }
+        setSelectedArtifact(item);
+    }, []);
+
     const renderItem = useCallback(({ item, index }: { item: KnowledgeArtifact, index: number }) => (
-        <GalleryItem item={item} index={index} onPress={setSelectedArtifact} />
-    ), []);
+        <GalleryItem item={item} index={index} onPress={handleArtifactPress} />
+    ), [handleArtifactPress]);
 
     // Render Content based on Type
     const renderViewer = () => {
@@ -290,11 +323,16 @@ export default function StudioGalleryScreen() {
     return (
         <SafeAreaView className={themeClasses.screen} edges={['top']}>
             {/* Header */}
-            <View className={`px-4 py-4 flex-row items-center mb-2 ${themeClasses.headerBorder}`}>
-                <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
-                    <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
+            <View className={`px-4 py-4 flex-row items-center justify-between mb-2 ${themeClasses.headerBorder}`}>
+                <View className="flex-row items-center">
+                    <Pressable onPress={() => router.back()} className={`p-2 -ml-2 rounded-full ${themeClasses.press}`}>
+                        <ArrowLeft color={colorScheme === 'dark' ? '#f8fafc' : '#111827'} size={24} />
+                    </Pressable>
+                    <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Galeria do Studio</Text>
+                </View>
+                <Pressable onPress={() => loadData(true)} className={`p-2 rounded-full ${themeClasses.press}`}>
+                    <RefreshCw color={colorScheme === 'dark' ? '#94a3b8' : '#64748b'} size={20} />
                 </Pressable>
-                <Text className={`${themeClasses.textPrimary} text-xl font-bold ml-2`}>Galeria do Studio</Text>
             </View>
 
             {/* Filters */}
