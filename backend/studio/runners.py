@@ -24,6 +24,7 @@ class ThreadingRunner(ArtifactRunner):
         )
         t.daemon = True
         t.start()
+        return f"thread-{t.ident or 'pending'}"
 
 class CloudTasksRunner(ArtifactRunner):
     """
@@ -71,10 +72,11 @@ class CloudTasksRunner(ArtifactRunner):
 
             response = client.create_task(request={"parent": parent, "task": task})
             logger.info(f"[CloudTasksRunner] Dispatched artifact {artifact_id} to {response.name}")
+            return response.name
         except Exception as e:
             logger.error(f"[CloudTasksRunner] Failed to dispatch task: {e}", exc_info=True)
-            # Fallback or just log? For now log. The artifact will stay in PROCESSING but no job will run.
-            # Ideally we might want to set error status, but the runner interface is fire-and-forget.
+            # Re-raise so the caller can handle the error (set status to ERROR)
+            raise e
 
 def get_runner(backend_name=None):
     if backend_name is None:

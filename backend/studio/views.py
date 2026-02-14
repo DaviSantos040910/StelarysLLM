@@ -317,9 +317,12 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
 
         t0 = now_ms()
         try:
-            from .runners import get_runner
-            runner = get_runner()
-            runner.dispatch(instance.id, options)
+            from studio.services.queue_provider import enqueue_artifact
+            task_id = enqueue_artifact(instance.id, options)
+
+            if task_id:
+                instance.job_id = task_id
+                instance.save(update_fields=['job_id'])
 
             log_perf("artifact.enqueue", instance.id, backend=settings.QUEUE_BACKEND, elapsed_ms=ms_since(t0))
             print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} backend={settings.QUEUE_BACKEND}", flush=True)
