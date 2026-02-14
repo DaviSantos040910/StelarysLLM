@@ -164,11 +164,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
                             ? meta.message_id
                             : m.id;
 
+                        // Fallback: If content is empty but clean_content exists (e.g. strict mode single chunk)
+                        const finalContent = (!m.content || m.content.length === 0) && meta.clean_content
+                            ? meta.clean_content
+                            : m.content;
+
                         return {
                             ...m,
                             status: 'sent',
                             id: safeId,
-                            suggestions: meta.suggestions || m.suggestions,
+                            content: finalContent,
+                            suggestions: meta.suggestions && meta.suggestions.length > 0 ? meta.suggestions : m.suggestions,
                             sources: meta.sources || m.sources
                         };
                     }

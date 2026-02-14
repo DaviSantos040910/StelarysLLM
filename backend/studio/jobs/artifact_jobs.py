@@ -13,16 +13,23 @@ from chat.services.ai_client import get_ai_client
 from studio.schemas import QUIZ_SCHEMA, FLASHCARD_SCHEMA, SUMMARY_SCHEMA, SLIDE_SCHEMA
 from google.genai import types
 from core.genai_models import GENAI_MODEL_TEXT
+from core.perf import log_perf, now_ms, ms_since
+from rq import get_current_job
 
 logger = logging.getLogger(__name__)
 
 @job('default', timeout=360, result_ttl=86400, retry=Retry(max=3))
 def generate_artifact_job(artifact_id, options):
-    start_time = time.time()
+    job = get_current_job()
+    job_id = job.id if job else 'unknown'
+    t_start = now_ms()
+    log_perf("artifact.job_start", artifact_id, job_id=job_id)
+
     try:
         artifact = KnowledgeArtifact.objects.get(id=artifact_id)
     except KnowledgeArtifact.DoesNotExist:
         logger.error(f"Artifact {artifact_id} not found.")
+        log_perf("artifact.job_error", artifact_id, job_id=job_id, error="Artifact not found")
         return
 
     # Update Start State
@@ -33,6 +40,8 @@ def generate_artifact_job(artifact_id, options):
 
     try:
         # 1. ASSEMBLING CONTEXT
+        t_ctx = now_ms()
+        log_perf("artifact.load_sources_start", artifact_id, job_id=job_id)
         config = {
             'selectedSourceIds': options.get('source_ids', []),
             'includeChatHistory': options.get('includeChatHistory', False)
@@ -42,15 +51,16 @@ def generate_artifact_job(artifact_id, options):
             config,
             query=artifact.title
         )
+        log_perf("artifact.load_sources_end", artifact_id, job_id=job_id, elapsed_ms=ms_since(t_ctx), context_len=len(full_context))
 
         # 2. GENERATING CONTENT
         artifact.stage = KnowledgeArtifact.Stage.GENERATING
         artifact.save(update_fields=['stage'])
 
         if artifact.type == KnowledgeArtifact.ArtifactType.PODCAST:
-            _generate_podcast(artifact, full_context, options)
+            _generate_podcast(artifact, full_context, options, job_id)
         else:
-            _generate_standard_artifact(artifact, full_context, options)
+            _generate_standard_artifact(artifact, full_context, options, job_id)
 
         # 3. READY
         artifact.stage = KnowledgeArtifact.Stage.READY
@@ -58,11 +68,13 @@ def generate_artifact_job(artifact_id, options):
         artifact.finished_at = timezone.now()
         artifact.save(update_fields=['stage', 'status', 'finished_at', 'media_url', 'duration', 'content'])
 
-        duration = (time.time() - start_time) * 1000
-        logger.info(f"[{artifact.correlation_id}] Artifact {artifact_id} generated successfully in {duration:.2f}ms")
+        duration = ms_since(t_start)
+        logger.info(f"[{artifact.correlation_id}] Artifact {artifact_id} generated successfully in {duration}ms")
+        log_perf("artifact.job_done", artifact_id, job_id=job_id, elapsed_ms=duration)
 
     except Exception as e:
         logger.error(f"[{artifact.correlation_id}] Job failed for artifact {artifact_id}: {e}", exc_info=True)
+        log_perf("artifact.job_error", artifact_id, job_id=job_id, error=str(e), elapsed_ms=ms_since(t_start))
         artifact.stage = KnowledgeArtifact.Stage.ERROR
         artifact.status = KnowledgeArtifact.Status.ERROR
         artifact.error_message = str(e)
@@ -70,7 +82,7 @@ def generate_artifact_job(artifact_id, options):
         artifact.save(update_fields=['stage', 'status', 'error_message', 'finished_at'])
         raise e # Re-raise to trigger RQ retry if configured
 
-def _generate_podcast(artifact, context, options):
+def _generate_podcast(artifact, context, options, job_id):
     # 1. Generate Script with Dynamic Host Persona
     bot = artifact.chat.bot
 
@@ -81,6 +93,8 @@ def _generate_podcast(artifact, context, options):
     if not language and hasattr(bot, 'language'):
         language = bot.language
 
+    t_script = now_ms()
+    log_perf("artifact.gemini_generate_start", artifact.id, job_id=job_id, type='podcast_script')
     script = PodcastScriptingService.generate_script(
         title=artifact.title,
         context=context,
@@ -89,13 +103,17 @@ def _generate_podcast(artifact, context, options):
         bot_prompt=bot.prompt,
         language=language
     )
+    log_perf("artifact.gemini_generate_end", artifact.id, job_id=job_id, type='podcast_script', elapsed_ms=ms_since(t_script))
     artifact.content = script
 
     # 2. Rendering Audio (Mixing)
     artifact.stage = KnowledgeArtifact.Stage.RENDERING_EXPORT
     artifact.save(update_fields=['stage'])
 
+    t_mix = now_ms()
+    log_perf("artifact.mix_audio_start", artifact.id, job_id=job_id)
     audio_path, transcript, total_duration_ms = AudioMixerService.mix_podcast(script, bot_voice_enum=bot.voice)
+    log_perf("artifact.mix_audio_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_mix))
 
     artifact.media_url = f"/media/{audio_path}"
 
@@ -127,7 +145,7 @@ def _generate_podcast(artifact, context, options):
             "transcript": transcript
         }
 
-def _generate_standard_artifact(artifact, full_context, options):
+def _generate_standard_artifact(artifact, full_context, options, job_id):
     client = get_ai_client()
     # model_name = get_model('chat') # Already updated to use GENAI_MODEL_TEXT
     model_name = GENAI_MODEL_TEXT
@@ -156,6 +174,9 @@ def _generate_standard_artifact(artifact, full_context, options):
     max_retries = 2
     last_error = None
 
+    t_gen = now_ms()
+    log_perf("artifact.gemini_generate_start", artifact.id, job_id=job_id, model=model_name)
+
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
@@ -163,6 +184,8 @@ def _generate_standard_artifact(artifact, full_context, options):
                 contents="Generate the artifact content based on the system instructions and context.",
                 config=generate_config
             )
+
+            log_perf("artifact.gemini_generate_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_gen), attempt=attempt+1)
 
             if response.parsed:
                 artifact.content = response.parsed

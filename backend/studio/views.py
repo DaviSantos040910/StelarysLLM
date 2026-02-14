@@ -22,6 +22,7 @@ from chat.services.content_extractor import ContentExtractor
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
 from studio.jobs.artifact_jobs import generate_artifact_job
+from core.perf import log_perf, now_ms, ms_since
 
 from .models import KnowledgeArtifact, KnowledgeSource, StudySpace
 from .serializers import KnowledgeArtifactSerializer, KnowledgeSourceSerializer, StudySpaceSerializer
@@ -313,10 +314,13 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
         instance.correlation_id = uuid.uuid4()
         instance.save()
 
+        t0 = now_ms()
         try:
-            django_rq.enqueue(generate_artifact_job, instance.id, options)
+            job = django_rq.enqueue(generate_artifact_job, instance.id, options)
+            log_perf("artifact.enqueue", instance.id, job_id=job.id, queue_name='default', elapsed_ms=ms_since(t0))
         except Exception as e:
             logger.error(f"Error enqueueing artifact generation job: {e}", exc_info=True)
+            log_perf("artifact.enqueue_error", instance.id, error=str(e))
             instance.status = KnowledgeArtifact.Status.ERROR
             instance.error_message = f"Enqueue failed: {str(e)}"
             instance.save()
