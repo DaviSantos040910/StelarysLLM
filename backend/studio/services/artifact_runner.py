@@ -174,6 +174,13 @@ def _generate_podcast(artifact, context, options, job_id):
         log_perf("artifact.save_output_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_save), url=final_url)
 
         artifact.media_url = final_url
+
+        # Cleanup local file (AudioMixer saves to MEDIA_ROOT temporarily)
+        # Only delete if we are NOT using local storage (to avoid deleting the final file if src==dest)
+        is_local_storage = os.getenv('STORAGE_BACKEND', 'local') == 'local'
+        if not is_local_storage and os.path.exists(full_local_path):
+            os.remove(full_local_path)
+
     except Exception as e:
         logger.error(f"Failed to save podcast output: {e}", exc_info=True)
         # We don't raise here to avoid losing the generated content entirely if just storage fails?

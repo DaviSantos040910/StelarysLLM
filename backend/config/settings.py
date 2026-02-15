@@ -220,3 +220,27 @@ GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
 # 'gcs' = Google Cloud Storage
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local')
 GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
+
+if STORAGE_BACKEND == 'gcs':
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GCS_BUCKET_NAME,
+                "default_acl": "publicRead",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = f'https://storage.googleapis.com/{GCS_BUCKET_NAME}/'
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }

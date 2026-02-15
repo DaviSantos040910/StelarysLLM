@@ -39,7 +39,7 @@ class KnowledgeIngestionService:
                         # Optional: correct the source type for future reference
                         # source.source_type = KnowledgeSource.SourceType.IMAGE
                     else:
-                        extracted_text = FileProcessor.extract_text(source.file.path)
+                        extracted_text = FileProcessor.extract_text(source.file)
                 
                 elif source.source_type == KnowledgeSource.SourceType.IMAGE and source.file:
                     extracted_text = image_description_service.describe_image(source.file)
