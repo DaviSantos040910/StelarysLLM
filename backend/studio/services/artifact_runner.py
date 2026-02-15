@@ -167,12 +167,20 @@ def _generate_podcast(artifact, context, options, job_id):
     dest_path = relative_path
 
     # Persist via provider
-    t_save = now_ms()
-    log_perf("artifact.save_output_start", artifact.id, job_id=job_id, path=dest_path)
-    final_url = storage.save_file(full_local_path, dest_path, content_type="audio/mpeg")
-    log_perf("artifact.save_output_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_save), url=final_url)
+    try:
+        t_save = now_ms()
+        log_perf("artifact.save_output_start", artifact.id, job_id=job_id, path=dest_path)
+        final_url = storage.save_file(full_local_path, dest_path, content_type="audio/mpeg")
+        log_perf("artifact.save_output_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_save), url=final_url)
 
-    artifact.media_url = final_url
+        artifact.media_url = final_url
+    except Exception as e:
+        logger.error(f"Failed to save podcast output: {e}", exc_info=True)
+        # We don't raise here to avoid losing the generated content entirely if just storage fails?
+        # But if storage fails, the URL is invalid.
+        # Requirement: "Se upload falhar... capturar exceção, setar status ERROR e error_message".
+        # Re-raising will cause the main try/except block to handle this (lines 142+).
+        raise e
 
     # Calculate readable duration (MM:SS)
     seconds = total_duration_ms / 1000

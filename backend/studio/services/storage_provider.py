@@ -31,7 +31,10 @@ class LocalStorageProvider(StorageProvider):
         """
         Saves a local file to the destination path.
         """
-        dest_path = dest_path.lstrip('/')
+        dest_path = dest_path.replace("\\", "/").lstrip("/")
+
+        t_start = datetime.datetime.now()
+        logger.info(f"storage.save_file.start local={local_path} dest={dest_path} type={content_type}")
 
         # Check if local_path exists
         if not os.path.exists(local_path):
@@ -45,14 +48,22 @@ class LocalStorageProvider(StorageProvider):
         if os.path.abspath(local_path) != os.path.abspath(full_dest_path):
             shutil.copy2(local_path, full_dest_path)
 
+        elapsed = (datetime.datetime.now() - t_start).total_seconds() * 1000
+        logger.info(f"storage.save_file.end dest={dest_path} elapsed_ms={elapsed:.2f}")
         return self.get_download_url(dest_path)
 
     def save_bytes(self, data, dest_path, content_type=None):
         """
         Saves raw bytes to the destination path.
         """
-        dest_path = dest_path.lstrip('/')
+        dest_path = dest_path.replace("\\", "/").lstrip("/")
+        t_start = datetime.datetime.now()
+        logger.info(f"storage.save_bytes.start dest={dest_path} len={len(data)} type={content_type}")
+
         path = default_storage.save(dest_path, ContentFile(data))
+
+        elapsed = (datetime.datetime.now() - t_start).total_seconds() * 1000
+        logger.info(f"storage.save_bytes.end dest={dest_path} elapsed_ms={elapsed:.2f}")
         return self.get_download_url(path)
 
     def get_download_url(self, path_or_gs, expires_seconds=3600):
@@ -88,26 +99,42 @@ class GCSStorageProvider(StorageProvider):
         self.bucket = self.client.bucket(self.bucket_name)
 
     def save_file(self, local_path, dest_path, content_type=None):
-        dest_path = dest_path.lstrip('/')
-        blob = self.bucket.blob(dest_path)
+        dest_path = dest_path.replace("\\", "/").lstrip("/")
+        t_start = datetime.datetime.now()
+        logger.info(f"storage.save_file.start local={local_path} dest={dest_path} type={content_type}")
 
-        if content_type:
-            blob.content_type = content_type
+        try:
+            blob = self.bucket.blob(dest_path)
+            if content_type:
+                blob.content_type = content_type
 
-        blob.upload_from_filename(local_path)
+            blob.upload_from_filename(local_path)
 
-        return f"gs://{self.bucket_name}/{dest_path}"
+            elapsed = (datetime.datetime.now() - t_start).total_seconds() * 1000
+            logger.info(f"storage.save_file.end dest={dest_path} elapsed_ms={elapsed:.2f}")
+            return f"gs://{self.bucket_name}/{dest_path}"
+        except Exception as e:
+            logger.error(f"storage.error: {e}", exc_info=True)
+            raise e
 
     def save_bytes(self, data, dest_path, content_type=None):
-        dest_path = dest_path.lstrip('/')
-        blob = self.bucket.blob(dest_path)
+        dest_path = dest_path.replace("\\", "/").lstrip("/")
+        t_start = datetime.datetime.now()
+        logger.info(f"storage.save_bytes.start dest={dest_path} len={len(data)} type={content_type}")
 
-        if content_type:
-            blob.content_type = content_type
+        try:
+            blob = self.bucket.blob(dest_path)
+            if content_type:
+                blob.content_type = content_type
 
-        blob.upload_from_string(data)
+            blob.upload_from_string(data)
 
-        return f"gs://{self.bucket_name}/{dest_path}"
+            elapsed = (datetime.datetime.now() - t_start).total_seconds() * 1000
+            logger.info(f"storage.save_bytes.end dest={dest_path} elapsed_ms={elapsed:.2f}")
+            return f"gs://{self.bucket_name}/{dest_path}"
+        except Exception as e:
+            logger.error(f"storage.error: {e}", exc_info=True)
+            raise e
 
     def get_download_url(self, path_or_gs, expires_seconds=3600):
         if not path_or_gs:
