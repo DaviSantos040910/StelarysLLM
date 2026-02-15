@@ -3,7 +3,6 @@
 Serviço vetorial com suporte inteligente a múltiplos documentos.
 """
 
-import chromadb
 # Use google.genai instead of google.generativeai
 from google import genai
 from django.conf import settings
@@ -14,6 +13,9 @@ import os
 import re
 from typing import List, Dict, Optional, Tuple, Union
 from enum import Enum
+from chat.vector_store.base import VectorStoreBackend
+from chat.vector_store.chroma import ChromaBackend
+from chat.vector_store.pgvector import PGVectorBackend
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +34,11 @@ class VectorService:
     """
 
     def __init__(self):
-        self.client: Optional[chromadb.PersistentClient] = None
-        self.collection = None
+        self.backend: Optional[VectorStoreBackend] = None
         self._initialize()
 
     def _initialize(self) -> None:
-        """Inicializa ChromaDB e API Gemini."""
+        """Inicializa Backend Vetorial e API Gemini."""
         try:
             api_key = settings.GEMINI_API_KEY
             if not api_key:
@@ -47,16 +48,14 @@ class VectorService:
             # Using google.genai client initialization is slightly different.
             self.genai_client = genai.Client(api_key=api_key)
 
-            db_path = str(settings.CHROMA_DB_PATH)
-            os.makedirs(db_path, exist_ok=True)
+            backend_type = getattr(settings, 'VECTOR_DB_BACKEND', 'chroma')
 
-            self.client = chromadb.PersistentClient(path=db_path)
-            # Use new collection name to force 3072 dimension
-            self.collection = self.client.get_or_create_collection(
-                name="chat_memory_3072",
-                metadata={"hnsw:space": "cosine"}
-            )
-            logger.info(f"VectorService inicializado: {db_path}")
+            if backend_type == 'pgvector':
+                self.backend = PGVectorBackend()
+            else:
+                self.backend = ChromaBackend()
+
+            logger.info(f"VectorService inicializado com backend: {backend_type}")
 
         except Exception as e:
             logger.critical(f"Falha ao inicializar VectorService: {e}")
@@ -127,7 +126,7 @@ class VectorService:
             if not embedding:
                 return
 
-            self.collection.add(
+            self.backend.add_documents(
                 documents=[text],
                 embeddings=[embedding],
                 metadatas=[{
@@ -197,7 +196,7 @@ class VectorService:
 
         if docs:
             try:
-                self.collection.add(
+                self.backend.add_documents(
                     documents=docs, embeddings=embeds, metadatas=metas, ids=ids
                 )
                 logger.info(f"RAG: {len(docs)} chunks indexados de '{source_name}'")
@@ -245,7 +244,7 @@ class VectorService:
         study_space_ids: Optional[List[int]] = None
     ) -> List[Dict]:
         """Lista todos os documentos disponíveis."""
-        if not self.collection:
+        if not self.backend:
             return []
 
         or_list = [{"bot_id": str(bot_id)}]
@@ -268,8 +267,8 @@ class VectorService:
         where_clause = self._safe_and(and_list)
         
         try:
-            results = self.collection.get(where=where_clause, include=["metadatas"])
-            if not results or not results['metadatas']:
+            results = self.backend.get_documents(where=where_clause)
+            if not results or not results.get('metadatas'):
                 return []
 
             docs_map = {}
@@ -309,7 +308,7 @@ class VectorService:
         Returns: (doc_contexts, memory_contexts)
         doc_contexts includes 'score' now.
         """
-        if not self.collection:
+        if not self.backend:
             return [], []
 
         try:
@@ -399,9 +398,9 @@ class VectorService:
 
         final_where = {"$and": and_conditions}
         
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=limit,
+        results = self.backend.search(
+            query_embedding=embedding,
+            limit=limit,
             where=final_where
         )
 
@@ -433,9 +432,9 @@ class VectorService:
             
             final_where = {"$and": and_conditions}
 
-            results = self.collection.query(
-                query_embeddings=[embedding],
-                n_results=per_doc_limit,
+            results = self.backend.search(
+                query_embedding=embedding,
+                limit=per_doc_limit,
                 where=final_where
             )
             all_results.extend(self._format_doc_results(results))
@@ -467,9 +466,9 @@ class VectorService:
 
         # Fetch candidates (3x limit) para reranking
         fetch_k = limit * 3
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=fetch_k,
+        results = self.backend.search(
+            query_embedding=embedding,
+            limit=fetch_k,
             where=where_clause
         )
 
@@ -566,9 +565,9 @@ class VectorService:
                 ]
             }
         
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=limit,
+        results = self.backend.search(
+            query_embedding=embedding,
+            limit=limit,
             where=where_clause
         )
 
@@ -605,20 +604,15 @@ class VectorService:
 
     def migrate_owner(self, old_owner_id: str, new_owner_id: str) -> int:
         """Migra vetores de um usuário/guest para outro."""
-        if not self.collection:
+        if not self.backend:
             return 0
 
         try:
             # 1. Fetch IDs owned by old_owner
-            # Limit is arbitrary but hopefully high enough for guest sessions.
-            # Ideally iterating, but simple get with where is safer.
-            results = self.collection.get(
-                where={"user_id": old_owner_id},
-                include=["metadatas"]
-            )
+            results = self.backend.get_documents(where={"user_id": old_owner_id})
 
-            ids = results['ids']
-            metadatas = results['metadatas']
+            ids = results.get('ids', [])
+            metadatas = results.get('metadatas', [])
 
             if not ids:
                 return 0
@@ -629,7 +623,7 @@ class VectorService:
                 meta['user_id'] = new_owner_id
                 new_metadatas.append(meta)
 
-            self.collection.update(
+            self.backend.update_documents(
                 ids=ids,
                 metadatas=new_metadatas
             )

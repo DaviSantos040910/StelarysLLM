@@ -30,3 +30,7 @@ redis
 google-cloud-tasks
 google-cloud-storage
 django-storages[google]
+gunicorn
+pgvector
+psycopg[binary]
+dj-database-url

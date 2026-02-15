@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Use environment variable if available, otherwise fallback to localhost for emulator
 // 10.0.2.2 is the localhost alias for Android Emulator
-const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.87:8001';
+const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.87:8000';
 const PROD_URL = 'https://api.stelarys.com';
 
 export const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
@@ -28,11 +28,29 @@ client.interceptors.request.use(
     const { useAuthStore } = require('../stores/authStore');
     const { token, guestId } = useAuthStore.getState();
 
+    // Ensure headers object exists
+    if (!config.headers) {
+      config.headers = {} as any;
+    }
+
+    // 1. Inject Authorization (if valid)
     if (isLikelyJwt(token)) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else if (guestId) {
+    }
+
+    // 2. Inject X-Guest-Id (always if exists, allowing merge)
+    // We check if it's already set by the caller to avoid overriding specific intent
+    if (guestId && !config.headers['X-Guest-Id']) {
       config.headers['X-Guest-Id'] = guestId;
     }
+
+    if (__DEV__) {
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
+        hasAuth: !!config.headers.Authorization,
+        hasGuest: !!config.headers['X-Guest-Id']
+      });
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

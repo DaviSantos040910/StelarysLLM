@@ -13,6 +13,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
 # Load .env if exists
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -95,10 +96,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 # Password validation
@@ -220,6 +222,11 @@ GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
 # 'gcs' = Google Cloud Storage
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local')
 GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
+
+# --- Vector DB Configuration ---
+# 'chroma' = Local ChromaDB (default)
+# 'pgvector' = PostgreSQL with pgvector extension
+VECTOR_DB_BACKEND = os.getenv('VECTOR_DB_BACKEND', 'chroma')
 
 if STORAGE_BACKEND == 'gcs':
     STORAGES = {
