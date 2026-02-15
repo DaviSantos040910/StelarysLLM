@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Use environment variable if available, otherwise fallback to localhost for emulator
 // 10.0.2.2 is the localhost alias for Android Emulator
-const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.87:8000';
+const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.87:8001';
 const PROD_URL = 'https://api.stelarys.com';
 
 export const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
