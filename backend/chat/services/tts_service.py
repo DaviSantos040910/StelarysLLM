@@ -5,6 +5,7 @@ import wave
 import hashlib
 import os
 import shutil
+import tempfile
 from django.core.cache import cache
 from django.conf import settings
 from google.genai import types
@@ -13,6 +14,7 @@ from django.core.files import File
 from .ai_client import get_ai_client
 from chat.models import TTSCache
 from core.genai_models import GENAI_MODEL_TTS
+from studio.services.storage_provider import get_storage_provider
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
     Se output_path for fornecido, copia o arquivo do cache para lá.
     Se não, retorna o caminho do cache.
     """
+    temp_path = None
     try:
         # 1. Generate Hash
         text_hash = hashlib.sha256(f"{message_text}:{voice_name}".encode('utf-8')).hexdigest()
@@ -37,16 +40,21 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
             logger.info(f"[TTS] Cache hit for hash {text_hash}")
             if output_path:
                 try:
+                    # Copia do arquivo de cache (que pode estar no GCS) para o destino
+                    # Se output_path for local (temp file do AudioMixer), baixamos.
+                    # Se output_path for remoto, isso complica, mas geralmente TTS gera local temp ou cache.
+
                     with cached_tts.audio_file.open('rb') as f:
                         with open(output_path, 'wb') as dest:
                             shutil.copyfileobj(f, dest)
                     return {'success': True, 'file_path': output_path, 'duration_ms': cached_tts.duration_ms}
-                except FileNotFoundError:
-                     logger.warning(f"[TTS] Cache file missing for {text_hash}, regenerating...")
-                     cached_tts.delete() # Invalid cache entry
+                except Exception as e:
+                     logger.warning(f"[TTS] Error reading cache for {text_hash}: {e}")
+                     # Se falhar ao ler, talvez arquivo não exista mais. Regenera.
+                     cached_tts.delete()
             else:
-                 # Return cache path directly if no output_path specified
-                 return {'success': True, 'file_path': cached_tts.audio_file.path, 'duration_ms': cached_tts.duration_ms}
+                 # Se não pediu output específico, retorna o path/url do cache
+                 return {'success': True, 'file_path': cached_tts.audio_file.name, 'duration_ms': cached_tts.duration_ms}
 
         # 3. Check Rate Limit (if user provided)
         if user:
@@ -93,23 +101,15 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
             raise Exception("Nenhum dado de áudio encontrado.")
 
         # 5. Save to Cache
-        # Temporary file creation
-        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_tts')
+        # Use tempfile module correctly
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+            temp_path = tf.name
 
-        # Ensure directory exists immediately before use
-        try:
-            os.makedirs(temp_dir, exist_ok=True)
-        except Exception:
-            pass # Ignore if exists
-
-        temp_filename = f"tts_{text_hash}.wav"
-        temp_path = os.path.join(temp_dir, temp_filename)
-
-        with wave.open(temp_path, 'wb') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(24000)
-            wf.writeframes(audio_part.data)
+            with wave.open(tf, 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(24000)
+                wf.writeframes(audio_part.data)
 
         # Calculate duration
         with wave.open(temp_path, 'rb') as wf:
@@ -117,7 +117,8 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
             rate = wf.getframerate()
             duration_ms = int((frames / float(rate)) * 1000)
 
-        # Save to Model
+        # Save to Model (Uploads to GCS if configured via DEFAULT_FILE_STORAGE)
+        temp_filename = f"tts_{text_hash}.wav"
         with open(temp_path, 'rb') as f:
             tts_cache = TTSCache(
                 text_hash=text_hash,
@@ -125,22 +126,25 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
                 voice=voice_name,
                 duration_ms=duration_ms
             )
+            # This .save() uses the model's FileField storage (default storage)
             tts_cache.audio_file.save(temp_filename, File(f), save=True)
 
-        # Cleanup temp
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
         # 6. Return Result
-        final_path = tts_cache.audio_file.path
-
-        # If output_path was requested, copy there
-        if output_path and output_path != final_path:
-             shutil.copy2(final_path, output_path)
+        # If output_path was requested, copy there (likely a temp file path from AudioMixer)
+        if output_path:
+             shutil.copy2(temp_path, output_path)
              final_path = output_path
+        else:
+             final_path = tts_cache.audio_file.name
 
         return {'success': True, 'file_path': final_path, 'duration_ms': duration_ms}
 
     except Exception as e:
         logger.error(f"[TTS Error] {e}")
         return {'success': False, 'error': str(e)}
+    finally:
+        # Cleanup temp
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except: pass

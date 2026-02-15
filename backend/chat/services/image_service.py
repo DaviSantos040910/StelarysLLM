@@ -11,6 +11,7 @@ from pathlib import Path
 from django.conf import settings
 from google.genai import types
 from .ai_client import get_ai_client, get_model, USE_VERTEX_AI
+from studio.services.storage_provider import get_storage_provider
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +38,15 @@ class ImageGenerationService:
         aspect_ratio: str = "1:1"
     ) -> str:
         """
-        Gera uma imagem e salva no diretório de mídia.
+        Gera uma imagem e salva usando o storage provider.
 
         Args:
             prompt: Descrição da imagem a ser gerada
-            output_dir: Subdiretório dentro de MEDIA_ROOT
+            output_dir: Subdiretório (caminho relativo)
             aspect_ratio: Proporção da imagem (apenas Vertex AI/Imagen)
 
         Returns:
-            str: Caminho relativo do arquivo salvo
-
-        Raises:
-            ImageGenerationError: Se houver erro na geração
+            str: Caminho relativo do arquivo salvo (ou gs://... dependendo do provider)
         """
         try:
             logger.info(f"[ImageGen] Gerando imagem: {prompt[:80]}...")
@@ -59,7 +57,7 @@ class ImageGenerationService:
             else:
                 image_bytes = self._generate_with_gemini(prompt)
 
-            # Salvar no disco
+            # Salvar usando Storage Provider
             return self._save_image(image_bytes, output_dir)
 
         except ImageGenerationError:
@@ -152,19 +150,39 @@ Create a visually appealing, detailed image that accurately represents the descr
         raise ImageGenerationError("Formato de resposta do Imagen não reconhecido.")
 
     def _save_image(self, image_bytes: bytes, output_dir: str) -> str:
-        """Salva bytes de imagem no disco."""
+        """Salva bytes de imagem usando o Storage Provider."""
         filename = f"{uuid.uuid4()}.png"
-        relative_path = os.path.join(output_dir, filename)
-        absolute_dir = Path(settings.MEDIA_ROOT) / output_dir
-        absolute_path = absolute_dir / filename
+        dest_path = os.path.join(output_dir, filename)
 
-        absolute_dir.mkdir(parents=True, exist_ok=True)
+        provider = get_storage_provider()
+        url = provider.save_bytes(image_bytes, dest_path, content_type='image/png')
 
-        with open(absolute_path, 'wb') as f:
-            f.write(image_bytes)
+        # Se for local, retornamos o caminho relativo/URL para ser consistente com o resto do sistema
+        # mas o provider retorna URL completa (http...).
+        # O chamador espera um caminho que possa salvar no modelo?
+        # O modelo ChatMessage.attachment é um FileField.
+        # Se retornarmos uma URL, teremos problema se tentarmos salvar em FileField diretamente?
+        # O FileField espera um arquivo ou nome relativo ao storage.
 
-        logger.info(f"[ImageGen] Salvo: {absolute_path} ({len(image_bytes)} bytes)")
-        return relative_path
+        # Se o provider retorna gs://, isso não é URL pública direta sem assinar.
+        # O ImageService é usado para retornar url para frontend ou para salvar em Message?
+        # get_ai_response retorna 'generated_image_path'.
+        # handle_voice_message usa isso para: ai_message.attachment.name = generated_image_path
+
+        # Se o provider for GCS, url será gs://bucket/chat_attachments/xyz.png
+        # Se atribuirmos isso ao attachment.name, funciona se o storage backend do model for GCS.
+        # Mas `save_bytes` já salvou o arquivo.
+
+        # Vamos retornar o dest_path (relativo) que é o que o Django espera para o 'name' do FileField
+        # se o storage for o mesmo.
+
+        # Mas `provider.save_bytes` faz o upload.
+        # Se retornarmos apenas o nome, o Django não sabe que o arquivo existe lá se não usarmos o mesmo backend de storage no Model.
+        # Como mudamos DEFAULT_FILE_STORAGE, o Model usará GCS.
+        # Se salvamos via provider (que usa GCS), o arquivo está lá.
+        # Atribuir `ai_message.attachment.name = dest_path` deve funcionar.
+
+        return dest_path
 
     def _handle_error(self, error: Exception):
         """Tratamento centralizado de erros."""
