@@ -343,15 +343,13 @@ def get_ai_response(
         final_user_prompt = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
 
         # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
+        warning_msg = None
         if not strict_context and not doc_contexts and allow_web_search:
+            warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
             final_user_prompt = (
                 f"{user_message_text}\n\n"
-                "Responda normalmente com base em conhecimento geral.\n\n"
-                "Ao final da resposta, adicione exatamente o seguinte aviso:\n"
-                "---\n"
-                "Nota: Não encontrei informações sobre isso nas suas fontes. "
-                "A resposta acima foi gerada com base em conhecimento geral.\n"
-                "O aviso deve aparecer SOMENTE no final da resposta.\n\n"
+                "Responda normalmente com base em conhecimento geral.\n"
+                "Não mencione que não encontrou fontes no texto da resposta, pois isso será mostrado separadamente na interface.\n\n"
                 "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
             )
 
@@ -416,6 +414,8 @@ def get_ai_response(
         # Ideally, we should return metrics in the result_data so the caller can save them.
 
         result_data['metrics'] = metrics # Pass metrics up
+        if warning_msg:
+            result_data['warning'] = warning_msg
 
         if result_data['content'] and len(user_message_text) > 10:
             threading.Thread(
@@ -828,20 +828,21 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                     final_sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
                 except: final_sources_list = []
 
+            warning_msg = None
+            if not strict_context and not doc_contexts and allow_web_search:
+                warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
+
             ai_message = ChatMessage.objects.create(
                 chat=chat,
                 role=ChatMessage.Role.ASSISTANT,
                 content=full_clean_content,
                 suggestion1=final_suggestions[0] if len(final_suggestions) > 0 else None,
                 suggestion2=final_suggestions[1] if len(final_suggestions) > 1 else None,
-                sources=final_sources_list
+                sources=final_sources_list,
+                warning=warning_msg
             )
             chat.last_message_at = timezone.now()
             chat.save()
-
-            warning_msg = None
-            if not strict_context and not doc_contexts and allow_web_search:
-                warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
 
             end_payload = {
                 'type': 'end',
@@ -938,6 +939,7 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
         ai_text = ai_response_data.get('content', '')
         ai_suggestions = ai_response_data.get('suggestions', [])
         ai_sources = ai_response_data.get('sources', [])
+        ai_warning = ai_response_data.get('warning')
         audio_path = ai_response_data.get('audio_path')
         duration_ms = ai_response_data.get('duration_ms', 0)
         generated_image_path = ai_response_data.get('generated_image_path')
@@ -949,7 +951,8 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
             suggestion1=ai_suggestions[0] if len(ai_suggestions) > 0 else None,
             suggestion2=ai_suggestions[1] if len(ai_suggestions) > 1 else None,
             duration=duration_ms,
-            sources=ai_sources
+            sources=ai_sources,
+            warning=ai_warning
         )
 
         ai_message.save() # Save first to get ID

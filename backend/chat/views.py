@@ -236,6 +236,7 @@ class ChatMessageListView(generics.ListCreateAPIView):
         ai_content = ai_response_data.get('content')
         ai_suggestions = ai_response_data.get('suggestions', [])
         ai_sources = ai_response_data.get('sources', [])
+        ai_warning = ai_response_data.get('warning')
         audio_path = ai_response_data.get('audio_path')
         duration_ms = ai_response_data.get('duration_ms', 0)
         generated_image_path = ai_response_data.get('generated_image_path')
@@ -250,7 +251,8 @@ class ChatMessageListView(generics.ListCreateAPIView):
                 content=ai_content,
                 suggestion1=ai_suggestions[0] if len(ai_suggestions) > 0 else None,
                 suggestion2=ai_suggestions[1] if len(ai_suggestions) > 1 else None,
-                sources=ai_sources
+                sources=ai_sources,
+                warning=ai_warning
             )
             ai_message.attachment.name = generated_image_path
             ai_message.attachment_type = 'image'
@@ -269,7 +271,8 @@ class ChatMessageListView(generics.ListCreateAPIView):
                 suggestion1=ai_suggestions[0] if len(ai_suggestions) > 0 else None,
                 suggestion2=ai_suggestions[1] if len(ai_suggestions) > 1 else None,
                 duration=duration_ms,
-                sources=ai_sources
+                sources=ai_sources,
+                warning=ai_warning
             )
             try:
                 with open(audio_path, 'rb') as f:
@@ -295,6 +298,7 @@ class ChatMessageListView(generics.ListCreateAPIView):
                 suggestions = ai_suggestions if is_last_paragraph else []
                 # Only attach sources to the LAST paragraph to avoid duplication in UI
                 sources = ai_sources if is_last_paragraph else []
+                warning = ai_warning if is_last_paragraph else None
                 
                 ai_message = ChatMessage(
                     chat=chat,
@@ -302,7 +306,8 @@ class ChatMessageListView(generics.ListCreateAPIView):
                     content=paragraph_content,
                     suggestion1=suggestions[0] if len(suggestions) > 0 else None,
                     suggestion2=suggestions[1] if len(suggestions) > 1 else None,
-                    sources=sources
+                    sources=sources,
+                    warning=warning
                 )
                 ai_message.save()
                 ai_messages.append(ai_message)
