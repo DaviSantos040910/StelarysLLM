@@ -152,3 +152,4 @@ class TTSCache(models.Model):
 
     def __str__(self):
         return f"TTS Cache ({self.voice}): {self.text[:30]}..."
+from .models_vector import VectorChunk
