@@ -504,10 +504,15 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                     
                     text = None
                     if obj.attachment_type == 'file' and mime in processable_mimes:
-                         text = FileProcessor.extract_text(obj.attachment.path, mime)
+                         # Pass the file object directly, not the path (which might not exist on GCS)
+                         text = FileProcessor.extract_text(obj.attachment, mime)
                     elif obj.attachment_type == 'image' and mime and mime.startswith('image/'):
                          logger.info(f"[RAG Image] Descrevendo: {obj.original_filename}")
-                         text = image_description_service.describe_image(obj.attachment.path)
+                         # Pass the file object (ensure it's open if needed)
+                         if obj.attachment:
+                             obj.attachment.open('rb')
+                             text = image_description_service.describe_image(obj.attachment)
+                             obj.attachment.close() # Good practice
 
                     if text:
                         try:
