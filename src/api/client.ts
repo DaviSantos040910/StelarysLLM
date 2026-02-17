@@ -28,11 +28,29 @@ client.interceptors.request.use(
     const { useAuthStore } = require('../stores/authStore');
     const { token, guestId } = useAuthStore.getState();
 
+    // Ensure headers object exists
+    if (!config.headers) {
+      config.headers = {} as any;
+    }
+
+    // 1. Inject Authorization (if valid)
     if (isLikelyJwt(token)) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else if (guestId) {
+    }
+
+    // 2. Inject X-Guest-Id (always if exists, allowing merge)
+    // We check if it's already set by the caller to avoid overriding specific intent
+    if (guestId && !config.headers['X-Guest-Id']) {
       config.headers['X-Guest-Id'] = guestId;
     }
+
+    if (__DEV__) {
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
+        hasAuth: !!config.headers.Authorization,
+        hasGuest: !!config.headers['X-Guest-Id']
+      });
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

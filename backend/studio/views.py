@@ -2,13 +2,13 @@ import io
 import json
 import logging
 import uuid
-import django_rq
 import os
+from django.utils import timezone
 from django.conf import settings
 from rest_framework import viewsets, permissions, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.http import HttpResponse, FileResponse, Http404
+from django.http import HttpResponse, FileResponse, Http404, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.db import transaction
 from django.core.files import File
@@ -309,19 +309,33 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             'includeChatHistory': request_config.get('includeChatHistory', False)
         }
 
-        # Generate Real Content via RQ (Async)
+        # Generate Real Content via Runner (Thread or Cloud Task)
         instance.stage = KnowledgeArtifact.Stage.QUEUED
         instance.correlation_id = uuid.uuid4()
         instance.enqueued_at = timezone.now()
+        instance.options_json = options
         instance.save()
 
         t0 = now_ms()
         try:
-            job = django_rq.enqueue(generate_artifact_job, instance.id, options)
-            instance.job_id = job.id
-            instance.save(update_fields=['job_id'])
-            log_perf("artifact.enqueue", instance.id, job_id=job.id, queue_name='default', elapsed_ms=ms_since(t0))
-            print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} job_id={job.id} queue=default", flush=True)
+            from studio.services.queue_provider import enqueue_artifact
+            task_id = enqueue_artifact(instance.id, options)
+
+            if task_id:
+                instance.job_id = task_id
+                instance.save(update_fields=['job_id'])
+
+            owner_type, owner = get_actor(self.request)
+            owner_id = owner.id if hasattr(owner, 'id') else 'unknown'
+
+            log_perf("artifact.enqueue", instance.id,
+                     backend=settings.QUEUE_BACKEND,
+                     elapsed_ms=ms_since(t0),
+                     job_ref=task_id,
+                     owner_type=owner_type,
+                     owner_id=owner_id,
+                     type=instance.type)
+            print(f"[ARTIFACT_ENQUEUE] artifact_id={instance.id} type={instance.type} backend={settings.QUEUE_BACKEND}", flush=True)
         except Exception as e:
             logger.error(f"Error enqueueing artifact generation job: {e}", exc_info=True)
             log_perf("artifact.enqueue_error", instance.id, error=str(e))
@@ -342,6 +356,16 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             if not artifact.media_url:
                 raise Http404("Audio file not available.")
 
+            # Check for GCS or other remote URL
+            if artifact.media_url.startswith("gs://") or artifact.media_url.startswith("http"):
+                from studio.services.storage_provider import get_storage_provider
+                download_url = get_storage_provider().get_download_url(artifact.media_url)
+                if download_url:
+                    return HttpResponseRedirect(download_url)
+                else:
+                    raise Http404("Unable to generate download link.")
+
+            # Fallback to Local Storage
             # Construct absolute path
             # artifact.media_url usually starts with /media/
             # Remove /media/ prefix if present to join with MEDIA_ROOT

@@ -13,6 +13,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
 # Load .env if exists
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -95,10 +96,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 # Password validation
@@ -204,3 +206,48 @@ RQ_QUEUES = {
 # --- Guest Mode Configuration ---
 # Duração do trial do guest em minutos. Default: 3 dias (4320 minutos).
 GUEST_TRIAL_MINUTES = int(os.getenv("GUEST_TRIAL_MINUTES", "4320"))
+
+# --- Async Task Queue Configuration (Dual Backend) ---
+# 'thread' = Local Development (no Redis/Cloud required)
+# 'cloud_tasks' = Production (Google Cloud Tasks)
+QUEUE_BACKEND = os.getenv('QUEUE_BACKEND', 'thread')
+
+# Google Cloud Tasks Configuration (Required if QUEUE_BACKEND='cloud_tasks')
+GCP_PROJECT = os.getenv('GCP_PROJECT', '')
+GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
+GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
+
+# --- Storage Configuration ---
+# 'local' = Local Filesystem (default)
+# 'gcs' = Google Cloud Storage
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local')
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
+
+# --- Vector DB Configuration ---
+# 'chroma' = Local ChromaDB (default)
+# 'pgvector' = PostgreSQL with pgvector extension
+VECTOR_DB_BACKEND = os.getenv('VECTOR_DB_BACKEND', 'chroma')
+
+if STORAGE_BACKEND == 'gcs':
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            "OPTIONS": {
+                "bucket_name": GCS_BUCKET_NAME,
+                "default_acl": "publicRead",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = f'https://storage.googleapis.com/{GCS_BUCKET_NAME}/'
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }

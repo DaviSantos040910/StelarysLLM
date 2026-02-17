@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { BookOpen, Copy, FileText, Loader2, RefreshCw, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native';
+import { AlertCircle, BookOpen, Copy, FileText, Loader2, RefreshCw, Square, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
@@ -142,9 +142,21 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
         // Text
         return (
-            <Text className={`${isUser ? 'text-white' : themeClasses.textPrimary} text-base leading-7`}>
-                {message.content}
-            </Text>
+            <View>
+                <Text className={`${isUser ? 'text-white' : themeClasses.textPrimary} text-base leading-7`}>
+                    {message.content}
+                </Text>
+
+                {/* Warning / Disclaimer Block */}
+                {message.warning && (
+                    <View className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex-row items-start">
+                        <AlertCircle size={14} color="#eab308" className="mt-0.5 mr-2" />
+                        <Text className="text-yellow-600 dark:text-yellow-400 text-xs flex-1 leading-5">
+                            {message.warning}
+                        </Text>
+                    </View>
+                )}
+            </View>
         );
     };
 

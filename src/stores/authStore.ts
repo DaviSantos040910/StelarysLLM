@@ -76,14 +76,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { guestId } = get();
       if (guestId) {
         try {
+          if (__DEV__) console.log('[Auth] Attempting to claim guest session:', guestId);
           await authService.claimGuest(guestId);
-          console.log('Guest session claimed successfully');
-          // Optional: clear guestId from store/storage as it's merged
+          if (__DEV__) console.log('[Auth] Guest session claimed successfully');
+
+          // Clear guestId from store/storage as it's merged
           set({ guestId: null });
           await storage.deleteItem('guest_id');
-        } catch (claimError) {
-          console.error('Failed to claim guest session', claimError);
-          // Do not block login, just log error
+        } catch (claimError: any) {
+          // If 409 (Already Claimed) or 204 (No Content), treat as success
+          if (claimError.response?.status === 409 || claimError.response?.status === 204) {
+             set({ guestId: null });
+             await storage.deleteItem('guest_id');
+          } else {
+             console.error('[Auth] Failed to claim guest session', claimError);
+          }
+          // Do not block login
         }
       }
 

@@ -151,26 +151,37 @@ class ChangePasswordView(APIView):
 class ClaimGuestView(APIView):
     """
     Endpoint to claim a guest session and migrate data to the authenticated user.
+    Harden against header variations and idempotency.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        guest_id = request.headers.get("X-Guest-Id")
+        # 1. Flexible Header Lookup
+        guest_id = (
+            request.headers.get("X-Guest-Id") or
+            request.headers.get("X-Guest-ID") or
+            request.headers.get("x-guest-id") or
+            request.META.get("HTTP_X_GUEST_ID")
+        )
+
+        # 2. Idempotency: If no ID provided, assume nothing to claim (Success No Content)
         if not guest_id:
-            return Response({"detail": "X-Guest-Id header is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "No guest ID provided."}, status=status.HTTP_204_NO_CONTENT)
 
         try:
+            # 3. Call Service
             result = claim_guest_session(request.user, guest_id)
             return Response(result, status=status.HTTP_200_OK)
         except Exception as e:
-            # Service raises ValidationError (400) or PermissionDenied (403).
-            # We map generic exceptions to 400 or 409 appropriately if needed,
-            # but DRF handles APIExceptions well.
-            # If standard Python exceptions:
-            if "already claimed" in str(e):
-                return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
-            if "not found" in str(e):
-                return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # Idempotency: If already claimed or not found, treat as success from client perspective
+            # so they can clear their local storage.
+            err_msg = str(e).lower()
+
+            if "already claimed" in err_msg:
+                return Response({"detail": "Session already claimed"}, status=status.HTTP_409_CONFLICT) # 409 tells client it's done
+
+            if "not found" in err_msg or "does not exist" in err_msg:
+                return Response({"detail": "Guest session not found"}, status=status.HTTP_204_NO_CONTENT)
 
             # Default fallback
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

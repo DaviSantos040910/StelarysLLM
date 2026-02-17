@@ -1,13 +1,12 @@
 import logging
 import mimetypes
-import django_rq
 from typing import Optional
 from studio.models import KnowledgeSource
 from chat.file_processor import FileProcessor
 from chat.services.content_extractor import ContentExtractor
 from chat.services.image_description_service import image_description_service
 from chat.vector_service import vector_service
-from chat.jobs.transcription_jobs import process_youtube_source_context_job
+from chat.services.ingestion_queue_provider import enqueue_youtube_ingestion
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +38,14 @@ class KnowledgeIngestionService:
                         # Optional: correct the source type for future reference
                         # source.source_type = KnowledgeSource.SourceType.IMAGE
                     else:
-                        extracted_text = FileProcessor.extract_text(source.file.path)
+                        extracted_text = FileProcessor.extract_text(source.file)
                 
                 elif source.source_type == KnowledgeSource.SourceType.IMAGE and source.file:
                     extracted_text = image_description_service.describe_image(source.file)
                 
                 elif source.source_type == KnowledgeSource.SourceType.YOUTUBE and source.url:
-                    # Offload YouTube to RQ
-                    django_rq.enqueue(process_youtube_source_context_job, source.id, bot_id, study_space_id)
+                    # Offload YouTube to Queue (Cloud Tasks / Thread)
+                    enqueue_youtube_ingestion(source.id, bot_id=bot_id, study_space_id=study_space_id)
                     logger.info(f"Enqueued YouTube processing for source {source.id}")
                     return True # Return True to indicate accepted (async)
 

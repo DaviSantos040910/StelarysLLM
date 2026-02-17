@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import KnowledgeArtifact, KnowledgeSource, StudySpace
+from studio.services.storage_provider import get_storage_provider
 
 class MultipartListField(serializers.ListField):
     """
@@ -21,6 +22,9 @@ class KnowledgeArtifactSerializer(serializers.ModelSerializer):
     # Input field for Podcast duration (Short/Medium/Long)
     duration = serializers.CharField(write_only=True, required=False)
 
+    # Shadow the model field to provide signed URLs if needed
+    media_url = serializers.SerializerMethodField()
+
     class Meta:
         model = KnowledgeArtifact
         fields = [
@@ -38,6 +42,12 @@ class KnowledgeArtifactSerializer(serializers.ModelSerializer):
             'score': {'required': False, 'allow_null': True},
             'status': {'read_only': True}
         }
+
+    def get_media_url(self, obj):
+        if not obj.media_url:
+            return None
+        # Convert stored path (local or gs://) to a usable URL (media URL or signed URL)
+        return get_storage_provider().get_download_url(obj.media_url)
 
     def create(self, validated_data):
         # Remove fields that are not part of the model

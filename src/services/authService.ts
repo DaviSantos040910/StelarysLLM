@@ -27,8 +27,8 @@ export const authService = {
   },
 
   claimGuest: async (guestId: string): Promise<void> => {
-    // Explicitly pass X-Guest-Id because client.ts only injects it if NO token is present.
-    // Here we are logged in (have token), so we must manually attach the header.
+    // Client interceptor now handles injection of X-Guest-Id automatically if present in store.
+    // We pass it explicitly here as a safeguard, but the interceptor logic respects caller headers.
     await client.post('/api/v1/accounts/claim_guest/', {}, {
       headers: {
         'X-Guest-Id': guestId
