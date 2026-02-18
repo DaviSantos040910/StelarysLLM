@@ -8,6 +8,7 @@ import { useAudioPlayerStore } from '../../stores/audioPlayerStore';
 import { themeClasses } from '../../theme/classes';
 import { Message, SourceRef } from '../../types/chat';
 import { AudioMessagePlayer } from './AudioMessagePlayer';
+import { TypingIndicatorDots } from './TypingIndicatorDots';
 
 interface ChatMessageItemProps {
     message: Message;
@@ -175,7 +176,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         <View className="flex-col mb-6">
             <View className="w-full pl-1 pr-4">
                 {message.content || message.attachment_url ? renderContent() : (
-                    isStreaming && <ActivityIndicator size="small" color="#818cf8" />
+                    isStreaming && (
+                        <View className="p-3 bg-gray-100 dark:bg-space-light/50 rounded-2xl rounded-tl-none w-20 items-center justify-center">
+                            <TypingIndicatorDots color="#818cf8" />
+                        </View>
+                    )
                 )}
             </View>
 

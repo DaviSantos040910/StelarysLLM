@@ -1,6 +1,7 @@
 import apiClient, { BASE_URL } from '../api/client';
 import { getAuthHeaders } from '../api/authHeaders';
 import { Message, ChatListItem, ChatSource } from '../types/chat';
+import { streamMessage, StreamCallbacks } from './streamApi';
 
 interface PaginatedResponse<T> {
     count: number;
@@ -74,9 +75,80 @@ export const chatService = {
       return response.data;
   },
 
-  regenerateMessage: async (chatId: string | number): Promise<Message[]> => {
-      const response = await apiClient.post<Message[]>(`/api/v1/chats/${chatId}/regenerate/`, {});
-      return response.data;
+  // Legacy Sync (deprecated for streaming)
+  // regenerateMessage: async (chatId: string | number): Promise<Message[]> => {
+  //     const response = await apiClient.post<Message[]>(`/api/v1/chats/${chatId}/regenerate/`, {});
+  //     return response.data;
+  // },
+
+  regenerateMessageStream: async (
+      chatId: string | number,
+      callbacks: StreamCallbacks
+  ) => {
+      // Reuse the streamApi but point to regenerate endpoint
+      // We need to implement a specialized stream function or modify streamMessage to accept URL
+      // Since streamMessage is imported from streamApi, we might need to duplicate logic or update streamApi.
+      // For simplicity, let's implement a direct fetch stream logic here mimicking streamApi but for regenerate url.
+
+      const url = `${BASE_URL}/api/v1/chats/${chatId}/regenerate/`;
+      const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+
+      try {
+          const response = await fetch(url, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({}), // Empty body for regenerate
+              // @ts-ignore
+              reactNative: { textStreaming: true },
+          });
+
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+          // Reuse the same reader logic as sendMessageStream or streamApi
+          // @ts-ignore
+          if (response.body && response.body.getReader) {
+                // @ts-ignore
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') break;
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.type === 'start') callbacks.onStart?.(parsed);
+                                if (parsed.type === 'chunk') callbacks.onChunk(parsed.text);
+                                if (parsed.type === 'end') callbacks.onFinish?.(parsed);
+                                if (parsed.type === 'error') callbacks.onError?.(parsed);
+                            } catch (e) {}
+                        }
+                    }
+                }
+          } else {
+                // Fallback for environments without standard ReadableStream (like basic RN fetch without polyfill sometimes?)
+                // Actually Expo fetch supports textStreaming usually.
+                const text = await response.text();
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed.type === 'start') callbacks.onStart?.(parsed);
+                            if (parsed.type === 'chunk') callbacks.onChunk(parsed.text);
+                            if (parsed.type === 'end') callbacks.onFinish?.(parsed);
+                        } catch (e) {}
+                    }
+                }
+          }
+      } catch (err) {
+          callbacks.onError?.(err);
+      }
   },
 
   // === Chat Source Management ===

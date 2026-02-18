@@ -753,82 +753,87 @@ class MessageFeedbackView(APIView):
         return Response({'feedback': m.feedback}, status=200)
 
 
-class RegenerateMessageView(APIView):
+@method_decorator(csrf_exempt, name='dispatch')
+class RegenerateMessageView(View):
     """
-    Regera a última resposta do assistente.
+    Regera a última resposta do assistente (Streaming Support).
     Apaga as mensagens do assistente que seguiram a última mensagem do usuário
-    e gera uma nova resposta.
+    e gera uma nova resposta via SSE.
     """
-    permission_classes = [IsUserOrGuest]
+    def _authenticate(self, request):
+        """Reuse auth logic from StreamChatMessageView."""
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+            jwt_auth = JWTAuthentication()
+            try:
+                validated_token = jwt_auth.get_validated_token(token)
+                user = jwt_auth.get_user(validated_token)
+                return ('user', user)
+            except (InvalidToken, TokenError):
+                pass
+
+        guest_id = request.headers.get('X-Guest-Id')
+        if guest_id:
+            try:
+                uuid_obj = uuid.UUID(guest_id)
+                session = GuestSession.objects.get(id=uuid_obj)
+                if session.is_active:
+                    if session.trial_expires_at and session.trial_expires_at < timezone.now():
+                        return ('expired', None)
+                    return ('guest', session)
+            except (ValueError, GuestSession.DoesNotExist):
+                pass
+        return None
 
     def post(self, request, chat_pk):
-        actor_type, actor = get_actor(request)
-        if actor_type == 'user':
-            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
-        elif actor_type == 'guest':
-            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
-        else:
-             return Response({"detail": "Unauthorized"}, status=401)
+        # 1. Auth
+        auth_result = self._authenticate(request)
+        if auth_result and auth_result[0] == 'expired':
+             return JsonResponse({"detail": "Trial expired", "code": "TRIAL_EXPIRED"}, status=402)
+        if not auth_result:
+            return JsonResponse({"detail": "Unauthorized"}, status=401)
 
-        # Encontra a última mensagem do usuário
+        actor_type, actor = auth_result
+
+        # 2. Get Chat
+        try:
+            if actor_type == 'user':
+                chat = Chat.objects.get(id=chat_pk, user=actor)
+            else:
+                chat = Chat.objects.get(id=chat_pk, guest_session=actor)
+        except Chat.DoesNotExist:
+            return JsonResponse({"detail": "Chat not found."}, status=404)
+
+        if chat.status != Chat.ChatStatus.ACTIVE:
+            return JsonResponse({"detail": "This chat is archived."}, status=403)
+
+        # 3. Find last user message
         last_user_msg = chat.messages.filter(role=ChatMessage.Role.USER).order_by('-created_at').first()
-
         if not last_user_msg:
-             return Response({"detail": "No user message to reply to."}, status=400)
+             return JsonResponse({"detail": "No user message to reply to."}, status=400)
 
-        # Apaga todas as mensagens que vieram DEPOIS dessa mensagem do usuário (normalmente a resposta antiga)
-        # Isso garante que limpamos a resposta anterior antes de gerar a nova.
-        chat.messages.filter(created_at__gt=last_user_msg.created_at).delete()
+        # 4. Delete subsequent AI messages
+        with transaction.atomic():
+            chat.messages.filter(created_at__gt=last_user_msg.created_at).delete()
 
-        # Gera nova resposta (reusando a lógica de get_ai_response)
-        # Nota: reply_with_audio defaults to False here for simplicity, or we could pass it from request
-        reply_with_audio = request.data.get('reply_with_audio', False)
+        # 5. Stream Response (reusing existing logic)
+        # Note: We reuse process_message_stream which generates a NEW message.
+        # This is correct for "regenerate" (delete old, create new).
 
-        ai_response_data = get_ai_response(
-            chat.id,
-            last_user_msg.content,
-            user_message_obj=last_user_msg,
-            reply_with_audio=reply_with_audio
+        if actor_type == 'user':
+             stream_gen = process_message_stream(chat.id, last_user_msg.content, user_id=actor.id)
+        else:
+             stream_gen = process_message_stream(chat.id, last_user_msg.content, guest_id=str(actor.id))
+
+        response = StreamingHttpResponse(
+            stream_gen,
+            content_type='text/event-stream'
         )
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
 
-        # ... (Logica de salvar a resposta similar ao ChatMessageListView.create)
-        # Para evitar duplicação, o ideal seria refatorar a lógica de salvamento em um service,
-        # mas por brevidade vou replicar a parte essencial aqui ou chamar o service se existir.
-
-        ai_content = ai_response_data.get('content')
-        ai_suggestions = ai_response_data.get('suggestions', [])
-        # Ignore audio generation for regenerate for now unless strictly needed
-
-        paragraphs = re.split(r'\\n{2,}', ai_content.strip()) if ai_content else []
-        if not paragraphs:
-            paragraphs = ["..."]
-
-        ai_messages = []
-        total_paragraphs = len(paragraphs)
-        for i, paragraph_content in enumerate(paragraphs):
-            is_last_paragraph = i == (total_paragraphs - 1)
-            suggestions = ai_suggestions if is_last_paragraph else []
-            ai_message = ChatMessage(
-                chat=chat,
-                role=ChatMessage.Role.ASSISTANT,
-                content=paragraph_content,
-                suggestion1=suggestions[0] if len(suggestions) > 0 else None,
-                suggestion2=suggestions[1] if len(suggestions) > 1 else None,
-            )
-            ai_message.save()
-            ai_messages.append(ai_message)
-
-        if ai_messages:
-            chat.last_message_at = ai_messages[-1].created_at
-            chat.save()
-
-        response_serializer = ChatMessageSerializer(
-            ai_messages,
-            many=True,
-            context={'request': request}
-        )
-
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return response
 
 
 # =============================================================================

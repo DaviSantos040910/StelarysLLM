@@ -87,27 +87,72 @@ export const useChatStore = create<ChatState>((set, get) => ({
   regenerateMessage: async (chatId) => {
       const { messages } = get();
       const lastMsg = messages[0];
+      // Allow regenerating if last is assistant (rewrite) OR if last is user (retry/generate)?
+      // Usually "regenerate" implies re-rolling the assistant's last reply.
       if (lastMsg?.role !== 'assistant') return;
 
-      set({ isStreaming: true });
-
+      // Remove the last assistant message locally
       set((state) => ({
-          messages: state.messages.slice(1)
+          messages: state.messages.slice(1),
+          isStreaming: true
       }));
 
-      try {
-          const newMessages = await chatService.regenerateMessage(chatId);
-          const processedNew = newMessages.map(m => ({ ...m, localId: m.id.toString() }));
+      // Create a placeholder streaming message
+      const aiLocalId = generateLocalId();
+      const aiMsgId = `temp-regen-${Date.now()}`;
+      const aiMsg: Message = {
+          id: aiMsgId,
+          localId: aiLocalId,
+          role: 'assistant',
+          content: '',
+          created_at: new Date().toISOString(),
+          status: 'sending'
+      };
 
-          set((state) => ({
-              messages: [...processedNew.reverse(), ...state.messages],
-              isStreaming: false
-          }));
-      } catch (e) {
-          console.error(e);
-          set({ error: 'Failed to regenerate message', isStreaming: false });
-          get().loadMessages(chatId);
-      }
+      set((state) => ({ messages: [aiMsg, ...state.messages] }));
+
+      // Call streaming rewrite service
+      await chatService.regenerateMessageStream(chatId, {
+          onChunk: (chunk) => {
+              set((state) => ({
+                  messages: state.messages.map((m) =>
+                      m.localId === aiLocalId ? { ...m, content: m.content + chunk } : m
+                  )
+              }));
+          },
+          onFinish: (meta) => {
+              set((state) => ({
+                  isStreaming: false,
+                  messages: state.messages.map((m) => {
+                      if (m.localId === aiLocalId) {
+                          const safeId = (meta.message_id && meta.message_id !== '0' && meta.message_id !== 0)
+                              ? meta.message_id
+                              : m.id;
+
+                          const finalContent = (!m.content || m.content.length === 0) && meta.clean_content
+                              ? meta.clean_content
+                              : m.content;
+
+                          return {
+                              ...m,
+                              status: 'sent',
+                              id: safeId,
+                              content: finalContent,
+                              suggestions: meta.suggestions && meta.suggestions.length > 0 ? meta.suggestions : m.suggestions,
+                              sources: meta.sources || m.sources,
+                              warning: meta.warning
+                          };
+                      }
+                      return m;
+                  })
+              }));
+          },
+          onError: (err) => {
+              console.error("Regenerate stream error:", err);
+              set({ error: 'Failed to regenerate message', isStreaming: false });
+              get().loadMessages(chatId);
+          }
+      });
   },
 
   sendMessage: async (chatId, text) => {
