@@ -152,34 +152,30 @@ def _generate_podcast(artifact, context, options, job_id):
     t_mix = now_ms()
     log_perf("artifact.mix_audio_start", artifact.id, job_id=job_id)
 
-    # AudioMixerService returns (relative_path, transcript, duration_ms)
-    # relative_path is like 'podcasts/abc.mp3' relative to MEDIA_ROOT
-    relative_path, transcript, total_duration_ms = AudioMixerService.mix_podcast(script, bot_voice_enum=bot.voice)
+    # AudioMixerService now returns (absolute_temp_path, transcript, duration_ms)
+    absolute_temp_path, transcript, total_duration_ms = AudioMixerService.mix_podcast(script, bot_voice_enum=bot.voice)
     log_perf("artifact.mix_audio_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_mix))
 
     # Use Storage Provider to persist the file (upload to GCS or verify Local)
     storage = get_storage_provider()
 
-    # Construct full local path because mix_podcast saves to MEDIA_ROOT
-    full_local_path = os.path.join(settings.MEDIA_ROOT, relative_path)
-
-    # We want to store it at the same relative path in the storage backend
-    dest_path = relative_path
+    # Define destination path
+    filename = os.path.basename(absolute_temp_path)
+    dest_path = f"podcasts/{filename}"
 
     # Persist via provider
     try:
         t_save = now_ms()
         log_perf("artifact.save_output_start", artifact.id, job_id=job_id, path=dest_path)
-        final_url = storage.save_file(full_local_path, dest_path, content_type="audio/mpeg")
+        # Upload from the temp file
+        final_url = storage.save_file(absolute_temp_path, dest_path, content_type="audio/mpeg")
         log_perf("artifact.save_output_end", artifact.id, job_id=job_id, elapsed_ms=ms_since(t_save), url=final_url)
 
         artifact.media_url = final_url
 
-        # Cleanup local file (AudioMixer saves to MEDIA_ROOT temporarily)
-        # Only delete if we are NOT using local storage (to avoid deleting the final file if src==dest)
-        is_local_storage = os.getenv('STORAGE_BACKEND', 'local') == 'local'
-        if not is_local_storage and os.path.exists(full_local_path):
-            os.remove(full_local_path)
+        # Cleanup temp file
+        if os.path.exists(absolute_temp_path):
+            os.remove(absolute_temp_path)
 
     except Exception as e:
         logger.error(f"Failed to save podcast output: {e}", exc_info=True)

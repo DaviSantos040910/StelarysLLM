@@ -205,5 +205,11 @@ Create a visually appealing, detailed image that accurately represents the descr
             raise ImageGenerationError(f"Erro na geração: {str(error)}")
 
 
-# Singleton
-image_service = ImageGenerationService()
+# Lazy Singleton
+_image_service = None
+
+def get_image_service():
+    global _image_service
+    if _image_service is None:
+        _image_service = ImageGenerationService()
+    return _image_service

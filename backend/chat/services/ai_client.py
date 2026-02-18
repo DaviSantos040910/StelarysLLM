@@ -16,14 +16,16 @@ logger = logging.getLogger(__name__)
 # Flag para alternar entre Gemini API e Vertex AI
 USE_VERTEX_AI = getattr(settings, 'USE_VERTEX_AI', False)
 
-# Configurações Vertex AI
+# Configurações Vertex AI (Defaults)
+# As flags são verificadas dinamicamente em get_ai_client para evitar problemas de import
 VERTEX_PROJECT_ID = getattr(settings, 'VERTEX_PROJECT_ID', '')
 VERTEX_LOCATION = getattr(settings, 'VERTEX_LOCATION', 'us-central1')
 
 
 def get_ai_client():
     """Retorna o client apropriado baseado na configuração."""
-    if USE_VERTEX_AI:
+    # Verificação dinâmica para evitar problemas em tempo de import
+    if getattr(settings, 'USE_VERTEX_AI', False):
         return _get_vertex_client()
     return _get_gemini_client()
 
@@ -186,5 +188,6 @@ def get_model(model_type: str) -> str:
     Returns:
         Nome do modelo para a API configurada
     """
-    api_type = 'vertex_ai' if USE_VERTEX_AI else 'gemini_api'
+    use_vertex = getattr(settings, 'USE_VERTEX_AI', False)
+    api_type = 'vertex_ai' if use_vertex else 'gemini_api'
     return MODELS[api_type].get(model_type, MODELS[api_type]['chat'])

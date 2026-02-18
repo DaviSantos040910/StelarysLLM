@@ -118,7 +118,7 @@ class VectorService:
 
     def add_memory(self, user_id: int, bot_id: int, text: str, role: str) -> None:
         """Adiciona memória de conversação."""
-        if not self.collection or not text:
+        if not self.backend or not text:
             return
 
         try:
@@ -152,7 +152,7 @@ class VectorService:
         message_id: Optional[int] = None
     ) -> None:
         """Adiciona chunks de documento com metadados completos."""
-        if not self.collection or not chunks:
+        if not self.backend or not chunks:
             return
 
         logger.info(f"Indexando {len(chunks)} chunks de '{source_name}' (Space: {study_space_id}, Bot: {bot_id})")
@@ -609,18 +609,19 @@ class VectorService:
 
         try:
             # 1. Fetch IDs owned by old_owner
-            results = self.backend.get_documents(where={"user_id": old_owner_id})
+            results = self.backend.get_documents(where={"user_id": str(old_owner_id)})
 
             ids = results.get('ids', [])
             metadatas = results.get('metadatas', [])
 
             if not ids:
+                logger.info(f"[Vector Migration] No vectors found for {old_owner_id}")
                 return 0
 
             # 2. Update metadatas
             new_metadatas = []
             for meta in metadatas:
-                meta['user_id'] = new_owner_id
+                meta['user_id'] = str(new_owner_id)
                 new_metadatas.append(meta)
 
             self.backend.update_documents(
@@ -632,7 +633,7 @@ class VectorService:
             return len(ids)
 
         except Exception as e:
-            logger.error(f"Erro ao migrar vetores: {e}")
+            logger.error(f"Erro ao migrar vetores: {e}", exc_info=True)
             return 0
 
 # Instância global singleton exportada

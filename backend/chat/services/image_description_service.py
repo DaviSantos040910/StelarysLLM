@@ -5,29 +5,24 @@ from PIL import Image
 from google import genai
 from google.genai import types
 from django.conf import settings
+from chat.services.ai_client import get_ai_client
 
 logger = logging.getLogger(__name__)
 
 class ImageDescriptionService:
     def __init__(self):
-        try:
-            api_key = settings.GEMINI_API_KEY
-            if not api_key:
-                 raise ValueError("GEMINI_API_KEY not found")
-            self.client = genai.Client(api_key=api_key)
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini Client for image description: {e}")
-            self.client = None
+        # Lazy client initialization is handled by get_ai_client
+        pass
 
     def describe_image(self, image_file) -> str:
+        client = get_ai_client()
+        if not client:
+            logger.error("Gemini Client not initialized.")
+            return ""
         """
         Gera uma descrição textual detalhada para indexação RAG de uma imagem.
         Aceita um objeto file-like (Django UploadedFile ou path string).
         """
-        if not self.client:
-            logger.error("Gemini Client not initialized.")
-            return ""
-
         try:
             # 1. Prepare Image
             if isinstance(image_file, str):
@@ -37,10 +32,16 @@ class ImageDescriptionService:
                     mime_type = 'image/jpeg' # Simplification, detect if needed
             else:
                 # File object (Django)
-                image_file.seek(0)
+                # Ensure we are at the start of the file
+                if hasattr(image_file, 'seek'):
+                    image_file.seek(0)
+
                 img_data = image_file.read()
                 mime_type = getattr(image_file, 'content_type', 'image/jpeg')
-                image_file.seek(0) # Reset pointer
+
+                # Reset pointer
+                if hasattr(image_file, 'seek'):
+                    image_file.seek(0)
 
             # 2. Call Gemini with specific prompt for factual description
             prompt = """Describe the image factually.
@@ -54,7 +55,7 @@ Include:
 
 Do not infer or assume information that is not visually present."""
 
-            response = self.client.models.generate_content(
+            response = client.models.generate_content(
                 model='gemini-2.5-flash-lite',
                 contents=[
                     prompt,

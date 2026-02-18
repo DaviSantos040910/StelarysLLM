@@ -26,7 +26,7 @@ from google.genai import types
 from ..models import ChatMessage, Chat, ChatResponseMetric
 from ..vector_service import VectorService
 from .ai_client import get_ai_client, detect_intent, generate_content_stream
-from .image_service import ImageGenerationService
+from .image_service import get_image_service
 from .context_builder import (
     build_conversation_history,
     build_system_instruction,
@@ -43,8 +43,6 @@ logger = logging.getLogger(__name__)
 
 # Instância global do serviço vetorial
 vector_service = VectorService()
-# Instância global do serviço de imagem
-image_service = ImageGenerationService()
 
 
 # Helper functions removed to avoid duplication with strict_boundary
@@ -210,7 +208,7 @@ def get_ai_response(
 
         if intent == 'IMAGE':
             try:
-                image_rel_path = image_service.generate_and_save_image(user_message_text)
+                image_rel_path = get_image_service().generate_and_save_image(user_message_text)
                 return {
                     'content': f"Aqui está a imagem que criei para você com base em \"{user_message_text}\".",
                     'suggestions': ["Gere outra variação", "Mude o estilo", "Obrigado!"],

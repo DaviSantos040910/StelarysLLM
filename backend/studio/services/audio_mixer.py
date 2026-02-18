@@ -121,14 +121,16 @@ class AudioMixerService:
 
             # Export Final Mix
             filename = f"podcast_mix_{uuid.uuid4().hex[:10]}.mp3"
-            output_dir = os.path.join(settings.MEDIA_ROOT, 'podcasts')
-            os.makedirs(output_dir, exist_ok=True)
 
-            output_path = os.path.join(output_dir, filename)
+            # Use Tempfile for robustness on Cloud Run (avoid MEDIA_ROOT read-only issues)
+            # The artifact runner handles uploading this file to storage.
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tf:
+                output_path = tf.name
 
             full_audio.export(output_path, format="mp3", bitrate="128k")
 
-            return f"podcasts/{filename}", transcript, len(full_audio)
+            # Return absolute path, runner handles relative path for URL
+            return output_path, transcript, len(full_audio)
 
         except Exception as e:
             logger.error(f"Error mixing podcast: {e}")

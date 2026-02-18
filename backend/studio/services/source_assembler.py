@@ -49,7 +49,8 @@ class SourceAssemblyService:
             for source in sources:
                 if not source.extracted_text and source.file:
                     try:
-                        content = FileProcessor.extract_text(source.file.path)
+                        # GCS Fix: Use file object directly
+                        content = FileProcessor.extract_text(source.file)
                         if content:
                             source.extracted_text = content
                             source.save(update_fields=['extracted_text'])
