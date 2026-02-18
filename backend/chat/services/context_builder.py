@@ -8,6 +8,7 @@ from typing import List, Tuple, Optional
 from datetime import datetime
 from ..models import ChatMessage
 import logging
+from .persona_guard import PersonaGuard
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,8 @@ def build_system_instruction(
     current_time: str,
     available_docs: Optional[List[str]] = None,
     allow_web_search: bool = False,
-    strict_context: bool = False
+    strict_context: bool = False,
+    bot_name: str = "Tutor"
 ) -> str:
     """
     Constrói system instruction otimizado para RAG multi-documento e Output Format controlado.
@@ -89,7 +91,11 @@ def build_system_instruction(
         available_docs: Lista de nomes de documentos disponíveis (ordenados por recência)
         allow_web_search: Se True, injeta instruções específicas para uso da Google Search
         strict_context: Se True, a IA deve responder APENAS com base nas fontes.
+        bot_name: Nome do bot para compilação da persona.
     """
+
+    # 1. Compile Persona Rules
+    persona_block = PersonaGuard.compile_persona(bot_name, bot_prompt)
 
     # Lista de documentos disponíveis
     docs_list_section = ""
@@ -217,8 +223,7 @@ CURRENT SYSTEM CONFIGURATION
 Conversing with: {user_name}
 Date/Time: {current_time}
 
-[PERSONALITY (TUTOR PERSONA)]
-{bot_prompt}
+{persona_block}
 
 [SYSTEM MODES]
 STRICT CONTEXT MODE: {strict_status}

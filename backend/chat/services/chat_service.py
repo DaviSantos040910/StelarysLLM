@@ -32,6 +32,7 @@ from .context_builder import (
     build_system_instruction,
     get_recent_attachment_context
 )
+from .persona_guard import PersonaGuard, StreamSanitizer
 from .strict_style_service import strict_style_service
 from .strict_boundary import strict_boundary, ResponseMode
 from .source_service import source_service
@@ -360,7 +361,12 @@ def get_ai_response(
             config=generation_config
         )
 
-        result_data = _parse_ai_response(response.text if response.text else "")
+        raw_text = response.text if response.text else ""
+
+        # 1. Sync Sanitization (Remove AI Identity Leaks)
+        sanitized_text = PersonaGuard.sanitize_identity_leaks(raw_text, bot.name)
+
+        result_data = _parse_ai_response(sanitized_text)
 
         # --- POST-GENERATION GUARDRAIL (STRICT MODE) ---
         # If strict_context is ON, but response has NO citations, assume hallucination/failure.
@@ -754,6 +760,9 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             suggestions_json_str = ""
             is_collecting_suggestions = False
 
+            # --- Stream Sanitizer ---
+            sanitizer = StreamSanitizer(bot.name)
+
             for text_chunk in stream:
                 if not isinstance(text_chunk, str) or not text_chunk: continue
                 buffer += text_chunk
@@ -762,26 +771,60 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 if not is_collecting_suggestions:
                     if SEPARATOR in buffer:
                         parts = buffer.split(SEPARATOR)
-                        text_part = parts[0]
 
-                        # Flush text part
-                        if text_part:
-                            full_clean_content += text_part
-                            yield f"data: {json.dumps({'type': 'chunk', 'text': text_part})}\n\n"
+                        # Process text part with sanitizer before flushing
+                        raw_text_part = parts[0]
+
+                        # We must feed the sanitizer chunk by chunk ideally, but here we have a big block potentially.
+                        # Wait, sanitizer.process_chunk takes a chunk.
+                        # Since buffer already accumulated, we can feed it or rework buffering.
+                        # Existing buffer logic is robust for finding Separator.
+                        # Let's apply sanitizer on text_part output.
+                        # BUT sanitizer buffers internally.
+
+                        # Correct approach: Feed `text_chunk` to sanitizer?
+                        # No, because separator detection logic is here.
+                        # Let's change flow:
+                        # 1. Use existing buffer for SEPARATOR detection.
+                        # 2. When deciding to emit a "safe_chunk", feed it to sanitizer.
+                        # 3. Sanitizer returns filtered text (or buffers if pending).
+                        # 4. Emit sanitizer output.
+
+                        # Re-implement safe buffer logic:
+
+                        pass # Logic handled below
+
+                    else:
+                        # Safe buffer logic
+                        if len(buffer) > SEPARATOR_LEN:
+                            to_emit_raw = buffer[:-SEPARATOR_LEN]
+                            buffer = buffer[-SEPARATOR_LEN:]
+
+                            # Sanitize & Emit
+                            safe_chunk = sanitizer.process_chunk(to_emit_raw)
+                            if safe_chunk:
+                                full_clean_content += safe_chunk
+                                yield f"data: {json.dumps({'type': 'chunk', 'text': safe_chunk})}\n\n"
+                                time.sleep(CHUNK_DELAY)
+
+                    if SEPARATOR in buffer:
+                        parts = buffer.split(SEPARATOR)
+                        text_part_raw = parts[0]
+
+                        # Flush sanitizer with remaining text part
+                        remaining_sanitized = sanitizer.process_chunk(text_part_raw)
+                        final_sanitized = remaining_sanitized + sanitizer.flush()
+
+                        if final_sanitized:
+                            full_clean_content += final_sanitized
+                            yield f"data: {json.dumps({'type': 'chunk', 'text': final_sanitized})}\n\n"
                             time.sleep(CHUNK_DELAY)
 
                         # Start collecting suggestions
                         is_collecting_suggestions = True
                         suggestions_json_str = "".join(parts[1:])
                         buffer = ""
-                    else:
-                        # Safe buffer logic
-                        if len(buffer) > SEPARATOR_LEN:
-                            safe_chunk = buffer[:-SEPARATOR_LEN]
-                            buffer = buffer[-SEPARATOR_LEN:]
-                            full_clean_content += safe_chunk
-                            yield f"data: {json.dumps({'type': 'chunk', 'text': safe_chunk})}\n\n"
-                            time.sleep(CHUNK_DELAY)
+
                 else:
                     # Collecting suggestions
                     suggestions_json_str += buffer
@@ -789,8 +832,12 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
 
             # Flush remaining buffer if NOT collecting suggestions
             if buffer and not is_collecting_suggestions:
-                full_clean_content += buffer
-                yield f"data: {json.dumps({'type': 'chunk', 'text': buffer})}\n\n"
+                # Flush sanitizer
+                remaining = sanitizer.process_chunk(buffer)
+                final = remaining + sanitizer.flush()
+                if final:
+                    full_clean_content += final
+                    yield f"data: {json.dumps({'type': 'chunk', 'text': final})}\n\n"
 
             final_suggestions = []
             if suggestions_json_str:
