@@ -10,7 +10,7 @@ import base64
 from pathlib import Path
 from django.conf import settings
 from google.genai import types
-from .ai_client import get_ai_client, get_model, USE_VERTEX_AI
+from .ai_client import get_ai_client, get_model
 from studio.services.storage_provider import get_storage_provider
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class ImageGenerationService:
             logger.info(f"[ImageGen] Gerando imagem: {prompt[:80]}...")
 
             # Escolhe o método baseado na API configurada
-            if USE_VERTEX_AI:
+            if getattr(settings, 'USE_VERTEX_AI', False):
                 image_bytes = self._generate_with_imagen(prompt, aspect_ratio)
             else:
                 image_bytes = self._generate_with_gemini(prompt)

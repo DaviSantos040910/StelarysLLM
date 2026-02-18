@@ -13,9 +13,6 @@ from core.genai_models import GENAI_MODEL_TEXT, GENAI_MODEL_TTS
 
 logger = logging.getLogger(__name__)
 
-# Flag para alternar entre Gemini API e Vertex AI
-USE_VERTEX_AI = getattr(settings, 'USE_VERTEX_AI', False)
-
 # Configurações Vertex AI (Defaults)
 # As flags são verificadas dinamicamente em get_ai_client para evitar problemas de import
 VERTEX_PROJECT_ID = getattr(settings, 'VERTEX_PROJECT_ID', '')
