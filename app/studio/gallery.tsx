@@ -13,14 +13,15 @@ import {
     Headphones,
     Monitor,
     Play,
+    RefreshCw,
     Table,
     X
 } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from 'nativewind';
 
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { studioService } from '../../src/services/studioService';
