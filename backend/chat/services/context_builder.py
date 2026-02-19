@@ -77,7 +77,8 @@ def build_system_instruction(
     available_docs: Optional[List[str]] = None,
     allow_web_search: bool = False,
     strict_context: bool = False,
-    bot_name: str = "Tutor"
+    bot_name: str = "Tutor",
+    chat_summary: str = None
 ) -> str:
     """
     Constrói system instruction otimizado para RAG multi-documento e Output Format controlado.
@@ -92,6 +93,7 @@ def build_system_instruction(
         allow_web_search: Se True, injeta instruções específicas para uso da Google Search
         strict_context: Se True, a IA deve responder APENAS com base nas fontes.
         bot_name: Nome do bot para compilação da persona.
+        chat_summary: Resumo compactado de mensagens antigas (Memory Compression).
     """
 
     # 1. Compile Persona Rules
@@ -122,6 +124,15 @@ Arquivos enviados (do mais recente ao mais antigo):
 ## MEMÓRIA PESSOAL
 Contexto sobre {user_name} e conversas anteriores:
 {chr(10).join(memory_contexts)}
+"""
+
+    # Seção de resumo de conversa (Memory Compression)
+    summary_section = ""
+    if chat_summary:
+        summary_section = f"""
+## RESUMO DE CONVERSAS ANTERIORES
+O usuário e você já conversaram sobre os seguintes pontos (resumo compactado):
+{chat_summary}
 """
 
     # Definição do System Instruction Base
@@ -229,6 +240,7 @@ Date/Time: {current_time}
 STRICT CONTEXT MODE: {strict_status}
 WEB ACCESS: {web_status}
 
+{summary_section}
 {docs_list_section}
 {knowledge_section}
 {memory_section}

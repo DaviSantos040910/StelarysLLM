@@ -7,6 +7,7 @@ from .serializers import BotSerializer, BotDetailSerializer
 from chat.services import generate_suggestions_for_bot
 from accounts.permissions import IsUserOrGuest
 from accounts.utils import get_actor
+from billing.services.quotas import check_and_consume, QuotaExceededException
 
 class BotListCreateView(generics.ListCreateAPIView):
     """
@@ -26,6 +27,15 @@ class BotListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         actor_type, actor = get_actor(self.request)
+
+        # --- BILLING CHECK ---
+        try:
+            owner_user = actor if actor_type == 'user' else None
+            owner_guest = actor if actor_type == 'guest' else None
+            check_and_consume(user=owner_user, guest_session=owner_guest, resource='bot_tutor', quantity=1)
+        except QuotaExceededException as qe:
+            from rest_framework import permissions
+            raise permissions.PermissionDenied(detail=str(qe))
 
         if actor_type == 'user':
             bot = serializer.save(owner=actor)

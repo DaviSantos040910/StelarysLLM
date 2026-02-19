@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "chat",  # Custom app
     "explore", # Add this line
     "studio", # Add this line
+    "billing", # New app for Plans/Quotas
     "django_rq",
 ]
 

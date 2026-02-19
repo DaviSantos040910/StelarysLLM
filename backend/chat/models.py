@@ -37,6 +37,9 @@ class Chat(models.Model):
     # Context Sources directly linked to this chat
     sources = models.ManyToManyField('studio.KnowledgeSource', blank=True, related_name='chats')
 
+    # --- NEW: Summary field for memory compression ---
+    summary = models.TextField(null=True, blank=True, help_text="Compressed summary of earlier messages.")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

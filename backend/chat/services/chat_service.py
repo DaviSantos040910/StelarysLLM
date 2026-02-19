@@ -39,6 +39,8 @@ from .source_service import source_service
 from .memory_service import process_memory_background
 from .tts_service import generate_tts_audio
 from .transcription_service import transcribe_audio_gemini
+from billing.services.quotas import check_and_consume, QuotaExceededException
+from billing.services.entitlements import get_current_plan, PLAN_TRIAL, PLAN_BASIC
 
 logger = logging.getLogger(__name__)
 
@@ -229,8 +231,24 @@ def get_ai_response(
         chat = Chat.objects.select_related('bot', 'user', 'guest_session').get(id=chat_id)
         bot = chat.bot
 
+        # --- BILLING CHECK ---
+        try:
+            check_and_consume(user=chat.user, guest_session=chat.guest_session, resource='messages', quantity=1)
+
+            current_plan = get_current_plan(chat.user, chat.guest_session)
+            history_limit = 8 if current_plan == PLAN_BASIC else 12
+
+            # Override Web Search for Trial
+            if current_plan == PLAN_TRIAL:
+                allow_web_search = False
+            else:
+                allow_web_search = getattr(bot, 'allow_web_search', False)
+
+        except QuotaExceededException as qe:
+            return {'content': f"Limite atingido: {str(qe)}", 'suggestions': [], 'audio_path': None}
+
         # --- Recupera flag de Web Search e Strict Context ---
-        allow_web_search = getattr(bot, 'allow_web_search', False)
+        # allow_web_search is already determined above
         strict_context = getattr(bot, 'strict_context', False)
 
         user_defined_prompt = bot.prompt.strip() if bot.prompt else "Você é um assistente útil."
@@ -247,7 +265,7 @@ def get_ai_response(
         current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M')
 
         exclude_id = user_message_obj.id if user_message_obj else None
-        gemini_history, _ = build_conversation_history(chat_id, limit=12, exclude_message_id=exclude_id)
+        gemini_history, _ = build_conversation_history(chat_id, limit=history_limit, exclude_message_id=exclude_id)
 
         # Obter IDs dos espaços de estudo vinculados
         study_space_ids = list(bot.study_spaces.values_list('id', flat=True))
@@ -308,7 +326,8 @@ def get_ai_response(
                 current_time=current_time_str,
                 available_docs=normalize_available_docs(available_doc_names),
                 allow_web_search=allow_web_search,
-                strict_context=strict_context
+                strict_context=strict_context,
+                chat_summary=chat.summary
             )
 
             # Adjust temperature based on RAG context presence
@@ -427,6 +446,9 @@ def get_ai_response(
                 args=(effective_user_id, bot.id, user_message_text, result_data['content'])
             ).start()
 
+        # Trigger Summary Update
+        _trigger_summary_if_needed(chat_id)
+
         if reply_with_audio and result_data['content']:
             try:
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
@@ -474,7 +496,34 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
     chat.bot.refresh_from_db()
     bot = chat.bot
 
-    allow_web_search = getattr(bot, 'allow_web_search', False)
+    # --- BILLING & QUOTA CHECK ---
+    try:
+        user_obj = chat.user
+        guest_obj = chat.guest_session
+
+        # Check and Consume Quota (Start Trial if needed)
+        check_and_consume(user=user_obj, guest_session=guest_obj, resource='messages', quantity=1)
+
+        # Determine Plan for Limits/Context
+        current_plan = get_current_plan(user_obj, guest_obj)
+
+        # Override Web Search for Trial (Force OFF)
+        if current_plan == PLAN_TRIAL:
+            allow_web_search = False
+        else:
+            allow_web_search = getattr(bot, 'allow_web_search', False)
+
+        # Context Window Limit (Basic = 8, Others = 12)
+        history_limit = 8 if current_plan == PLAN_BASIC else 12
+
+    except QuotaExceededException as qe:
+        yield f"data: {json.dumps({'type': 'error', 'detail': str(qe)})}\n\n"
+        return
+    except Exception as e:
+        logger.error(f"[Quota Error] {e}")
+        yield f"data: {json.dumps({'type': 'error', 'detail': 'Error checking subscription status.'})}\n\n"
+        return
+
     strict_context = getattr(bot, 'strict_context', False)
 
     # Yield Start
@@ -571,18 +620,19 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
             # Build Prompt
-            gemini_history, _ = build_conversation_history(chat_id, limit=10)
+            gemini_history, _ = build_conversation_history(chat_id, limit=history_limit)
             current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M')
 
             system_instruction = build_system_instruction(
                 bot_prompt=bot.prompt or "Você é um assistente útil.",
                 user_name=user_name,
                 doc_contexts=formatted_doc_contexts,
-                memory_contexts=[], # Memory fetch inside strict boundary if needed, or here
+                memory_contexts=[],
                 current_time=current_time_str,
                 available_docs=normalize_available_docs(available_docs),
                 allow_web_search=False,
-                strict_context=True
+                strict_context=True,
+                chat_summary=chat.summary
             )
 
             config = types.GenerateContentConfig(
@@ -714,10 +764,10 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                     s_idx = source_map[s_id]['index']
                     formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
-            gemini_history, _ = build_conversation_history(chat_id, limit=10)
+            gemini_history, _ = build_conversation_history(chat_id, limit=history_limit)
             current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M')
 
-            # Handle Web Search Logic (Mixed Mode fallback prompt logic removed for simplicity, using tools)
+            # Handle Web Search Logic
             system_instruction = build_system_instruction(
                 bot_prompt=bot.prompt or "Você é um assistente útil.",
                 user_name=user_name,
@@ -726,7 +776,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 current_time=current_time_str,
                 available_docs=normalize_available_docs(available_docs),
                 allow_web_search=allow_web_search,
-                strict_context=False
+                strict_context=False,
+                chat_summary=chat.summary
             )
 
             config = types.GenerateContentConfig(
@@ -905,6 +956,9 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                     args=(effective_user_id, bot.id, user_message_text, full_clean_content)
                 ).start()
 
+            # Trigger Summary Update
+            _trigger_summary_if_needed(chat_id)
+
     except Exception as e:
         logger.error(f"[Stream Error] {e}", exc_info=True)
         yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
@@ -1032,3 +1086,61 @@ def handle_voice_message(chat_id: int, user_audio_file, reply_with_audio: bool, 
         chat.save()
 
         return {"user_message": user_message, "ai_message": ai_message}
+
+def _trigger_summary_if_needed(chat_id):
+    """Triggers background summarization if message count threshold reached."""
+    try:
+        # Check plan first? "Basic feature".
+        # But maybe we do it for everyone but only USE it for Basic?
+        # Or check plan here.
+        chat = Chat.objects.select_related('user', 'guest_session').get(id=chat_id)
+        plan = get_current_plan(chat.user, chat.guest_session)
+
+        if plan == PLAN_BASIC:
+            count = ChatMessage.objects.filter(chat_id=chat_id, role='user').count()
+            if count > 0 and count % 15 == 0:
+                threading.Thread(target=_summarize_chat_history_background, args=(chat_id,)).start()
+    except Exception as e:
+        logger.error(f"Error triggering summary: {e}")
+
+def _summarize_chat_history_background(chat_id):
+    """Background task to summarize chat history."""
+    try:
+        chat = Chat.objects.get(id=chat_id)
+
+        # Current summary
+        current_summary = chat.summary or "No summary yet."
+
+        # Fetch last 20 messages to capture the context of the recent block
+        messages = ChatMessage.objects.filter(chat=chat).order_by('-created_at')[:20]
+        messages = list(reversed(messages))
+
+        text_block = "\n".join([f"{m.role}: {m.content}" for m in messages if m.content])
+
+        prompt = f"""You are an expert summarizer. Update the conversation summary to include key points from the recent interaction.
+Focus on: User's learning goals, key concepts discussed, and any personal preferences identified.
+Keep it concise (max 300 words).
+
+Current Summary:
+{current_summary}
+
+Recent Interaction:
+{text_block}
+
+Updated Summary:"""
+
+        client = get_ai_client()
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.3)
+        )
+
+        new_summary = response.text.strip() if response.text else current_summary
+
+        chat.summary = new_summary
+        chat.save(update_fields=['summary'])
+        logger.info(f"[Summary] Chat {chat_id} summary updated.")
+
+    except Exception as e:
+        logger.error(f"[Summary] Generation failed: {e}")

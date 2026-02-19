@@ -11,6 +11,10 @@ class User(AbstractUser):
     is_premium = models.BooleanField(default=False)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
+    # --- Trial Fields ---
+    trial_started_at = models.DateTimeField(null=True, blank=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return self.username
 

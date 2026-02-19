@@ -15,6 +15,7 @@ from .ai_client import get_ai_client
 from chat.models import TTSCache
 from core.genai_models import GENAI_MODEL_TTS
 from studio.services.storage_provider import get_storage_provider
+from billing.services.quotas import check_and_consume, QuotaExceededException
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,14 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
 
         # 3. Check Rate Limit (if user provided)
         if user:
+            # Billing Quota Check
+            try:
+                # Estimate duration (approx 15 chars per second)
+                est_seconds = max(1, len(message_text) // 15)
+                check_and_consume(user=user, resource='tts_seconds', quantity=est_seconds)
+            except QuotaExceededException as qe:
+                return {'success': False, 'error': str(qe)}
+
             cache_key = f"{TTS_RATE_LIMIT_KEY_PREFIX}{user.id}"
             current_count = cache.get(cache_key, 0)
             if current_count >= TTS_RATE_LIMIT_MAX:
