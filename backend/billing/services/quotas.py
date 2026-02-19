@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import F
-from ..models import UsageCounter, TrialUsageCounter, Plan
+from ..models import UsageCounter, TrialUsageCounter, Plan, Subscription
 from .entitlements import get_current_plan, PLAN_TRIAL, PLAN_BASIC, PLAN_FREE_LOCKED
 from .trial_service import start_trial_if_not_started
 from ..api.exceptions import QuotaExceededException
@@ -64,6 +64,17 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
 
     # Use transaction to lock the counter row
     with transaction.atomic():
+        # --- Race Condition Mitigation ---
+        # For 'source', we check TOTAL count which is not in UsageCounter.
+        # To prevent race conditions (T1 check, T2 check, T1 create, T2 create),
+        # we lock the Subscription record. This serializes checks for this user.
+        if resource == 'source' and hasattr(user, 'subscription'):
+            try:
+                # Locks the subscription row until transaction ends
+                _ = Subscription.objects.select_for_update().get(user=user)
+            except Subscription.DoesNotExist:
+                pass
+
         usage, created = UsageCounter.objects.get_or_create(user=user, period=current_period)
 
         # Now lock the usage row
@@ -111,6 +122,7 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
         # 4. Sources (Total - Not in UsageCounter)
         if resource == 'source':
             # Count DB
+            # With Subscription locked above, this check is serialized for the user.
             count = KnowledgeSource.objects.filter(user=user).count()
             limit = plan_limits.get('sources_total', BASIC_LIMITS['sources'])
             if count + quantity > limit:

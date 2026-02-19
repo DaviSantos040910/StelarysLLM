@@ -15,6 +15,8 @@ class RAGPermissionTest(TestCase):
         # Reset mock collection for each test
         self.mock_collection = MagicMock()
         vector_service.collection = self.mock_collection
+        # Disable real backend to force usage of mock collection
+        vector_service.backend = None
         # Mock embedding return
         vector_service._get_embedding = MagicMock(return_value=[0.1] * 3072)
         

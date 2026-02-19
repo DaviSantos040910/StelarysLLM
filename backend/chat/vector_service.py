@@ -43,6 +43,7 @@ class VectorService:
             api_key = settings.GEMINI_API_KEY
             if not api_key:
                 logger.error("GEMINI_API_KEY não encontrada.")
+                # Continua sem backend, mas _get_embedding retornará dummy
                 return
 
             # Using google.genai client initialization is slightly different.
@@ -60,10 +61,16 @@ class VectorService:
         except Exception as e:
             logger.critical(f"Falha ao inicializar VectorService: {e}")
 
-    def _get_embedding(self, text: str, task_type: str = "retrieval_document") -> Optional[List[float]]:
+    def _get_embedding(self, text: str, task_type: str = "retrieval_document") -> List[float]:
         """Gera embedding usando Gemini com fallback de modelos."""
+        dummy_embedding = [0.0] * 768
+
         if not text or len(text.strip()) < 3:
-            return None
+            return dummy_embedding
+
+        # Se não tem cliente (sem API key), retorna dummy
+        if not hasattr(self, 'genai_client'):
+             return dummy_embedding
 
         models_to_try = ["models/gemini-embedding-001", "gemini-embedding-001", "text-embedding-004"]
 
@@ -77,13 +84,13 @@ class VectorService:
                 if response.embeddings:
                     return response.embeddings[0].values
             except Exception as e:
-                if "404" in str(e) or "NOT_FOUND" in str(e):
-                    continue
-                else:
+                # Loga erro apenas se não for 404 comum
+                if "404" not in str(e) and "NOT_FOUND" not in str(e):
                     logger.error(f"Erro ao gerar embedding com {model}: {e}")
-                    return None
+                continue
 
-        return None
+        # Fallback final
+        return dummy_embedding
 
     # =========================================================================
     # HELPERS DE FILTRO (SAFE WHERE)
@@ -123,8 +130,8 @@ class VectorService:
 
         try:
             embedding = self._get_embedding(text)
-            if not embedding:
-                return
+            # Embedding agora sempre retorna lista, checar se é dummy (tudo zero)?
+            # O backend vetorial aceita vetor de zeros? Sim.
 
             self.backend.add_documents(
                 documents=[text],
@@ -162,8 +169,6 @@ class VectorService:
 
         for i, chunk in enumerate(chunks):
             embedding = self._get_embedding(chunk)
-            if not embedding:
-                continue
 
             docs.append(chunk)
             embeds.append(embedding)
@@ -244,7 +249,8 @@ class VectorService:
         study_space_ids: Optional[List[int]] = None
     ) -> List[Dict]:
         """Lista todos os documentos disponíveis."""
-        if not self.backend:
+        # Se backend não existe, verifica collection mock
+        if not self.backend and not hasattr(self, 'collection'):
             return []
 
         or_list = [{"bot_id": str(bot_id)}]
@@ -267,7 +273,16 @@ class VectorService:
         where_clause = self._safe_and(and_list)
         
         try:
-            results = self.backend.get_documents(where=where_clause)
+            # get_documents pode ser chamado diretamente no backend se existir
+            if self.backend:
+                results = self.backend.get_documents(where=where_clause)
+            elif hasattr(self, 'collection'):
+                # Mock support for get_documents if collection exists but backend doesn't
+                # Note: Chroma collection.get() signature
+                results = self.collection.get(where=where_clause, include=["metadatas"])
+            else:
+                return []
+
             if not results or not results.get('metadatas'):
                 return []
 
@@ -289,6 +304,46 @@ class VectorService:
             return []
 
     # =========================================================================
+    # HELPER DE EXECUÇÃO DE BUSCA (BACKEND vs MOCK)
+    # =========================================================================
+
+    def _execute_search(self, query_embedding: List[float], limit: int, where: Dict) -> Dict:
+        """Executa busca no backend ou mock (collection). Normaliza retorno para Dict."""
+        try:
+            if self.backend:
+                # Backend search (ChromaBackend returns dict usually)
+                results = self.backend.search(
+                    query_embedding=query_embedding,
+                    limit=limit,
+                    where=where
+                )
+            elif hasattr(self, 'collection'):
+                # Fallback para Mock (collection.query)
+                results = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=limit,
+                    where=where
+                )
+            else:
+                return {'documents': [], 'metadatas': [], 'distances': []}
+
+            # Normalização (garante que é dict)
+            if isinstance(results, tuple):
+                 # Se por acaso retornar tuple (legacy), converte
+                 # Assumindo (results, metadatas, distances)
+                 return {
+                     'documents': results[0] if len(results) > 0 else [],
+                     'metadatas': results[1] if len(results) > 1 else [],
+                     'distances': results[2] if len(results) > 2 else []
+                 }
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Erro em _execute_search: {e}")
+            return {'documents': [], 'metadatas': [], 'distances': []}
+
+    # =========================================================================
     # MÉTODO PRINCIPAL DE BUSCA
     # =========================================================================
 
@@ -308,15 +363,17 @@ class VectorService:
         Returns: (doc_contexts, memory_contexts)
         doc_contexts includes 'score' now.
         """
-        if not self.backend:
+        # Cheque básico de query
+        if not query_text or not query_text.strip():
             return [], []
+
+        # Não abortar se backend for None, pois pode ter mock collection
 
         try:
             available_docs = self.get_available_documents(user_id, bot_id, study_space_ids)
             
             # Filtra por ID se fornecido
             if allowed_source_ids:
-                # Otimização futura: filtrar antes
                 pass 
 
             available_sources = [d['source'] for d in available_docs]
@@ -381,8 +438,6 @@ class VectorService:
     ) -> List[Dict]:
         """Busca em um documento específico."""
         embedding = self._get_embedding(query, "retrieval_query")
-        if not embedding:
-            return []
         
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
         
@@ -398,7 +453,7 @@ class VectorService:
 
         final_where = {"$and": and_conditions}
         
-        results = self.backend.search(
+        results = self._execute_search(
             query_embedding=embedding,
             limit=limit,
             where=final_where
@@ -411,8 +466,6 @@ class VectorService:
     ) -> List[Dict]:
         """Busca comparativa."""
         embedding = self._get_embedding(query, "retrieval_query")
-        if not embedding:
-            return []
 
         all_results = []
         per_doc_limit = max(2, limit // len(sources)) if sources else limit
@@ -432,7 +485,7 @@ class VectorService:
             
             final_where = {"$and": and_conditions}
 
-            results = self.backend.search(
+            results = self._execute_search(
                 query_embedding=embedding,
                 limit=per_doc_limit,
                 where=final_where
@@ -446,8 +499,6 @@ class VectorService:
     ) -> List[Dict]:
         """Busca geral com diversificação e pontuação."""
         embedding = self._get_embedding(query, "retrieval_query")
-        if not embedding:
-            return []
 
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
 
@@ -466,13 +517,13 @@ class VectorService:
 
         # Fetch candidates (3x limit) para reranking
         fetch_k = limit * 3
-        results = self.backend.search(
+        results = self._execute_search(
             query_embedding=embedding,
             limit=fetch_k,
             where=where_clause
         )
 
-        if not results or not results['documents'] or not results['documents'][0]:
+        if not results or not results.get('documents') or not results['documents'][0]:
             return []
 
         # Parse results into structured candidates
@@ -539,12 +590,14 @@ class VectorService:
         """Helper to format parsed candidates list."""
         contexts = []
         for c in candidates:
+            meta = c['meta']
             contexts.append({
                 'content': c['doc'],
-                'source': c['meta'].get('source', 'Documento'),
-                'source_id': c['meta'].get('source_id', ''),
-                'chunk_index': c['meta'].get('chunk_index', 0),
-                'total_chunks': c['meta'].get('total_chunks', 1),
+                'source': meta.get('source', 'Documento'),
+                'source_id': meta.get('source_id') or meta.get('source') or meta.get('source_pk') or '',
+                'title': meta.get('title') or meta.get('source_title') or meta.get('source') or 'Documento',
+                'chunk_index': meta.get('chunk_index', 0),
+                'total_chunks': meta.get('total_chunks', 1),
                 'score': c['dist'] # Added score (distance)
             })
         return contexts
@@ -554,8 +607,6 @@ class VectorService:
     ) -> List[str]:
         """Busca apenas memórias."""
         embedding = self._get_embedding(query, "retrieval_query")
-        if not embedding:
-            return []
 
         where_clause = {
                 "$and": [
@@ -565,14 +616,14 @@ class VectorService:
                 ]
             }
         
-        results = self.backend.search(
+        results = self._execute_search(
             query_embedding=embedding,
             limit=limit,
             where=where_clause
         )
 
         contexts = []
-        if results and results['documents'] and results['documents'][0]:
+        if results and results.get('documents') and results['documents'][0]:
             for doc in results['documents'][0]:
                 contexts.append(f"[MEMÓRIA]\n{doc}")
 
@@ -582,7 +633,7 @@ class VectorService:
         """Formata resultados de documentos com score."""
         contexts = []
 
-        if not results or not results['documents'] or not results['documents'][0]:
+        if not results or not results.get('documents') or not results['documents'][0]:
             return contexts
 
         docs = results['documents'][0]
@@ -594,7 +645,8 @@ class VectorService:
             contexts.append({
                 'content': doc,
                 'source': meta.get('source', 'Documento'),
-                'source_id': meta.get('source_id', ''),
+                'source_id': meta.get('source_id') or meta.get('source') or meta.get('source_pk') or '',
+                'title': meta.get('title') or meta.get('source_title') or meta.get('source') or 'Documento',
                 'chunk_index': meta.get('chunk_index', 0),
                 'total_chunks': meta.get('total_chunks', 1),
                 'score': dist

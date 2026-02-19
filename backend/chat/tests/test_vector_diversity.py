@@ -7,6 +7,8 @@ class VectorDiversityTest(TestCase):
         self.service = VectorService()
         # Mocking the chroma client and collection
         self.service.collection = MagicMock()
+        # Disable real backend to force usage of mock collection
+        self.service.backend = None
         self.service._get_embedding = MagicMock(return_value=[0.1, 0.2, 0.3])
 
     def test_search_general_diversity(self):
