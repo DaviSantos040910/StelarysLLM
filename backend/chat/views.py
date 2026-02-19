@@ -817,9 +817,8 @@ class RegenerateMessageView(View):
         with transaction.atomic():
             chat.messages.filter(created_at__gt=last_user_msg.created_at).delete()
 
-        # 5. Stream Response (reusing existing logic)
-        # Note: We reuse process_message_stream which generates a NEW message.
-        # This is correct for "regenerate" (delete old, create new).
+        # 5. Stream Response
+        # Note: process_message_stream handles quota consumption internally.
 
         if actor_type == 'user':
              stream_gen = process_message_stream(chat.id, last_user_msg.content, user_id=actor.id)

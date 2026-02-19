@@ -279,7 +279,8 @@ def get_ai_response(
             user_id=effective_user_id,
             bot_id=bot.id,
             chat_id=chat_id,
-            study_space_ids=study_space_ids
+            study_space_ids=study_space_ids,
+            limit=rag_chunk_limit
         )
 
         # Observability Log
@@ -520,8 +521,23 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
         # Context Window Limit (Basic = 8, Others = 12)
         history_limit = 8 if current_plan == PLAN_BASIC else 12
 
+        # RAG Chunk Limit
+        rag_chunk_limit = 6
+        if user_obj and hasattr(user_obj, 'subscription') and user_obj.subscription.plan:
+             rag_chunk_limit = user_obj.subscription.plan.limits.get('rag_chunk_limit', 6)
+        elif current_plan == PLAN_TRIAL:
+             rag_chunk_limit = 3
+
     except QuotaExceededException as qe:
-        yield f"data: {json.dumps({'type': 'error', 'detail': str(qe)})}\n\n"
+        # Standardize SSE Error Format
+        error_payload = {
+            "type": "error",
+            "error": "quota_exceeded",
+            "code": qe.default_code,
+            "message": str(qe.detail),
+            "meta": qe.meta
+        }
+        yield f"data: {json.dumps(error_payload)}\n\n"
         return
     except Exception as e:
         logger.error(f"[Quota Error] {e}")
@@ -754,7 +770,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 user_id=effective_user_id,
                 bot_id=bot.id,
                 chat_id=chat_id,
-                study_space_ids=study_space_ids
+                study_space_ids=study_space_ids,
+                limit=rag_chunk_limit
             )
 
             formatted_doc_contexts = []
@@ -974,7 +991,8 @@ def _get_smart_context(
     bot_id: int,
     chat_id: int,
     study_space_ids: list = None,
-    allowed_source_ids: list = None
+    allowed_source_ids: list = None,
+    limit: int = 6
 ) -> tuple:
     """Busca contexto de forma inteligente usando o VectorService multi-doc."""
     try:
@@ -985,7 +1003,7 @@ def _get_smart_context(
             bot_id=bot_id,
             study_space_ids=study_space_ids,
             allowed_source_ids=allowed_source_ids,
-            limit=6,
+            limit=limit,
             recent_doc_source=recent_source
         )
         available_docs = vector_service.get_available_documents(

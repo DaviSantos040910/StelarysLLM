@@ -15,7 +15,8 @@ TRIAL_LIMITS = {
     'study_space': 1,
     'memory_run': 1,
     'tts_seconds': 0, # OFF
-    'web_search': False
+    'web_search': False,
+    'rag_chunk_limit': 3
 }
 
 BASIC_LIMITS = {
@@ -24,7 +25,8 @@ BASIC_LIMITS = {
     'sources_total': 50,
     'tts_seconds_monthly': 10800, # 3h
     'memory_optimized': True,
-    'web_search_allowed': True
+    'web_search_allowed': True,
+    'rag_chunk_limit': 6
 }
 
 def get_current_plan(user=None, guest_session=None):
@@ -106,7 +108,7 @@ def _populate_basic_entitlements(user, response):
         'artifacts_monthly': BASIC_LIMITS['artifacts_monthly'],
         'sources_total': BASIC_LIMITS['sources_total'],
         'tts_seconds_monthly': BASIC_LIMITS['tts_seconds_monthly'],
-        'rag_chunk_limit': 6,
+        'rag_chunk_limit': BASIC_LIMITS['rag_chunk_limit'],
         'context_history_limit': 8,
         'auto_summarize_after_messages': 15,
         'bot_tutor': -1, # Unlimited
@@ -155,7 +157,7 @@ def _populate_trial_entitlements(user, guest_session, response):
         'bot_tutor_total': TRIAL_LIMITS['bot_tutor'],
         'study_space_total': TRIAL_LIMITS['study_space'],
         'memory_run_total': TRIAL_LIMITS['memory_run'],
-        'rag_chunk_limit': 6, # Default
+        'rag_chunk_limit': TRIAL_LIMITS['rag_chunk_limit'],
         'context_history_limit': 12, # Standard (not optimized)
         'auto_summarize_after_messages': 0 # OFF
     }
