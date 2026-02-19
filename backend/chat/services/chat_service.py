@@ -532,7 +532,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
         # Standardize SSE Error Format
         error_payload = {
             "type": "error",
-            "error": "quota_exceeded",
+            "error": True,
             "code": qe.default_code,
             "message": str(qe.detail),
             "meta": qe.meta

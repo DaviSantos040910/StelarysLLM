@@ -2,10 +2,13 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import F
 from ..models import UsageCounter, TrialUsageCounter, Plan, Subscription
+from django.contrib.auth import get_user_model
 from .entitlements import get_current_plan, PLAN_TRIAL, PLAN_BASIC, PLAN_FREE_LOCKED
 from .trial_service import start_trial_if_not_started
 from ..api.exceptions import QuotaExceededException
 from studio.models import KnowledgeSource
+
+User = get_user_model()
 
 # --- QUOTA DEFINITIONS ---
 BASIC_LIMITS = {
@@ -67,12 +70,13 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
         # --- Race Condition Mitigation ---
         # For 'source', we check TOTAL count which is not in UsageCounter.
         # To prevent race conditions (T1 check, T2 check, T1 create, T2 create),
-        # we lock the Subscription record. This serializes checks for this user.
-        if resource == 'source' and hasattr(user, 'subscription'):
+        # we lock the User record (principal). This serializes checks for this user.
+        if resource == 'source':
             try:
-                # Locks the subscription row until transaction ends
-                _ = Subscription.objects.select_for_update().get(user=user)
-            except Subscription.DoesNotExist:
+                # Locks the user row until transaction ends
+                _ = User.objects.select_for_update().get(pk=user.pk)
+            except User.DoesNotExist:
+                # Should not happen if user is authenticated
                 pass
 
         usage, created = UsageCounter.objects.get_or_create(user=user, period=current_period)
@@ -122,7 +126,7 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
         # 4. Sources (Total - Not in UsageCounter)
         if resource == 'source':
             # Count DB
-            # With Subscription locked above, this check is serialized for the user.
+            # With User locked above, this check is serialized for the user.
             count = KnowledgeSource.objects.filter(user=user).count()
             limit = plan_limits.get('sources_total', BASIC_LIMITS['sources'])
             if count + quantity > limit:
