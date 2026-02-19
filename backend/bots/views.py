@@ -29,13 +29,9 @@ class BotListCreateView(generics.ListCreateAPIView):
         actor_type, actor = get_actor(self.request)
 
         # --- BILLING CHECK ---
-        try:
-            owner_user = actor if actor_type == 'user' else None
-            owner_guest = actor if actor_type == 'guest' else None
-            check_and_consume(user=owner_user, guest_session=owner_guest, resource='bot_tutor', quantity=1)
-        except QuotaExceededException as qe:
-            from rest_framework import permissions
-            raise permissions.PermissionDenied(detail=str(qe))
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='bot_tutor', quantity=1)
 
         if actor_type == 'user':
             bot = serializer.save(owner=actor)

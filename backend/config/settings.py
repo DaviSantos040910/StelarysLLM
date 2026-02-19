@@ -144,6 +144,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ),
+    "EXCEPTION_HANDLER": "billing.api.exceptions.custom_exception_handler",
 }
 
 # Simple JWT settings

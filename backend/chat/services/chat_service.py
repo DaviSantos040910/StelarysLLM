@@ -245,7 +245,11 @@ def get_ai_response(
                 allow_web_search = getattr(bot, 'allow_web_search', False)
 
         except QuotaExceededException as qe:
-            return {'content': f"Limite atingido: {str(qe)}", 'suggestions': [], 'audio_path': None}
+            # Sync response can return error text directly, or raise exception.
+            # Ideally raise exception so view handles it with 422 JSON.
+            # But get_ai_response might be internal.
+            # If called from view, raising is better.
+            raise qe
 
         # --- Recupera flag de Web Search e Strict Context ---
         # allow_web_search is already determined above

@@ -52,12 +52,9 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
         actor_type, actor = get_actor(self.request)
 
         # --- BILLING CHECK ---
-        try:
-            owner_user = actor if actor_type == 'user' else None
-            owner_guest = actor if actor_type == 'guest' else None
-            check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
-        except QuotaExceededException as qe:
-            raise permissions.PermissionDenied(detail=str(qe))
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
         # Save initially
         if actor_type == 'user':
@@ -164,12 +161,9 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
         actor_type, actor = get_actor(self.request)
 
         # --- BILLING CHECK ---
-        try:
-            owner_user = actor if actor_type == 'user' else None
-            owner_guest = actor if actor_type == 'guest' else None
-            check_and_consume(user=owner_user, guest_session=owner_guest, resource='study_space', quantity=1)
-        except QuotaExceededException as qe:
-            raise permissions.PermissionDenied(detail=str(qe))
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='study_space', quantity=1)
 
         if actor_type == 'user':
             serializer.save(user=actor)
@@ -220,12 +214,9 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
         actor_type, actor = get_actor(request)
 
         # --- BILLING CHECK ---
-        try:
-            owner_user = actor if actor_type == 'user' else None
-            owner_guest = actor if actor_type == 'guest' else None
-            check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
-        except QuotaExceededException as qe:
-            return Response({"error": str(qe)}, status=status.HTTP_403_FORBIDDEN)
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
         # 1. Create KnowledgeSource
         title = request.data.get('title', 'Space Upload')
@@ -322,14 +313,11 @@ class KnowledgeArtifactViewSet(viewsets.ModelViewSet):
             raise permissions.PermissionDenied("You do not have access to this chat.")
 
         # --- BILLING CHECK ---
-        try:
-            owner_user = actor if actor_type == 'user' else None
-            owner_guest = actor if actor_type == 'guest' else None
-            # Artifact Type
-            a_type = serializer.validated_data.get('type')
-            check_and_consume(user=owner_user, guest_session=owner_guest, resource='artifact', quantity=1, type=a_type)
-        except QuotaExceededException as qe:
-            raise permissions.PermissionDenied(detail=str(qe))
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        # Artifact Type
+        a_type = serializer.validated_data.get('type')
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='artifact', quantity=1, type=a_type)
 
         # Save initially (status is PROCESSING by default in model)
         instance = serializer.save()

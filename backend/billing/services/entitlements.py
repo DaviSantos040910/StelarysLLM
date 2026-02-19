@@ -50,16 +50,8 @@ def get_current_plan(user=None, guest_session=None):
     if hasattr(subject, 'trial_expires_at') and subject.trial_expires_at and subject.trial_expires_at < timezone.now():
         return PLAN_FREE_LOCKED
 
-    # Check Expiration by Global Limits (Messages)
-    usage = None
-    if user:
-        usage = TrialUsageCounter.objects.filter(user=user).first()
-    elif guest_session:
-        usage = TrialUsageCounter.objects.filter(guest_session=guest_session).first()
-
-    if usage:
-        if usage.messages_count >= TRIAL_LIMITS['messages']:
-            return PLAN_FREE_LOCKED
+    # Usage limits are now handled strictly by QuotaService (check_and_consume).
+    # Entitlements only return LOCKED if expired by TIME.
 
     return PLAN_TRIAL
 
