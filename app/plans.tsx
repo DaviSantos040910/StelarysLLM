@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useBillingStore } from '../src/stores/billingStore';
+import { iapService } from '../src/services/iapService';
 import { themeClasses } from '../src/theme/classes';
 import { useRouter } from 'expo-router';
-import { X, Check, Zap, Clock, FileText, MessageSquare, Mic, Crown, AlertTriangle } from 'lucide-react-native';
+import { X, Check, Zap, Clock, FileText, MessageSquare, Mic, Crown, AlertTriangle, Loader2 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const UsageBar = ({ label, used, limit, icon: Icon, unit = '' }: any) => {
@@ -34,14 +35,26 @@ const UsageBar = ({ label, used, limit, icon: Icon, unit = '' }: any) => {
 export default function PlansScreen() {
   const router = useRouter();
   const { status, fetchStatus, isLoading } = useBillingStore();
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   useEffect(() => {
     fetchStatus();
   }, []);
 
-  const handleSubscribe = () => {
-    // TODO: Connect to RevenueCat/IAP
-    Alert.alert("Assinatura", "Fluxo de pagamento via Google Play (Em breve)");
+  const handleSubscribe = async () => {
+    try {
+      setIsPurchasing(true);
+      await iapService.purchaseBasicPlan();
+      // Note: Success handled via listener in iapService which refreshes billing status
+      // We rely on that to update UI or close modal if needed.
+      // But typically we stay here until status changes to BASIC.
+    } catch (error: any) {
+      if (error.message !== 'E_USER_CANCELLED') {
+        Alert.alert("Erro", "Não foi possível iniciar a assinatura. Tente novamente.");
+      }
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   if (isLoading && !status) {
@@ -159,10 +172,14 @@ export default function PlansScreen() {
 
               <Pressable
                 onPress={handleSubscribe}
-                className="bg-white py-4 rounded-xl items-center active:bg-gray-100"
+                disabled={isPurchasing}
+                className="bg-white py-4 rounded-xl items-center active:bg-gray-100 flex-row justify-center"
               >
+                {isPurchasing ? (
+                  <Loader2 size={20} color="#312e81" className="animate-spin mr-2" />
+                ) : null}
                 <Text className="text-indigo-900 font-bold text-lg">
-                  Assinar com Google Play
+                  {isPurchasing ? 'Processando...' : 'Assinar com Google Play'}
                 </Text>
               </Pressable>
             </View>

@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, Modal, Pressable, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { X, Check, Lock } from 'lucide-react-native';
 import { themeClasses } from '../../theme/classes';
 import { useRouter } from 'expo-router';
+import { iapService } from '../../services/iapService';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -16,10 +17,19 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   title = "Assine para continuar"
 }) => {
   const router = useRouter();
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
-  const handleSubscribe = () => {
-    // TODO: Implement actual purchase flow
-    console.log('[Paywall] Subscribe clicked');
+  const handleSubscribe = async () => {
+    try {
+      setIsPurchasing(true);
+      await iapService.purchaseBasicPlan();
+    } catch (error: any) {
+      if (error.message !== 'E_USER_CANCELLED') {
+        Alert.alert("Erro", "Não foi possível iniciar a assinatura. Tente novamente.");
+      }
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   const handleSeePlans = () => {
@@ -82,10 +92,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <View className="gap-3">
             <Pressable
               onPress={handleSubscribe}
-              className="bg-cosmic-purple py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
+              disabled={isPurchasing}
+              className="bg-cosmic-purple py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30 active:opacity-90 flex-row justify-center"
             >
+              {isPurchasing && <ActivityIndicator color="white" className="mr-2" />}
               <Text className="text-white font-bold text-lg">
-                Assinar por R$ 29,90/mês
+                {isPurchasing ? 'Processando...' : 'Assinar por R$ 29,90/mês'}
               </Text>
             </Pressable>
 

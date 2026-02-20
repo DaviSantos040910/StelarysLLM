@@ -91,6 +91,7 @@ export interface ArtifactGenerationOptions {
   sourceIds?: string[];
   customInstructions?: string;
   targetDuration?: 'Short' | 'Medium' | 'Long';
+  title?: string;
 }
 
 // --- Library / Study Spaces ---

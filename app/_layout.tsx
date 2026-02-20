@@ -12,6 +12,7 @@ import { useColorScheme } from 'nativewind';
 import { themeClasses } from '../src/theme/classes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppState } from 'react-native';
+import { iapService } from '../src/services/iapService';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
@@ -33,6 +34,7 @@ export default function RootLayout() {
     checkOnboarding().then(() => console.log('checkOnboarding finished')).catch(e => console.error('checkOnboarding failed', e));
     fetchStatus(); // Fetch billing status
     setColorScheme(mode);
+    iapService.initialize(); // Initialize IAP
 
     // Refresh billing on app resume
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -43,6 +45,7 @@ export default function RootLayout() {
 
     return () => {
       subscription.remove();
+      iapService.teardown();
     };
   }, []);
 

@@ -17,9 +17,10 @@ export interface StreamMetadata {
     code?: string;
     message?: string;
     meta?: any;
+    warning?: string;
 }
 
-interface StreamCallbacks {
+export interface StreamCallbacks {
     onStart?: (metadata: StreamMetadata) => void;
     onChunk: (text: string) => void;
     onFinish: (metadata: StreamMetadata) => void;
