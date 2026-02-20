@@ -244,6 +244,13 @@ def get_ai_response(
             else:
                 allow_web_search = getattr(bot, 'allow_web_search', False)
 
+            # RAG Chunk Limit
+            rag_chunk_limit = 6
+            if chat.user and hasattr(chat.user, 'subscription') and chat.user.subscription.plan:
+                 rag_chunk_limit = chat.user.subscription.plan.limits.get('rag_chunk_limit', 6)
+            elif current_plan == PLAN_TRIAL:
+                 rag_chunk_limit = 3
+
         except QuotaExceededException as qe:
             # Sync response can return error text directly, or raise exception.
             # Ideally raise exception so view handles it with 422 JSON.

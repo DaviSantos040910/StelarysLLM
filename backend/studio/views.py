@@ -29,6 +29,9 @@ from .serializers import KnowledgeArtifactSerializer, KnowledgeSourceSerializer,
 from accounts.permissions import IsUserOrGuest
 from accounts.utils import get_actor
 from billing.services.quotas import check_and_consume, QuotaExceededException
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,14 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
         owner_guest = actor if actor_type == 'guest' else None
 
         with transaction.atomic():
+            if actor_type == 'user':
+                # Explicit row lock on User to prevent race condition on count()
+                try:
+                    User.objects.select_for_update().get(pk=actor.pk)
+                except User.DoesNotExist:
+                    pass
+            # GuestSession lock handled inside check_and_consume if needed, or we can add here if critical
+
             # Locks user/trial row and checks limit inside transaction
             check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 

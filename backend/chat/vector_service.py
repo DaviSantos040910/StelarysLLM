@@ -77,31 +77,34 @@ class VectorService:
         """Gera embedding usando Gemini com fallback de modelos."""
         dummy_embedding = [0.0] * 768
 
-        if not text or len(text.strip()) < 3:
-            return dummy_embedding
+        try:
+            if not text or len(text.strip()) < 3:
+                return dummy_embedding
 
-        # Se não tem cliente (sem API key ou module missing), retorna dummy
-        if not hasattr(self, 'genai_client') or not self.genai_client:
-             return dummy_embedding
+            # Se não tem cliente (sem API key ou module missing), retorna dummy
+            if not hasattr(self, 'genai_client') or not self.genai_client:
+                 return dummy_embedding
 
-        models_to_try = ["models/gemini-embedding-001", "gemini-embedding-001", "text-embedding-004"]
+            models_to_try = ["models/gemini-embedding-001", "gemini-embedding-001", "text-embedding-004"]
 
-        for model in models_to_try:
-            try:
-                response = self.genai_client.models.embed_content(
-                    model=model,
-                    contents=text[:8000],
-                )
+            for model in models_to_try:
+                try:
+                    response = self.genai_client.models.embed_content(
+                        model=model,
+                        contents=text[:8000],
+                    )
 
-                if response.embeddings:
-                    return response.embeddings[0].values
-            except Exception as e:
-                # Loga erro apenas se não for 404 comum
-                if "404" not in str(e) and "NOT_FOUND" not in str(e):
-                    logger.error(f"Erro ao gerar embedding com {model}: {e}")
-                continue
+                    if response.embeddings:
+                        return response.embeddings[0].values
+                except Exception as e:
+                    # Loga erro apenas se não for 404 comum
+                    if "404" not in str(e) and "NOT_FOUND" not in str(e):
+                        logger.error(f"Erro ao gerar embedding com {model}: {e}")
+                    continue
+        except Exception:
+            pass
 
-        # Fallback final
+        # Fallback final absoluto
         return dummy_embedding
 
     # =========================================================================
