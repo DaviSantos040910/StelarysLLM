@@ -13,13 +13,17 @@ export interface StreamMetadata {
     clean_content?: string;
     suggestions?: string[];
     sources?: SourceRef[];
+    error?: boolean;
+    code?: string;
+    message?: string;
+    meta?: any;
 }
 
 interface StreamCallbacks {
     onStart?: (metadata: StreamMetadata) => void;
     onChunk: (text: string) => void;
     onFinish: (metadata: StreamMetadata) => void;
-    onError: (error: Error) => void;
+    onError: (error: Error & { code?: string; meta?: any }) => void;
 }
 
 export const streamMessage = async (
@@ -74,7 +78,10 @@ export const streamMessage = async (
                             break;
                         case 'error':
                             es.close();
-                            callbacks.onError(new Error(data.detail || 'Stream error'));
+                            const err = new Error(data.message || data.detail || 'Stream error');
+                            (err as any).code = data.code;
+                            (err as any).meta = data.meta;
+                            callbacks.onError(err);
                             break;
                     }
                 } catch (err) {

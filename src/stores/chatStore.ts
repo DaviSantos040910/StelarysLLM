@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Message, ChatListItem } from '../types/chat';
 import { chatService } from '../services/chatService';
 import { streamMessage, StreamMetadata } from '../services/streamApi';
+import { router } from 'expo-router';
 
 interface ChatState {
   messages: Message[];
@@ -239,13 +240,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 })
              }));
           },
-          onError: (err) => {
-              set({ error: 'Failed to send message', isStreaming: false });
+          onError: (err: any) => {
+              set({ error: err.message || 'Failed to send message', isStreaming: false });
+
+              // Update message UI to show error bubble
               set((state) => ({
                   messages: state.messages.map(m =>
-                      m.localId === userLocalId || m.localId === aiLocalId ? { ...m, status: 'error' } : m
+                      m.localId === userLocalId || m.localId === aiLocalId
+                        ? { ...m, status: 'error', content: m.role === 'assistant' ? (err.message || 'Erro ao processar') : m.content }
+                        : m
                   )
               }));
+
+              // Handle Quota/Limits specifically
+              if (err.code?.includes('limit') || err.message?.includes('atingiu') || err.message?.includes('quota')) {
+                  try {
+                      router.push({
+                          pathname: '/paywall',
+                          params: {
+                              title: 'Limite Atingido',
+                              message: err.message
+                          }
+                      });
+                  } catch(e) { console.error("Nav error", e); }
+              }
           }
       }
     );

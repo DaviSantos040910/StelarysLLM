@@ -65,15 +65,22 @@ client.interceptors.response.use(
     const { useAuthStore } = require('../stores/authStore');
     const { router } = require('expo-router'); // Ensure expo-router is available
 
-    // Handle Trial Expiration
-    if (error.response?.data?.code === 'TRIAL_EXPIRED' || error.response?.status === 402) {
-        // Navigate to Paywall using global router from expo-router (need to verify this works in client.ts context)
-        // Usually router.replace requires component context, but expo-router 2+ exports a router object?
-        // Actually, explicit import from 'expo-router' might work if setup correctly.
-        // If not, we might need a navigation ref service.
-        // Assuming basic router usage works or we fallback to console log for now if fails.
+    // Handle Quota/Trial Expiration (402 or 422 with error=true)
+    const isQuotaError =
+      error.response?.status === 402 ||
+      (error.response?.status === 422 && error.response?.data?.error === true);
+
+    if (isQuotaError) {
         try {
-            router.replace('/paywall');
+            // Pass error details to paywall via params or store if needed
+            // For now, simple navigation triggers the modal
+            router.replace({
+              pathname: '/paywall',
+              params: {
+                title: 'Limite Atingido',
+                message: error.response?.data?.message || 'Você atingiu o limite do seu plano.'
+              }
+            });
         } catch (navError) {
             console.error("Failed to navigate to paywall", navError);
         }
