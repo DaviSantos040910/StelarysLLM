@@ -24,7 +24,7 @@ from django.core.files import File
 from google.genai import types
 
 from ..models import ChatMessage, Chat, ChatResponseMetric
-from ..vector_service import VectorService
+from ..vector_service import vector_service
 from .ai_client import get_ai_client, detect_intent, generate_content_stream
 from .image_service import get_image_service
 from .context_builder import (
@@ -44,8 +44,6 @@ from billing.services.entitlements import get_current_plan, PLAN_TRIAL, PLAN_BAS
 
 logger = logging.getLogger(__name__)
 
-# Instância global do serviço vetorial
-vector_service = VectorService()
 
 
 # Helper functions removed to avoid duplication with strict_boundary

@@ -4,14 +4,11 @@ import logging
 from google.genai import types
 
 from .ai_client import get_ai_client
-from ..vector_service import VectorService
+from ..vector_service import vector_service
 from billing.services.quotas import check_and_consume, QuotaExceededException
 from accounts.models import User, GuestSession
 
 logger = logging.getLogger(__name__)
-
-# Instância global do serviço vetorial, igual ao ai_service.py
-vector_service = VectorService()
 
 
 def _summarize_fact(text: str, role: str = 'user') -> str:
