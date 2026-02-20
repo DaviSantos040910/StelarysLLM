@@ -870,6 +870,7 @@ class MessageTTSView(APIView):
         # Passed user for rate limiting
         actor_type, actor = get_actor(request)
         # Using actor as user for rate limiting (might need adapter if guest)
+        # QuotaExceededException will propagate to custom exception handler (422)
         res = generate_tts_audio(m.content, voice_name="Kore", user=actor)
 
         if res.get('success'):
@@ -881,6 +882,7 @@ class MessageTTSView(APIView):
                 )
 
         error_msg = res.get('error', 'Unknown Error')
+        # Rate limit (from cache check inside service, not quota) might return success=False
         status_code = 429 if "limit exceeded" in error_msg else 500
         return Response({"detail": error_msg}, status=status_code)
 

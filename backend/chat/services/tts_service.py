@@ -59,13 +59,10 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
 
         # 3. Check Rate Limit (if user provided)
         if user:
-            # Billing Quota Check
-            try:
-                # Estimate duration (approx 15 chars per second)
-                est_seconds = max(1, len(message_text) // 15)
-                check_and_consume(user=user, resource='tts_seconds', quantity=est_seconds)
-            except QuotaExceededException as qe:
-                return {'success': False, 'error': str(qe)}
+            # Billing Quota Check (Let QuotaExceededException propagate)
+            # Estimate duration (approx 15 chars per second)
+            est_seconds = max(1, len(message_text) // 15)
+            check_and_consume(user=user, resource='tts_seconds', quantity=est_seconds)
 
             cache_key = f"{TTS_RATE_LIMIT_KEY_PREFIX}{user.id}"
             current_count = cache.get(cache_key, 0)
@@ -148,6 +145,8 @@ def generate_tts_audio(message_text: str, output_path: str = None, voice_name: s
 
         return {'success': True, 'file_path': final_path, 'duration_ms': duration_ms}
 
+    except QuotaExceededException:
+        raise
     except Exception as e:
         logger.error(f"[TTS Error] {e}")
         return {'success': False, 'error': str(e)}

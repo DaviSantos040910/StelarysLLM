@@ -1,7 +1,6 @@
 # chat/services/memory_service.py
 
 import logging
-from google.genai import types
 
 from .ai_client import get_ai_client
 from ..vector_service import vector_service
@@ -20,6 +19,7 @@ def _summarize_fact(text: str, role: str = 'user') -> str:
         return ""
 
     try:
+        from google.genai import types
         client = get_ai_client()
 
         prompt = f"""Analise o texto abaixo e extraia APENAS fatos concretos e duradouros que valem a pena lembrar.

@@ -65,9 +65,10 @@ export default function PlansScreen() {
     );
   }
 
-  const isTrial = status?.plan === 'TRIAL';
-  const isBasic = status?.plan === 'BASIC';
-  const isLocked = status?.plan === 'LOCKED';
+  const plan = (status?.plan || '').toUpperCase();
+  const isTrial = plan === 'TRIAL';
+  const isBasic = plan === 'BASIC';
+  const isLocked = plan === 'LOCKED' || plan === 'FREE_LOCKED';
 
   return (
     <View className={`flex-1 ${themeClasses.screen}`}>

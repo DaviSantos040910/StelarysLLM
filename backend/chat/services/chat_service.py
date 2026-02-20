@@ -987,7 +987,14 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
 
     except Exception as e:
         logger.error(f"[Stream Error] {e}", exc_info=True)
-        yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
+        error_payload = {
+            "type": "error",
+            "error": "internal_error",
+            "code": "internal_error",
+            "message": "Erro ao processar resposta.",
+            "meta": {}
+        }
+        yield f"data: {json.dumps(error_payload)}\n\n"
 
 
 def _get_smart_context(
