@@ -385,52 +385,73 @@ class VectorService:
         if not query_text or not query_text.strip():
             return [], []
 
-        # Não abortar se backend for None, pois pode ter mock collection
-
         try:
-            available_docs = self.get_available_documents(user_id, bot_id, study_space_ids, chat_id=chat_id)
-            
-            # Filtra por ID se fornecido
+            # 1. Obter documentos disponíveis (Safe)
+            try:
+                available_docs = self.get_available_documents(user_id, bot_id, study_space_ids, chat_id=chat_id)
+            except Exception as e:
+                logger.error(f"[RAG] Failed to get available docs: {e}")
+                available_docs = []
+
+            # 2. Filtrar documentos (Safe)
             if allowed_source_ids:
-                # Optional: Pre-filter available_docs?
-                # Not strictly needed for logic flow, but good for "available_sources" list passed to classifier
                 available_docs = [d for d in available_docs if d.get('source_id') in allowed_source_ids]
 
             available_sources = [d['source'] for d in available_docs]
             
-            query_type, specific_doc = self.classify_query(query_text, available_sources)
-            logger.info(f"[RAG] Tipo de query: {query_type.value}, Doc específico: {specific_doc}")
+            # 3. Classificar Query
+            query_type = QueryType.GENERAL
+            specific_doc = None
+            try:
+                query_type, specific_doc = self.classify_query(query_text, available_sources)
+                logger.info(f"[RAG] Tipo de query: {query_type.value}, Doc específico: {specific_doc}")
+            except Exception as e:
+                logger.error(f"[RAG] Classification error: {e}")
+                # Fallback to general
+                query_type = QueryType.GENERAL
 
+            # 4. Executar Busca
             doc_contexts = []
-            if query_type == QueryType.SPECIFIC and specific_doc:
-                doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, specific_doc, limit, study_space_ids, allowed_source_ids
-                )
-            elif query_type == QueryType.REFERENCE:
-                target_source = recent_doc_source
-                if target_source and target_source not in available_sources:
-                    target_source = None
-                if not target_source and available_sources:
-                    target_source = available_sources[0]
+            try:
+                if query_type == QueryType.SPECIFIC and specific_doc:
+                    doc_contexts = self._search_specific_document(
+                        query_text, user_id, bot_id, specific_doc, limit, study_space_ids, allowed_source_ids
+                    )
+                elif query_type == QueryType.REFERENCE:
+                    target_source = recent_doc_source
+                    if target_source and target_source not in available_sources:
+                        target_source = None
+                    if not target_source and available_sources:
+                        target_source = available_sources[0]
 
-                doc_contexts = self._search_specific_document(
-                    query_text, user_id, bot_id, target_source, limit, study_space_ids, allowed_source_ids
-                ) if target_source else []
-            elif query_type == QueryType.COMPARATIVE:
-                doc_contexts = self._search_comparative(
-                    query_text, user_id, bot_id, available_sources, limit, study_space_ids, allowed_source_ids
-                )
-            else:  # GENERAL
+                    doc_contexts = self._search_specific_document(
+                        query_text, user_id, bot_id, target_source, limit, study_space_ids, allowed_source_ids
+                    ) if target_source else []
+                elif query_type == QueryType.COMPARATIVE:
+                    doc_contexts = self._search_comparative(
+                        query_text, user_id, bot_id, available_sources, limit, study_space_ids, allowed_source_ids
+                    )
+                else:  # GENERAL
+                    doc_contexts = self._search_general(
+                        query_text, user_id, bot_id, limit, allowed_source_ids, study_space_ids
+                    )
+            except Exception as search_err:
+                logger.error(f"[RAG] Specific search failed: {search_err}. Falling back to general.")
+                # Fallback to general search on error
                 doc_contexts = self._search_general(
                     query_text, user_id, bot_id, limit, allowed_source_ids, study_space_ids
                 )
 
-            memory_contexts = self._search_memories(query_text, user_id, bot_id, limit=3)
+            memory_contexts = []
+            try:
+                memory_contexts = self._search_memories(query_text, user_id, bot_id, limit=3)
+            except Exception as e:
+                logger.error(f"[RAG] Memory search error: {e}")
 
             return doc_contexts, memory_contexts
 
         except Exception as e:
-            logger.error(f"Erro em search_context: {e}")
+            logger.error(f"Erro crítico em search_context: {e}")
             return [], []
 
     def _build_or_filter(self, user_id: int, bot_id: int, study_space_ids: Optional[List[int]]) -> dict:
