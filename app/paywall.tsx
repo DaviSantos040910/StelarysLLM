@@ -23,9 +23,7 @@ export default function PaywallScreen() {
   };
 
   const title = typeof params.title === 'string' ? params.title : "Limite atingido";
-  // We don't display the custom message in the modal prop yet,
-  // but we could extend PaywallModal to accept description/subtitle.
-  // For now, title is customizable.
+  const message = typeof params.message === 'string' ? params.message : undefined;
 
   return (
     <View className="flex-1 bg-black">
@@ -33,6 +31,7 @@ export default function PaywallScreen() {
         visible={true}
         onClose={handleClose}
         title={title}
+        message={message}
       />
     </View>
   );

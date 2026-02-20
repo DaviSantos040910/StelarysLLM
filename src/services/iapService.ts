@@ -7,8 +7,7 @@ import {
   getSubscriptions,
   requestSubscription,
   endConnection,
-  SubscriptionPurchase,
-  ProductPurchase,
+  Purchase,
   PurchaseError
 } from 'react-native-iap';
 import { billingService } from './billingService';
@@ -33,7 +32,8 @@ class IAPService {
       await initConnection();
       this.isInitialized = true;
 
-      this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: SubscriptionPurchase | ProductPurchase) => {
+      this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
+        // Purchase (PurchaseAndroid | PurchaseIOS) has transactionReceipt
         const receipt = purchase.transactionReceipt;
 
         if (receipt) {
@@ -88,7 +88,8 @@ class IAPService {
 
       if (!sub) throw new Error("Subscription product not found");
 
-      const offerToken = sub.subscriptionOfferDetails?.[0]?.offerToken;
+      // Typings might vary, assuming updated library structure for Android offer details
+      const offerToken = (sub as any).subscriptionOfferDetails?.[0]?.offerToken;
 
       return await requestSubscription({
         sku,

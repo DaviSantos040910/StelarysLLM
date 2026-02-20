@@ -1,22 +1,53 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { X, Check, Lock } from 'lucide-react-native';
+import { X, Check, Lock, MessageSquare, Zap, Mic, FileText } from 'lucide-react-native';
 import { themeClasses } from '../../theme/classes';
 import { useRouter } from 'expo-router';
 import { iapService } from '../../services/iapService';
+import { useBillingStore } from '../../stores/billingStore';
 
 interface PaywallModalProps {
   visible: boolean;
   onClose: () => void;
   title?: string;
+  message?: string;
 }
+
+const UsageProgress = ({ label, used, limit, icon: Icon }: any) => {
+  const percentage = Math.min(100, Math.max(0, (used / limit) * 100));
+  const isFull = used >= limit;
+
+  if (!limit) return null; // Don't show if unlimited or unknown
+
+  return (
+    <View className="mb-3">
+      <View className="flex-row justify-between items-center mb-1">
+        <View className="flex-row items-center">
+          {Icon && <Icon size={12} color={isFull ? "#ef4444" : "#94a3b8"} className="mr-2" />}
+          <Text className={`${isFull ? "text-red-500 font-bold" : themeClasses.textSecondary} text-xs`}>{label}</Text>
+        </View>
+        <Text className={`${themeClasses.textMuted} text-xs`}>
+          {used}/{limit}
+        </Text>
+      </View>
+      <View className="h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+        <View
+          className={`h-full rounded-full ${isFull ? 'bg-red-500' : 'bg-cosmic-purple'}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </View>
+    </View>
+  );
+};
 
 export const PaywallModal: React.FC<PaywallModalProps> = ({
   visible,
   onClose,
-  title = "Assine para continuar"
+  title = "Assine para continuar",
+  message
 }) => {
   const router = useRouter();
+  const { status } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   const handleSubscribe = async () => {
@@ -57,36 +88,48 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           </View>
 
           {/* Icon & Title */}
-          <View className="items-center mb-8">
+          <View className="items-center mb-6">
             <View className="w-16 h-16 bg-cosmic-purple/20 rounded-full items-center justify-center mb-4">
               <Lock size={32} color="#818cf8" />
             </View>
             <Text className={`${themeClasses.textPrimary} text-2xl font-bold text-center mb-2`}>
               {title}
             </Text>
-            <Text className={`${themeClasses.textSecondary} text-center px-4`}>
-              Desbloqueie todo o potencial do Stelarys com o plano Basic.
+            {message && (
+                <Text className="text-red-500 font-medium text-center px-4 mb-2">
+                    {message}
+                </Text>
+            )}
+            <Text className={`${themeClasses.textSecondary} text-center px-4 text-sm`}>
+              Faça o upgrade para o plano Basic e continue aprendendo sem limites.
             </Text>
           </View>
 
-          {/* Benefits */}
-          <View className="mb-8 space-y-3">
-            {[
-              "Mensagens ilimitadas com IA",
-              "Upload de até 50 arquivos (PDF, Docs)",
-              "Geração de Quizzes, Resumos e Podcasts",
-              "Vozes neurais para leitura (TTS)"
-            ].map((benefit, idx) => (
-              <View key={idx} className="flex-row items-center bg-gray-50 dark:bg-white/5 p-3 rounded-xl">
-                <View className="bg-green-500/20 p-1 rounded-full mr-3">
-                  <Check size={14} color="#4ade80" />
-                </View>
-                <Text className={`${themeClasses.textPrimary} font-medium flex-1`}>
-                  {benefit}
-                </Text>
-              </View>
-            ))}
-          </View>
+          {/* Usage Stats (Dynamic) */}
+          {status && (
+            <View className="mb-6 bg-gray-50 dark:bg-white/5 p-4 rounded-xl">
+               <Text className={`${themeClasses.textPrimary} font-bold mb-3 text-sm`}>Seu uso atual:</Text>
+
+               <UsageProgress
+                  label="Mensagens"
+                  used={status.usage.messages_count}
+                  limit={status.limits.messages_monthly || 90}
+                  icon={MessageSquare}
+                />
+               <UsageProgress
+                  label="Artefatos"
+                  used={status.usage.artifacts_count}
+                  limit={status.limits.artifacts_monthly}
+                  icon={Zap}
+                />
+               <UsageProgress
+                  label="Fontes"
+                  used={status.usage.sources_count}
+                  limit={status.limits.sources_total}
+                  icon={FileText}
+                />
+            </View>
+          )}
 
           {/* Actions */}
           <View className="gap-3">
