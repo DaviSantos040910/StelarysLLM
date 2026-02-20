@@ -1,4 +1,7 @@
-import chromadb
+# chat/vector_store/chroma.py
+"""
+Backend para ChromaDB.
+"""
 from django.conf import settings
 import os
 import logging
@@ -8,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 class ChromaBackend(VectorStoreBackend):
     def __init__(self):
+        try:
+            import chromadb
+        except ImportError:
+            raise ImportError("chromadb is not installed. Please install it to use ChromaBackend.")
+
         db_path = str(settings.CHROMA_DB_PATH)
         os.makedirs(db_path, exist_ok=True)
         self.client = chromadb.PersistentClient(path=db_path)

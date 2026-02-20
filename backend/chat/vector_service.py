@@ -3,8 +3,6 @@
 Serviço vetorial com suporte inteligente a múltiplos documentos.
 """
 
-# Use google.genai instead of google.generativeai
-from google import genai
 from django.conf import settings
 import logging
 import uuid
@@ -16,6 +14,13 @@ from enum import Enum
 from chat.vector_store.base import VectorStoreBackend
 from chat.vector_store.chroma import ChromaBackend
 from chat.vector_store.pgvector import PGVectorBackend
+from studio.models import KnowledgeSource
+
+# Use google.genai optionally
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 logger = logging.getLogger(__name__)
 
@@ -46,15 +51,22 @@ class VectorService:
                 # Continua sem backend, mas _get_embedding retornará dummy
                 return
 
-            # Using google.genai client initialization is slightly different.
-            self.genai_client = genai.Client(api_key=api_key)
+            if genai:
+                # Using google.genai client initialization is slightly different.
+                self.genai_client = genai.Client(api_key=api_key)
+            else:
+                logger.warning("google.genai module not found. Embeddings will be dummy.")
 
             backend_type = getattr(settings, 'VECTOR_DB_BACKEND', 'chroma')
 
             if backend_type == 'pgvector':
                 self.backend = PGVectorBackend()
             else:
-                self.backend = ChromaBackend()
+                try:
+                    self.backend = ChromaBackend()
+                except ImportError as e:
+                     logger.warning(f"ChromaBackend unavailable: {e}. Vector search disabled.")
+                     self.backend = None
 
             logger.info(f"VectorService inicializado com backend: {backend_type}")
 
@@ -68,8 +80,8 @@ class VectorService:
         if not text or len(text.strip()) < 3:
             return dummy_embedding
 
-        # Se não tem cliente (sem API key), retorna dummy
-        if not hasattr(self, 'genai_client'):
+        # Se não tem cliente (sem API key ou module missing), retorna dummy
+        if not hasattr(self, 'genai_client') or not self.genai_client:
              return dummy_embedding
 
         models_to_try = ["models/gemini-embedding-001", "gemini-embedding-001", "text-embedding-004"]
@@ -130,8 +142,6 @@ class VectorService:
 
         try:
             embedding = self._get_embedding(text)
-            # Embedding agora sempre retorna lista, checar se é dummy (tudo zero)?
-            # O backend vetorial aceita vetor de zeros? Sim.
 
             self.backend.add_documents(
                 documents=[text],
@@ -246,61 +256,65 @@ class VectorService:
         self, 
         user_id: int, 
         bot_id: int, 
-        study_space_ids: Optional[List[int]] = None
+        study_space_ids: Optional[List[int]] = None,
+        chat_id: Optional[int] = None
     ) -> List[Dict]:
         """Lista todos os documentos disponíveis."""
-        # Se backend não existe, verifica collection mock
-        if not self.backend and not hasattr(self, 'collection'):
-            return []
+        # Se backend não existe e sem mock, nada a fazer.
+        # Mas para "available documents names" (usado no prompt), podemos pegar do DB KnowledgeSource?
+        # O prompt usa available_docs para listar nomes.
+        # A implementação antiga buscava do vector DB.
+        # O pedido da issue é: "corrigir _get_available_documents que está quebrado"
+        # "Carregar o chat e usar chat.sources.all()"
 
-        or_list = [{"bot_id": str(bot_id)}]
-        if str(bot_id) != "0":
-            or_list.append({"bot_id": "0"})
+        # Estratégia Híbrida/Correta:
+        # Para listar nomes disponíveis para o prompt (context window),
+        # devemos confiar no que está vinculado ao chat/bot no DB Relacional (KnowledgeSource),
+        # pois o VectorDB pode estar desatualizado ou inacessível.
+        # No entanto, a assinatura pede documentos "indexados".
+        # Se o user pede "resuma X", X deve estar no RAG.
 
-        if study_space_ids:
-            for sid in study_space_ids:
-                 or_list.append({"study_space_id": str(sid)})
+        # Vamos seguir a instrução explícita: "usar chat.sources.all()"
 
-        scope_condition = self._safe_or(or_list)
+        docs_list = []
 
-        and_list = [
-            {"user_id": str(user_id)},
-            {"type": "document"}
-        ]
-        if scope_condition:
-            and_list.append(scope_condition)
-
-        where_clause = self._safe_and(and_list)
-        
         try:
-            # get_documents pode ser chamado diretamente no backend se existir
-            if self.backend:
-                results = self.backend.get_documents(where=where_clause)
-            elif hasattr(self, 'collection'):
-                # Mock support for get_documents if collection exists but backend doesn't
-                # Note: Chroma collection.get() signature
-                results = self.collection.get(where=where_clause, include=["metadatas"])
-            else:
-                return []
+            # 1. Sources do Chat
+            if chat_id:
+                # Filter KnowledgeSources linked to this chat
+                chat_sources = KnowledgeSource.objects.filter(chats__id=chat_id).values('title', 'created_at', 'id')
+                for cs in chat_sources:
+                    docs_list.append({
+                        'source': cs['title'],
+                        'source_id': str(cs['id']),
+                        'timestamp': cs['created_at'].isoformat() if cs['created_at'] else ''
+                    })
 
-            if not results or not results.get('metadatas'):
-                return []
+            # 2. Sources do Bot (via StudySpaces)
+            # Se não tiver study_space_ids passado, tenta inferir?
+            # O caller geralmente passa.
+            if study_space_ids:
+                space_sources = KnowledgeSource.objects.filter(study_spaces__id__in=study_space_ids).values('title', 'created_at', 'id')
+                for ss in space_sources:
+                     docs_list.append({
+                        'source': ss['title'],
+                        'source_id': str(ss['id']),
+                        'timestamp': ss['created_at'].isoformat() if ss['created_at'] else ''
+                    })
 
-            docs_map = {}
-            for meta in results['metadatas']:
-                source = meta.get('source', '')
-                timestamp = meta.get('timestamp', '')
-                if source and (source not in docs_map or timestamp > docs_map[source]):
-                    docs_map[source] = timestamp
+            # Deduplicate by source name (title)
+            # Prefer newest timestamp
+            unique_docs = {}
+            for d in docs_list:
+                title = d['source']
+                if title not in unique_docs:
+                    unique_docs[title] = d
+                # else: could check timestamp, but usually title uniqueness is enough for context listing
 
-            sorted_docs = sorted(
-                [{'source': s, 'timestamp': t} for s, t in docs_map.items()],
-                key=lambda x: x['timestamp'],
-                reverse=True
-            )
-            return sorted_docs
+            return list(unique_docs.values())
+
         except Exception as e:
-            logger.error(f"Erro ao listar documentos: {e}")
+            logger.error(f"Erro ao listar documentos (DB Relacional): {e}")
             return []
 
     # =========================================================================
@@ -356,7 +370,8 @@ class VectorService:
         limit: int = 6,
         recent_doc_source: Optional[str] = None,
         allowed_source_ids: Optional[List[str]] = None,
-        allowed_sources: Optional[List[str]] = None
+        allowed_sources: Optional[List[str]] = None,
+        chat_id: Optional[int] = None # Added chat_id param
     ) -> Tuple[List[Dict], List[str]]:
         """
         Busca inteligente com suporte a múltiplos documentos.
@@ -370,11 +385,13 @@ class VectorService:
         # Não abortar se backend for None, pois pode ter mock collection
 
         try:
-            available_docs = self.get_available_documents(user_id, bot_id, study_space_ids)
+            available_docs = self.get_available_documents(user_id, bot_id, study_space_ids, chat_id=chat_id)
             
             # Filtra por ID se fornecido
             if allowed_source_ids:
-                pass 
+                # Optional: Pre-filter available_docs?
+                # Not strictly needed for logic flow, but good for "available_sources" list passed to classifier
+                available_docs = [d for d in available_docs if d.get('source_id') in allowed_source_ids]
 
             available_sources = [d['source'] for d in available_docs]
             
@@ -511,6 +528,8 @@ class VectorService:
             if len(allowed_source_ids) > 0:
                 and_conditions.append({"source_id": {"$in": allowed_source_ids}})
             else:
+                # If allowed list is empty, return empty (nothing allowed)
+                # UNLESS we treat empty list as "none allowed" -> return empty.
                 return []
             
             where_clause = {"$and": and_conditions}

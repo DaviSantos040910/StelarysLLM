@@ -51,20 +51,23 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         actor_type, actor = get_actor(self.request)
 
-        # --- BILLING CHECK ---
+        # --- BILLING CHECK & CREATION (ATOMIC) ---
         owner_user = actor if actor_type == 'user' else None
         owner_guest = actor if actor_type == 'guest' else None
-        check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
-        # Save initially
-        if actor_type == 'user':
-            instance = serializer.save(user=actor)
-        else:
-            instance = serializer.save(guest_session=actor, user=None)
+        with transaction.atomic():
+            # Locks user/trial row and checks limit inside transaction
+            check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
-        # Ingest using centralized service
-        # bot_id=0 signifies Global/Library context
-        KnowledgeIngestionService.ingest_source(instance, bot_id=0)
+            # Save
+            if actor_type == 'user':
+                instance = serializer.save(user=actor)
+            else:
+                instance = serializer.save(guest_session=actor, user=None)
+
+            # Ingest using centralized service
+            # bot_id=0 signifies Global/Library context
+            KnowledgeIngestionService.ingest_source(instance, bot_id=0)
 
     @action(detail=True, methods=['post'])
     def add_to_chat(self, request, pk=None):

@@ -779,8 +779,6 @@ class RegenerateMessageView(View):
                 uuid_obj = uuid.UUID(guest_id)
                 session = GuestSession.objects.get(id=uuid_obj)
                 if session.is_active:
-                    if session.trial_expires_at and session.trial_expires_at < timezone.now():
-                        return ('expired', None)
                     return ('guest', session)
             except (ValueError, GuestSession.DoesNotExist):
                 pass
@@ -789,8 +787,6 @@ class RegenerateMessageView(View):
     def post(self, request, chat_pk):
         # 1. Auth
         auth_result = self._authenticate(request)
-        if auth_result and auth_result[0] == 'expired':
-             return JsonResponse({"detail": "Trial expired", "code": "TRIAL_EXPIRED"}, status=402)
         if not auth_result:
             return JsonResponse({"detail": "Unauthorized"}, status=401)
 
