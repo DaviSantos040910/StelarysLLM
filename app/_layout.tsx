@@ -5,15 +5,18 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../src/stores/authStore';
 import { useAppStore } from '../src/stores/appStore';
+import { useBillingStore } from '../src/stores/billingStore';
 import { MiniAudioPlayer } from '../src/components/player/MiniAudioPlayer';
 import { useThemeStore } from '../src/stores/themeStore';
 import { useColorScheme } from 'nativewind';
 import { themeClasses } from '../src/theme/classes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppState } from 'react-native';
 
 export default function RootLayout() {
   const { loadUser, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
   const { checkOnboarding, hasSeenOnboarding, isLoading: isAppLoading } = useAppStore();
+  const { fetchStatus } = useBillingStore();
   const { mode } = useThemeStore();
   const { setColorScheme } = useColorScheme();
 
@@ -28,7 +31,19 @@ export default function RootLayout() {
     console.log('Starting loadUser and checkOnboarding');
     loadUser().then(() => console.log('loadUser finished')).catch(e => console.error('loadUser failed', e));
     checkOnboarding().then(() => console.log('checkOnboarding finished')).catch(e => console.error('checkOnboarding failed', e));
+    fetchStatus(); // Fetch billing status
     setColorScheme(mode);
+
+    // Refresh billing on app resume
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        fetchStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   // Sync theme when store updates
@@ -104,6 +119,10 @@ export default function RootLayout() {
 
           {/* Library Routes */}
           <Stack.Screen name="library/[id]" options={{ headerShown: false }} />
+
+          {/* Billing Routes */}
+          <Stack.Screen name="paywall" options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }} />
+          <Stack.Screen name="plans" options={{ headerShown: false, presentation: 'modal' }} />
         </Stack>
 
         {/* Global Mini Audio Player */}
