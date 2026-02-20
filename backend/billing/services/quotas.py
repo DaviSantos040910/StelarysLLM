@@ -7,6 +7,13 @@ from .entitlements import get_current_plan, PLAN_TRIAL, PLAN_BASIC, PLAN_FREE_LO
 from .trial_service import start_trial_if_not_started
 from ..api.exceptions import QuotaExceededException
 from studio.models import KnowledgeSource
+from ..constants import (
+    PLAN_LOCKED,
+    TRIAL_MESSAGE_LIMIT, TRIAL_ARTIFACT_LIMIT, TRIAL_SOURCE_LIMIT,
+    TRIAL_TUTOR_LIMIT, TRIAL_SPACE_LIMIT, TRIAL_MEMORY_LIMIT, TRIAL_TTS_BLOCKED,
+    BASIC_ARTIFACT_LIMIT, BASIC_MESSAGE_LIMIT, BASIC_TTS_LIMIT, BASIC_SOURCE_LIMIT,
+    INVALID_REQUEST
+)
 
 User = get_user_model()
 
@@ -38,8 +45,8 @@ def check_and_consume(user=None, guest_session=None, resource=None, quantity=1, 
     if plan == PLAN_FREE_LOCKED:
         raise QuotaExceededException(
             detail="Seu período de teste expirou ou o limite foi atingido. Assine para continuar.",
-            code="plan_locked",
-            meta={"plan": "locked"}
+            code=PLAN_LOCKED,
+            meta={"plan": "locked", "limit_key": "plan_status"}
         )
 
     if plan == PLAN_TRIAL:
@@ -90,8 +97,8 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
             if usage.artifacts_count + quantity > limit:
                 raise QuotaExceededException(
                     detail=f"Limite mensal de artefatos ({limit}) atingido.",
-                    code="basic_artifact_limit",
-                    meta={"plan": "basic", "limit": limit, "used": usage.artifacts_count}
+                    code=BASIC_ARTIFACT_LIMIT,
+                    meta={"plan": "basic", "limit": limit, "used": usage.artifacts_count, "limit_key": "artifacts"}
                 )
             usage.artifacts_count += quantity
             usage.save()
@@ -103,8 +110,8 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
             if usage.messages_count + quantity > limit:
                 raise QuotaExceededException(
                     detail=f"Limite mensal de mensagens ({limit}) atingido.",
-                    code="basic_message_limit",
-                    meta={"plan": "basic", "limit": limit, "used": usage.messages_count}
+                    code=BASIC_MESSAGE_LIMIT,
+                    meta={"plan": "basic", "limit": limit, "used": usage.messages_count, "limit_key": "messages"}
                 )
             usage.messages_count += quantity
             usage.save()
@@ -116,8 +123,8 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
             if usage.tts_seconds_count + quantity > limit:
                 raise QuotaExceededException(
                     detail=f"Limite mensal de TTS ({limit}s) atingido.",
-                    code="basic_tts_limit",
-                    meta={"plan": "basic", "limit": limit, "used": usage.tts_seconds_count}
+                    code=BASIC_TTS_LIMIT,
+                    meta={"plan": "basic", "limit": limit, "used": usage.tts_seconds_count, "limit_key": "tts_seconds"}
                 )
             usage.tts_seconds_count += quantity
             usage.save()
@@ -132,8 +139,8 @@ def _check_consume_basic(user, resource, quantity, **kwargs):
             if count + quantity > limit:
                  raise QuotaExceededException(
                     detail=f"Limite total de fontes ({limit}) atingido.",
-                    code="basic_source_limit",
-                    meta={"plan": "basic", "limit": limit, "used": count}
+                    code=BASIC_SOURCE_LIMIT,
+                    meta={"plan": "basic", "limit": limit, "used": count, "limit_key": "sources"}
                 )
             return
 
@@ -154,8 +161,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if usage.messages_count + quantity > limit:
                  raise QuotaExceededException(
                     detail=f"Limite de mensagens do Trial ({limit}) atingido.",
-                    code="trial_message_limit",
-                    meta={"plan": "trial", "limit": limit, "used": usage.messages_count}
+                    code=TRIAL_MESSAGE_LIMIT,
+                    meta={"plan": "trial", "limit": limit, "used": usage.messages_count, "limit_key": "messages"}
                 )
             usage.messages_count += quantity
             usage.save()
@@ -165,7 +172,7 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
         if resource == 'artifact':
             a_type = kwargs.get('type')
             if not a_type:
-                raise QuotaExceededException("Tipo de artefato não especificado.", code="invalid_request")
+                raise QuotaExceededException("Tipo de artefato não especificado.", code=INVALID_REQUEST)
 
             key = str(a_type).lower()
             current = usage.artifacts_usage.get(key, 0)
@@ -173,8 +180,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if current + quantity > 1:
                 raise QuotaExceededException(
                     detail=f"Você já criou 1 artefato do tipo '{key}' no Trial.",
-                    code="trial_artifact_limit",
-                    meta={"plan": "trial", "artifact_type": key, "limit": 1}
+                    code=TRIAL_ARTIFACT_LIMIT,
+                    meta={"plan": "trial", "artifact_type": key, "limit": 1, "limit_key": "artifacts"}
                 )
 
             usage.artifacts_usage[key] = current + quantity
@@ -187,8 +194,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if usage.source_count + quantity > limit:
                  raise QuotaExceededException(
                     detail=f"Limite de fontes do Trial ({limit}) atingido.",
-                    code="trial_source_limit",
-                    meta={"plan": "trial", "limit": limit, "used": usage.source_count}
+                    code=TRIAL_SOURCE_LIMIT,
+                    meta={"plan": "trial", "limit": limit, "used": usage.source_count, "limit_key": "sources"}
                 )
             usage.source_count += quantity
             usage.save()
@@ -200,8 +207,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if usage.tutor_count + quantity > limit:
                 raise QuotaExceededException(
                     detail=f"Limite de tutores do Trial ({limit}) atingido.",
-                    code="trial_tutor_limit",
-                    meta={"plan": "trial", "limit": limit, "used": usage.tutor_count}
+                    code=TRIAL_TUTOR_LIMIT,
+                    meta={"plan": "trial", "limit": limit, "used": usage.tutor_count, "limit_key": "bot_tutor"}
                 )
             usage.tutor_count += quantity
             usage.save()
@@ -213,8 +220,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if usage.space_count + quantity > limit:
                  raise QuotaExceededException(
                     detail=f"Limite de espaços de estudo do Trial ({limit}) atingido.",
-                    code="trial_space_limit",
-                    meta={"plan": "trial", "limit": limit, "used": usage.space_count}
+                    code=TRIAL_SPACE_LIMIT,
+                    meta={"plan": "trial", "limit": limit, "used": usage.space_count, "limit_key": "study_space"}
                 )
             usage.space_count += quantity
             usage.save()
@@ -225,8 +232,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
             if usage.memory_used:
                  raise QuotaExceededException(
                     detail="Memória já utilizada no Trial.",
-                    code="trial_memory_limit",
-                    meta={"plan": "trial", "limit": 1}
+                    code=TRIAL_MEMORY_LIMIT,
+                    meta={"plan": "trial", "limit": 1, "limit_key": "memory_run"}
                 )
             usage.memory_used = True
             usage.save()
@@ -236,8 +243,8 @@ def _check_consume_trial(user, guest_session, resource, quantity, **kwargs):
         if resource == 'tts_seconds':
              raise QuotaExceededException(
                 detail="TTS não disponível no Trial.",
-                code="trial_tts_blocked",
-                meta={"plan": "trial", "limit": 0}
+                code=TRIAL_TTS_BLOCKED,
+                meta={"plan": "trial", "limit": 0, "limit_key": "tts_seconds"}
             )
 
     return

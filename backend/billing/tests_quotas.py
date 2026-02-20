@@ -6,6 +6,9 @@ from billing.models import Plan, Subscription, UsageCounter, TrialUsageCounter
 from billing.services.quotas import check_and_consume, QuotaExceededException, TRIAL_LIMITS
 from billing.services.entitlements import get_current_plan, PLAN_TRIAL, PLAN_BASIC, PLAN_FREE_LOCKED
 from studio.models import KnowledgeSource
+from billing.constants import (
+    TRIAL_MESSAGE_LIMIT, TRIAL_ARTIFACT_LIMIT, TRIAL_TTS_BLOCKED, BASIC_SOURCE_LIMIT
+)
 
 class QuotaLockingTest(TestCase):
 
@@ -27,7 +30,7 @@ class QuotaLockingTest(TestCase):
             check_and_consume(user=self.user, resource='messages', quantity=1)
 
         exc = cm.exception
-        self.assertEqual(exc.default_code, 'trial_message_limit')
+        self.assertEqual(exc.default_code, TRIAL_MESSAGE_LIMIT)
         self.assertEqual(exc.meta['plan'], 'trial')
         self.assertEqual(exc.meta['limit'], TRIAL_LIMITS['messages'])
 
@@ -39,7 +42,7 @@ class QuotaLockingTest(TestCase):
         with self.assertRaises(QuotaExceededException) as cm:
             check_and_consume(user=self.user, resource='artifact', quantity=1, type='podcast')
 
-        self.assertEqual(cm.exception.default_code, 'trial_artifact_limit')
+        self.assertEqual(cm.exception.default_code, TRIAL_ARTIFACT_LIMIT)
         self.assertEqual(cm.exception.meta['artifact_type'], 'podcast')
 
     def test_trial_tts_blocked(self):
@@ -47,7 +50,7 @@ class QuotaLockingTest(TestCase):
         with self.assertRaises(QuotaExceededException) as cm:
             check_and_consume(user=self.user, resource='tts_seconds', quantity=10)
 
-        self.assertEqual(cm.exception.default_code, 'trial_tts_blocked')
+        self.assertEqual(cm.exception.default_code, TRIAL_TTS_BLOCKED)
 
     def test_basic_source_limit(self):
         # Basic Plan
@@ -65,4 +68,4 @@ class QuotaLockingTest(TestCase):
         with self.assertRaises(QuotaExceededException) as cm:
             check_and_consume(user=self.user, resource='source', quantity=1)
 
-        self.assertEqual(cm.exception.default_code, 'basic_source_limit')
+        self.assertEqual(cm.exception.default_code, BASIC_SOURCE_LIMIT)
