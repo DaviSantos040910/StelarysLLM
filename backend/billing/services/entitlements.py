@@ -135,6 +135,11 @@ def _populate_basic_entitlements(user, response):
     sources_count = KnowledgeSource.objects.filter(user=user).count()
 
     response['usage'] = {
+        'messages_count': usage_obj.messages_count,
+        'artifacts_count': usage_obj.artifacts_count,
+        'tts_seconds_count': usage_obj.tts_seconds_count,
+        'sources_count': sources_count,
+        # Legacy/Descriptive aliases for limits comparison
         'messages_monthly': usage_obj.messages_count,
         'artifacts_monthly': usage_obj.artifacts_count,
         'tts_seconds_monthly': usage_obj.tts_seconds_count,
@@ -182,12 +187,15 @@ def _populate_trial_entitlements(user, guest_session, response):
         mem_used = usage_obj.memory_used
 
     response['usage'] = {
-        'messages_total': msgs,
+        'messages_count': msgs,
         'artifacts_breakdown': arts,
+        'sources_count': srcs,
+        'bot_tutor_count': tutor,
+        'study_space_count': space,
+        'memory_run_used': mem_used,
+        # Legacy/Descriptive
+        'messages_total': msgs,
         'sources_total': srcs,
-        'bot_tutor_total': tutor,
-        'study_space_total': space,
-        'memory_run_used': mem_used
     }
 
     # Flags
