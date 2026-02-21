@@ -54,6 +54,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     try {
       setIsPurchasing(true);
       await iapService.purchaseBasicPlan();
+      // On success, iapService updates the store automatically via listener
+      // We can close the modal here if we detect status change, or let the user close it manually
+      // or implement a listener to store changes.
+      // For now, simpler UX: just wait. If successful, user likely sees a confirmation or just closes it.
+      // Ideally, we wait for status change to BASIC.
     } catch (error: any) {
       if (error.message !== 'E_USER_CANCELLED') {
         Alert.alert("Erro", "Não foi possível iniciar a assinatura. Tente novamente.");
