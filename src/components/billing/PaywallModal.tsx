@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { X, Check, Lock, MessageSquare, Zap, Mic, FileText } from 'lucide-react-native';
 import { themeClasses } from '../../theme/classes';
@@ -49,6 +49,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const router = useRouter();
   const { status } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      iapService.initialize();
+    }
+  }, [visible]);
 
   const handleSubscribe = async () => {
     try {

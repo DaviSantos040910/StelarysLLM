@@ -39,6 +39,10 @@ export default function PlansScreen() {
 
   useEffect(() => {
     fetchStatus();
+    iapService.initialize(); // Initialize IAP when entering plans screen
+    return () => {
+        // Optional: teardown if needed, but usually we keep connection open during session
+    };
   }, []);
 
   const handleSubscribe = async () => {
@@ -194,6 +198,20 @@ export default function PlansScreen() {
                 </Pressable>
              </View>
           )}
+
+          <Pressable
+            className="p-4 mb-10 items-center"
+            onPress={async () => {
+              try {
+                await iapService.restorePurchases();
+                Alert.alert("Sucesso", "Compras restauradas.");
+              } catch (e) {
+                Alert.alert("Erro", "Falha ao restaurar compras.");
+              }
+            }}
+          >
+             <Text className={`${themeClasses.textMuted} underline`}>Restaurar Compras</Text>
+          </Pressable>
 
           <View className="h-10" />
         </ScrollView>
