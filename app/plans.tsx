@@ -36,10 +36,13 @@ export default function PlansScreen() {
   const router = useRouter();
   const { status, fetchStatus, isLoading } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStatus();
-    iapService.initialize(); // Initialize IAP when entering plans screen
+    iapService.initialize().then(() => {
+        setUnavailableReason(iapService.unavailableReason);
+    }); // Initialize IAP when entering plans screen
     return () => {
         // Optional: teardown if needed, but usually we keep connection open during session
     };
@@ -177,16 +180,24 @@ export default function PlansScreen() {
 
               <Pressable
                 onPress={handleSubscribe}
-                disabled={isPurchasing}
-                className="bg-white py-4 rounded-xl items-center active:bg-gray-100 flex-row justify-center"
+                disabled={isPurchasing || !!unavailableReason}
+                className={`bg-white py-4 rounded-xl items-center active:bg-gray-100 flex-row justify-center ${unavailableReason ? 'opacity-50' : ''}`}
               >
                 {isPurchasing ? (
                   <Loader2 size={20} color="#312e81" className="animate-spin mr-2" />
                 ) : null}
                 <Text className="text-indigo-900 font-bold text-lg">
-                  {isPurchasing ? 'Processando...' : (isLocked ? 'Assinar Basic para continuar' : 'Assinar com Google Play')}
+                  {unavailableReason === 'expo_go'
+                     ? 'Disponível apenas no Dev Build'
+                     : (isPurchasing ? 'Processando...' : (isLocked ? 'Assinar Basic para continuar' : 'Assinar com Google Play'))}
                 </Text>
               </Pressable>
+
+              {unavailableReason === 'expo_go' && (
+                <Text className="text-red-300 text-center text-xs mt-2">
+                    Pagamentos disponíveis apenas no Dev Build/Play Store.
+                </Text>
+              )}
             </View>
           )}
 

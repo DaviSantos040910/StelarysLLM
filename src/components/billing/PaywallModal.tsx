@@ -49,10 +49,13 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const router = useRouter();
   const { status } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
-      iapService.initialize();
+      iapService.initialize().then(() => {
+         setUnavailableReason(iapService.unavailableReason);
+      });
     }
   }, [visible]);
 
@@ -146,14 +149,22 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <View className="gap-3">
             <Pressable
               onPress={handleSubscribe}
-              disabled={isPurchasing}
-              className="bg-cosmic-purple py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30 active:opacity-90 flex-row justify-center"
+              disabled={isPurchasing || !!unavailableReason}
+              className={`bg-cosmic-purple py-4 rounded-xl items-center shadow-lg shadow-indigo-500/30 active:opacity-90 flex-row justify-center ${unavailableReason ? 'opacity-50' : ''}`}
             >
               {isPurchasing && <ActivityIndicator color="white" className="mr-2" />}
               <Text className="text-white font-bold text-lg">
-                {isPurchasing ? 'Processando...' : 'Assinar por R$ 29,90/mês'}
+                {unavailableReason === 'expo_go'
+                   ? 'Disponível apenas no Dev Build'
+                   : (isPurchasing ? 'Processando...' : 'Assinar por R$ 29,90/mês')}
               </Text>
             </Pressable>
+
+            {unavailableReason === 'expo_go' && (
+                <Text className="text-red-400 text-center text-xs px-4">
+                    Pagamentos disponíveis apenas no Dev Build/Play Store (NitroModules não suportados no Expo Go).
+                </Text>
+            )}
 
             <Pressable
               onPress={handleSeePlans}
