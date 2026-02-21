@@ -253,3 +253,17 @@ else:
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
+
+# ================================
+# Google Play Billing Configuration
+# ================================
+
+GOOGLE_PLAY_PACKAGE_NAME = os.getenv(
+    "GOOGLE_PLAY_PACKAGE_NAME",
+    "com.stelarysllm.ia"  # default seguro para desenvolvimento
+)
+
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = os.getenv(
+    "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
+    ""
+)
