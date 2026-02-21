@@ -1016,12 +1016,14 @@ def _get_smart_context(
             study_space_ids=study_space_ids,
             allowed_source_ids=allowed_source_ids,
             limit=limit,
-            recent_doc_source=recent_source
+            recent_doc_source=recent_source,
+            chat_id=chat_id
         )
         available_docs = vector_service.get_available_documents(
             user_id,
             bot_id,
-            study_space_ids=study_space_ids
+            study_space_ids=study_space_ids,
+            chat_id=chat_id
         )
         available_names = [d['source'] for d in available_docs]
         return doc_contexts, memory_contexts, available_names
