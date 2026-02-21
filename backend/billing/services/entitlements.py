@@ -4,7 +4,7 @@ from ..models import Subscription, TrialUsageCounter, UsageCounter
 
 PLAN_TRIAL = 'trial'
 PLAN_BASIC = 'basic'
-PLAN_FREE_LOCKED = 'free_locked'
+PLAN_FREE_LOCKED = 'locked'
 
 # --- LIMIT DEFINITIONS (Sync with requirements) ---
 TRIAL_LIMITS = {

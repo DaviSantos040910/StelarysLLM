@@ -105,30 +105,30 @@ export default function PlansScreen() {
               </Text>
             )}
 
-            {/* Usage Stats */}
+            {/* Usage Stats (Driven by Backend) */}
             {status && (
               <View className="mt-2">
                 <UsageBar
                   label="Mensagens"
-                  used={status.usage.messages_count}
-                  limit={status.limits.messages_monthly || 90}
+                  used={status.usage.messages_count || 0}
+                  limit={isBasic ? status.limits.messages_monthly : (status.limits['messages_total'] || 90)}
                   icon={MessageSquare}
                 />
                 <UsageBar
                   label="Fontes (Docs)"
-                  used={status.usage.sources_count}
-                  limit={status.limits.sources_total || 50}
+                  used={status.usage.sources_count || 0}
+                  limit={isBasic ? status.limits.sources_total : (status.limits['sources_total'] || 1)}
                   icon={FileText}
                 />
                 <UsageBar
-                  label="Artefatos (Resumos/Quiz)"
-                  used={status.usage.artifacts_count}
-                  limit={status.limits.artifacts_monthly || 50}
+                  label="Artefatos"
+                  used={status.usage.artifacts_count || 0}
+                  limit={isBasic ? status.limits.artifacts_monthly : (status.limits['artifacts_per_type'] || 1)}
                   icon={Zap}
                 />
                 <UsageBar
                   label="TTS (Áudio)"
-                  used={status.usage.tts_seconds_count}
+                  used={status.usage.tts_seconds_count || 0}
                   limit={status.limits.tts_seconds_monthly || 0}
                   unit="s"
                   icon={Mic}
@@ -157,10 +157,10 @@ export default function PlansScreen() {
 
               <View className="space-y-3 mb-8">
                 {[
-                  "2.000 mensagens com IA por mês",
-                  "Até 50 arquivos na biblioteca",
+                  `Até ${status?.limits?.messages_monthly || 2000} mensagens/mês`,
+                  `Até ${status?.limits?.sources_total || 50} arquivos na biblioteca`,
                   "Geração de Podcasts e Resumos",
-                  "Vozes neurais ilimitadas (3h/mês)"
+                  `Vozes neurais (${((status?.limits?.tts_seconds_monthly || 10800)/3600).toFixed(0)}h/mês)`
                 ].map((feat, i) => (
                   <View key={i} className="flex-row items-center">
                     <View className="bg-green-500/20 p-1 rounded-full mr-3">
@@ -180,10 +180,19 @@ export default function PlansScreen() {
                   <Loader2 size={20} color="#312e81" className="animate-spin mr-2" />
                 ) : null}
                 <Text className="text-indigo-900 font-bold text-lg">
-                  {isPurchasing ? 'Processando...' : 'Assinar com Google Play'}
+                  {isPurchasing ? 'Processando...' : (isLocked ? 'Assinar Basic para continuar' : 'Assinar com Google Play')}
                 </Text>
               </Pressable>
             </View>
+          )}
+
+          {isBasic && (
+             <View className="p-4 rounded-xl bg-gray-50 dark:bg-white/5 mb-10 items-center">
+                <Text className={`${themeClasses.textSecondary} mb-2`}>Gerenciamento</Text>
+                <Pressable onPress={() => {/* Open Play Store Subs */}}>
+                    <Text className="text-cosmic-purple font-bold">Gerenciar Assinatura na Play Store</Text>
+                </Pressable>
+             </View>
           )}
 
           <View className="h-10" />
