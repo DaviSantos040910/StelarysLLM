@@ -36,6 +36,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "react-native-iap",
       "expo-router",
       [
         "expo-splash-screen",

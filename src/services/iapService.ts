@@ -1,53 +1,74 @@
-import { Platform } from 'react-native';
-import {
-  initConnection,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  finishTransaction,
-  getSubscriptions,
-  requestSubscription,
-  endConnection,
-  Purchase,
-  PurchaseError
-} from 'react-native-iap';
 import { billingService } from './billingService';
 import { useBillingStore } from '../stores/billingStore';
-
-// Define SKU
-const SKUS = Platform.select({
-  android: ['stelarys_basic_monthly'],
-  ios: ['stelarys_basic_monthly'], // Assuming same ID for now
-  default: ['stelarys_basic_monthly'],
-});
+import { loadIap, isExpoGo } from './iap/nativeIap';
+import { PLATFORM_SKUS } from '../config/iap';
 
 class IAPService {
   private purchaseUpdateSubscription: { remove: () => void } | null = null;
   private purchaseErrorSubscription: { remove: () => void } | null = null;
   private isInitialized = false;
+  private iapModule: any = null;
+
+  // Expose the reason why IAP is unavailable (e.g., 'expo_go')
+  public unavailableReason: string | null = null;
+
+  // Sync check for Expo Go to avoid async overhead on simple checks
+  isIapSupported(): boolean {
+    return !isExpoGo;
+  }
+
+  private async getModule() {
+    if (this.iapModule) return this.iapModule;
+    const result = await loadIap();
+
+    if (!result.available || !result.module) {
+        this.unavailableReason = result.reason || 'unknown';
+        throw new Error("IAP_UNAVAILABLE");
+    }
+
+    this.iapModule = result.module;
+    return this.iapModule;
+  }
+
+  async ensureConnected() {
+    if (!this.isIapSupported()) {
+        console.warn("[IAP] ensureConnected skipped (not supported environment)");
+        return false;
+    }
+    try {
+        await this.initialize();
+        return true;
+    } catch {
+        return false;
+    }
+  }
 
   async initialize() {
     if (this.isInitialized) return;
 
+    // Fail fast if not supported (sync check)
+    if (!this.isIapSupported()) {
+        this.unavailableReason = 'expo_go';
+        console.log('[IAP] Initialization skipped in Expo Go');
+        return;
+    }
+
     try {
-      await initConnection();
+      const RNIap = await this.getModule();
+      await RNIap.initConnection();
       this.isInitialized = true;
 
-      this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
+      this.purchaseUpdateSubscription = RNIap.purchaseUpdatedListener(async (purchase: any) => {
         // Purchase (PurchaseAndroid | PurchaseIOS) has transactionReceipt
         const receipt = purchase.transactionReceipt;
 
         if (receipt) {
           try {
             console.log('[IAP] Purchase successful, verifying...', purchase.productId);
-            // Verify with backend
-            // Note: Android uses purchaseToken, iOS uses transactionReceipt
             const token = purchase.purchaseToken || receipt;
             await billingService.verifyGooglePlayPurchase(purchase.productId, token);
 
-            // Finish transaction ONLY after backend verification
-            await finishTransaction({ purchase, isConsumable: false });
-
-            // Refresh billing status
+            await RNIap.finishTransaction({ purchase, isConsumable: false });
             useBillingStore.getState().fetchStatus();
 
             console.log('[IAP] Purchase verified and finished');
@@ -57,19 +78,25 @@ class IAPService {
         }
       });
 
-      this.purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
+      this.purchaseErrorSubscription = RNIap.purchaseErrorListener((error: any) => {
         console.warn('[IAP] Purchase error', error);
       });
 
-    } catch (err) {
-      console.error('[IAP] Init error', err);
+    } catch (err: any) {
+      if (err.message !== "IAP_UNAVAILABLE") {
+          console.error('[IAP] Init error', err);
+      } else {
+          console.log(`[IAP] Unavailable: ${this.unavailableReason}`);
+      }
     }
   }
 
   async getSubscriptions() {
     try {
-      if (!SKUS) return [];
-      return await getSubscriptions({ skus: SKUS });
+      if (!this.isIapSupported()) return [];
+      if (!PLATFORM_SKUS) return [];
+      const RNIap = await this.getModule();
+      return await RNIap.getSubscriptions({ skus: PLATFORM_SKUS });
     } catch (err) {
       console.error('[IAP] Get Subscriptions error', err);
       return [];
@@ -78,8 +105,11 @@ class IAPService {
 
   async purchaseBasicPlan() {
     try {
-      if (!SKUS || SKUS.length === 0) throw new Error("No SKUs configured");
-      const sku = SKUS[0];
+      if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
+      if (!PLATFORM_SKUS || PLATFORM_SKUS.length === 0) throw new Error("No SKUs configured");
+      const sku = PLATFORM_SKUS[0];
+
+      const RNIap = await this.getModule();
 
       // On Android, requestSubscription requires offerToken if available (updated RNIap)
       // We first fetch subs to get offer token
@@ -89,19 +119,57 @@ class IAPService {
       if (!sub) throw new Error("Subscription product not found");
 
       // Typings might vary, assuming updated library structure for Android offer details
-      const offerToken = (sub as any).subscriptionOfferDetails?.[0]?.offerToken;
+      const offerToken = sub.subscriptionOfferDetails?.[0]?.offerToken;
 
-      return await requestSubscription({
+      return await RNIap.requestSubscription({
         sku,
         ...(offerToken && { subscriptionOffers: [{ sku, offerToken }] }),
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message === "IAP_UNAVAILABLE" || this.unavailableReason) {
+          // Use the stored reason for a better message if needed, or fallback
+          const msg = (this.unavailableReason === 'expo_go' || !this.isIapSupported())
+            ? "Pagamentos indisponíveis no Expo Go. Use um Development Build."
+            : "Compras no app não estão disponíveis.";
+          alert(msg);
+          return;
+      }
       console.error('[IAP] Request Subscription error', err);
       throw err;
     }
   }
 
-  teardown() {
+  async restorePurchases() {
+    try {
+      if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
+      const RNIap = await this.getModule();
+      const purchases = await RNIap.getAvailablePurchases();
+
+      console.log('[IAP] Restoring purchases...', purchases.length);
+
+      for (const purchase of purchases) {
+          const token = purchase.purchaseToken || purchase.transactionReceipt;
+          if (token) {
+              await billingService.verifyGooglePlayPurchase(purchase.productId, token);
+          }
+      }
+
+      if (purchases.length > 0) {
+          useBillingStore.getState().fetchStatus();
+      }
+
+      return purchases.length > 0;
+    } catch (err: any) {
+       if (err.message === "IAP_UNAVAILABLE" || this.unavailableReason) {
+          alert("Indisponível no Expo Go.");
+          return 0;
+       }
+      console.warn('[IAP] Restore error', err);
+      throw err;
+    }
+  }
+
+  async teardown() {
     if (this.purchaseUpdateSubscription) {
       this.purchaseUpdateSubscription.remove();
       this.purchaseUpdateSubscription = null;
@@ -110,7 +178,13 @@ class IAPService {
       this.purchaseErrorSubscription.remove();
       this.purchaseErrorSubscription = null;
     }
-    endConnection();
+    if (this.isInitialized && this.iapModule) {
+        try {
+            await this.iapModule.endConnection();
+        } catch(e) {
+            console.warn("[IAP] Error ending connection", e);
+        }
+    }
     this.isInitialized = false;
   }
 }
