@@ -36,13 +36,17 @@ export default function PlansScreen() {
   const router = useRouter();
   const { status, fetchStatus, isLoading } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(
+      !iapService.isIapSupported() ? 'expo_go' : null
+  );
 
   useEffect(() => {
     fetchStatus();
-    iapService.initialize().then(() => {
-        setUnavailableReason(iapService.unavailableReason);
-    }); // Initialize IAP when entering plans screen
+    if (iapService.isIapSupported()) {
+        iapService.initialize().then(() => {
+            setUnavailableReason(iapService.unavailableReason);
+        });
+    }
     return () => {
         // Optional: teardown if needed, but usually we keep connection open during session
     };

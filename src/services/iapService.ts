@@ -1,6 +1,6 @@
 import { billingService } from './billingService';
 import { useBillingStore } from '../stores/billingStore';
-import { loadIap } from './iap/nativeIap';
+import { loadIap, isExpoGo } from './iap/nativeIap';
 import { PLATFORM_SKUS } from '../config/iap';
 
 class IAPService {
@@ -11,6 +11,11 @@ class IAPService {
 
   // Expose the reason why IAP is unavailable (e.g., 'expo_go')
   public unavailableReason: string | null = null;
+
+  // Sync check for Expo Go to avoid async overhead on simple checks
+  isIapSupported(): boolean {
+    return !isExpoGo;
+  }
 
   private async getModule() {
     if (this.iapModule) return this.iapModule;
@@ -25,8 +30,28 @@ class IAPService {
     return this.iapModule;
   }
 
+  async ensureConnected() {
+    if (!this.isIapSupported()) {
+        console.warn("[IAP] ensureConnected skipped (not supported environment)");
+        return false;
+    }
+    try {
+        await this.initialize();
+        return true;
+    } catch {
+        return false;
+    }
+  }
+
   async initialize() {
     if (this.isInitialized) return;
+
+    // Fail fast if not supported (sync check)
+    if (!this.isIapSupported()) {
+        this.unavailableReason = 'expo_go';
+        console.log('[IAP] Initialization skipped in Expo Go');
+        return;
+    }
 
     try {
       const RNIap = await this.getModule();
@@ -68,6 +93,7 @@ class IAPService {
 
   async getSubscriptions() {
     try {
+      if (!this.isIapSupported()) return [];
       if (!PLATFORM_SKUS) return [];
       const RNIap = await this.getModule();
       return await RNIap.getSubscriptions({ skus: PLATFORM_SKUS });
@@ -79,6 +105,7 @@ class IAPService {
 
   async purchaseBasicPlan() {
     try {
+      if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
       if (!PLATFORM_SKUS || PLATFORM_SKUS.length === 0) throw new Error("No SKUs configured");
       const sku = PLATFORM_SKUS[0];
 
@@ -99,9 +126,9 @@ class IAPService {
         ...(offerToken && { subscriptionOffers: [{ sku, offerToken }] }),
       });
     } catch (err: any) {
-      if (err.message === "IAP_UNAVAILABLE") {
+      if (err.message === "IAP_UNAVAILABLE" || this.unavailableReason) {
           // Use the stored reason for a better message if needed, or fallback
-          const msg = this.unavailableReason === 'expo_go'
+          const msg = (this.unavailableReason === 'expo_go' || !this.isIapSupported())
             ? "Pagamentos indisponíveis no Expo Go. Use um Development Build."
             : "Compras no app não estão disponíveis.";
           alert(msg);
@@ -114,6 +141,7 @@ class IAPService {
 
   async restorePurchases() {
     try {
+      if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
       const RNIap = await this.getModule();
       const purchases = await RNIap.getAvailablePurchases();
 
@@ -132,7 +160,7 @@ class IAPService {
 
       return purchases.length > 0;
     } catch (err: any) {
-       if (err.message === "IAP_UNAVAILABLE") {
+       if (err.message === "IAP_UNAVAILABLE" || this.unavailableReason) {
           alert("Indisponível no Expo Go.");
           return 0;
        }

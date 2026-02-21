@@ -1,11 +1,11 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
+export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 export async function loadIap() {
   // Check if running in Expo Go
-  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
   if (isExpoGo) {
-    console.log('[IAP] Running in Expo Go. IAP disabled.');
+    console.log('[IAP] Running in Expo Go (StoreClient). IAP disabled to prevent crashes.');
     return {
         available: false,
         reason: 'expo_go',
@@ -14,7 +14,7 @@ export async function loadIap() {
   }
 
   try {
-    // Dynamic import to avoid top-level execution of NitroModules
+    // Dynamic import to avoid top-level execution of NitroModules in environments where they might be missing
     const RNIap = await import('react-native-iap');
     return {
       available: true,
