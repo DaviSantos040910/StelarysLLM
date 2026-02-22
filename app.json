@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.davisantos.stelarysllm",
       "infoPlist": {
         "UIBackgroundModes": [
+          "audio",
           "audio"
         ]
       }
@@ -28,7 +29,12 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.stelarysllm.ia",
       "permissions": [
-        "com.android.vending.BILLING"
+        "com.android.vending.BILLING",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "com.android.vending.BILLING",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -61,6 +67,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "23381e61-8e94-477a-9127-b22f7a5cc2a4"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/23381e61-8e94-477a-9127-b22f7a5cc2a4"
     }
   }
 }
