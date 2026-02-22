@@ -34,3 +34,5 @@ gunicorn
 pgvector
 psycopg[binary]
 dj-database-url
+google-auth
+google-api-python-client

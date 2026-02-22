@@ -1,11 +1,20 @@
 import axios from 'axios';
 
-// Use environment variable if available, otherwise fallback to localhost for emulator
-// 10.0.2.2 is the localhost alias for Android Emulator
-const DEV_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.87:8000';
-const PROD_URL = 'https://api.stelarys.com';
+// Get API URL from Expo public environment variable
+const EXPO_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-export const BASE_URL = __DEV__ ? DEV_URL : PROD_URL;
+// Validation for Production
+if (!__DEV__ && !EXPO_API_URL) {
+  // In production, we MUST have the API URL defined
+  // Throwing an error here ensures the app doesn't run with undefined/broken networking
+  throw new Error('Missing EXPO_PUBLIC_API_URL environment variable. App cannot start in production.');
+}
+
+// Fallback for Development (e.g. Android Emulator localhost)
+// Only used if EXPO_PUBLIC_API_URL is missing AND we are in __DEV__
+const DEV_FALLBACK_URL = 'http://192.168.1.87:8000';
+
+export const BASE_URL = EXPO_API_URL || DEV_FALLBACK_URL;
 
 const client = axios.create({
   baseURL: BASE_URL,
