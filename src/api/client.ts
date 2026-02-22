@@ -14,7 +14,7 @@ if (!__DEV__ && !EXPO_API_URL) {
 
 // Fallback for Development (e.g. Android Emulator localhost)
 // Only used if EXPO_PUBLIC_API_URL is missing AND we are in __DEV__
-const DEV_FALLBACK_URL = 'http://192.168.1.87:8000';
+const DEV_FALLBACK_URL = 'https://backend-api-140218503200.us-central1.run.app';
 
 export const BASE_URL = EXPO_API_URL || DEV_FALLBACK_URL;
 
