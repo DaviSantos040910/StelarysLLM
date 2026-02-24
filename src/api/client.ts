@@ -82,20 +82,30 @@ client.interceptors.response.use(
       (error.response?.status === 422 && error.response?.data?.error === true);
 
     if (isQuotaError) {
-        try {
-            // Pass error details to paywall via params or store if needed
-            // For now, simple navigation triggers the modal
-            router.replace({
-              pathname: '/paywall',
-              params: {
-                title: 'Limite Atingido',
-                message: error.response?.data?.message || 'Você atingiu o limite do seu plano.'
-              }
-            });
-        } catch (navError) {
-            console.error("Failed to navigate to paywall", navError);
-        }
-        return Promise.reject(error);
+      try {
+        // Pass error details to paywall via params or store if needed
+        // For now, simple navigation triggers the modal
+        router.replace({
+          pathname: '/paywall',
+          params: {
+            title: 'Limite Atingido',
+            message: error.response?.data?.message || 'Você atingiu o limite do seu plano.'
+          }
+        });
+      } catch (navError) {
+        console.error("Failed to navigate to paywall", navError);
+      }
+      return Promise.reject(error);
+    }
+
+    // Handle Rate Limiting (429 Too Many Requests)
+    if (error.response?.status === 429) {
+      const rateLimitError = {
+        ...error,
+        message: 'Muitas tentativas. Tente novamente em 1 minuto.',
+        isRateLimited: true,
+      };
+      return Promise.reject(rateLimitError);
     }
 
     if (error.response?.status === 401) {
@@ -104,20 +114,20 @@ client.interceptors.response.use(
       // Only logout if we actually sent a token that might be expired
       // If we are guest (no token or invalid token), do NOT logout/redirect to login on 401
       if (isLikelyJwt(token)) {
-          // Prevent infinite loops if logout itself fails or if multiple requests fail at once
-          if (!isRefreshing) {
-            isRefreshing = true;
-            try {
-               // Ensure we don't clear token if the request was to login!
-               if (!error.config.url.includes('/login')) {
-                   await useAuthStore.getState().logout();
-               }
-            } catch (logoutError) {
-              console.error("Logout failed during 401 handling:", logoutError);
-            } finally {
-              isRefreshing = false;
+        // Prevent infinite loops if logout itself fails or if multiple requests fail at once
+        if (!isRefreshing) {
+          isRefreshing = true;
+          try {
+            // Ensure we don't clear token if the request was to login!
+            if (!error.config.url.includes('/login')) {
+              await useAuthStore.getState().logout();
             }
+          } catch (logoutError) {
+            console.error("Logout failed during 401 handling:", logoutError);
+          } finally {
+            isRefreshing = false;
           }
+        }
       }
     }
     return Promise.reject(error);

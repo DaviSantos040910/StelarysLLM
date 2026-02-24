@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Check } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from 'nativewind';
 
 import { userService } from '../../src/services/userService';
 import { themeClasses } from '../../src/theme/classes';
+import { extractApiError, validatePasswordLocally } from '../../src/utils/errorHandling';
 
 export default function SecurityScreen() {
     const router = useRouter();
@@ -26,6 +27,13 @@ export default function SecurityScreen() {
             return;
         }
 
+        // Local password strength validation (avoid unnecessary roundtrip)
+        const passwordError = validatePasswordLocally(newPassword);
+        if (passwordError) {
+            Alert.alert("Erro", passwordError);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             await userService.changePassword({ old_password: oldPassword, new_password: newPassword });
@@ -33,7 +41,7 @@ export default function SecurityScreen() {
             router.back();
         } catch (error: any) {
             console.error(error);
-            const message = error.response?.data?.detail || "Senha atual incorreta ou erro no servidor.";
+            const message = extractApiError(error, "Senha atual incorreta ou erro no servidor.");
             Alert.alert("Erro", message);
         } finally {
             setIsSubmitting(false);

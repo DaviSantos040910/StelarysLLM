@@ -1,6 +1,6 @@
-// src/services/userService.ts
 import client from '../api/client';
-import { User } from '../types/auth'; // Ensure this type matches your Auth type
+import { User } from '../types/auth';
+import { validateFile } from '../utils/fileValidation';
 
 export interface UpdateProfileData {
     first_name?: string;
@@ -25,6 +25,10 @@ export const userService = {
         if (data.last_name) formData.append('last_name', data.last_name);
 
         if (data.avatar && data.avatar.uri) {
+            // Validate avatar before upload
+            const validationError = validateFile(data.avatar);
+            if (validationError) throw new Error(validationError);
+
             formData.append('avatar', {
                 uri: data.avatar.uri,
                 name: data.avatar.name || 'avatar.jpg',

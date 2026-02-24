@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Camera, Check } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from 'nativewind';
 
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { userService } from '../../src/services/userService';
 import { useAuthStore } from '../../src/stores/authStore';
 import { themeClasses } from '../../src/theme/classes';
+import { extractApiError } from '../../src/utils/errorHandling';
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -38,9 +39,10 @@ export default function EditProfileScreen() {
             });
             setUser(updatedUser);
             router.back();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao atualizar perfil.");
+            const message = extractApiError(error, "Falha ao atualizar perfil.");
+            Alert.alert("Erro", message);
         } finally {
             setIsSubmitting(false);
         }

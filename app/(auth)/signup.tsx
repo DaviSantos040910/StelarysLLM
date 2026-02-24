@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../src/stores/authStore';
-import { Input } from '../../src/components/Input';
-import { Button } from '../../src/components/Button';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Star } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '../../src/components/Button';
+import { Input } from '../../src/components/Input';
+import { useAuthStore } from '../../src/stores/authStore';
 import { themeClasses } from '../../src/theme/classes';
+
+import { validatePasswordLocally } from '../../src/utils/errorHandling';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -19,6 +21,12 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!username || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    const passwordError = validatePasswordLocally(password);
+    if (passwordError) {
+      Alert.alert('Erro', passwordError);
       return;
     }
 
@@ -36,7 +44,7 @@ export default function SignupScreen() {
     <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-8 items-center">
         <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
-           <Star size={48} color="#d946ef" />
+          <Star size={48} color="#d946ef" />
         </View>
         <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Create Account</Text>
         <Text className={`${themeClasses.textSecondary} text-base`}>Join StelarysLM to start learning</Text>

@@ -1,12 +1,13 @@
-import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
-import * as Crypto from 'expo-crypto';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from '../types';
+import * as Crypto from 'expo-crypto';
+import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import { create } from 'zustand';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
-import { router } from 'expo-router';
+import { User } from '../types';
+import { extractApiError } from '../utils/errorHandling';
 
 // Helper to handle storage across platforms
 const storage = {
@@ -86,10 +87,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } catch (claimError: any) {
           // If 409 (Already Claimed) or 204 (No Content), treat as success
           if (claimError.response?.status === 409 || claimError.response?.status === 204) {
-             set({ guestId: null });
-             await storage.deleteItem('guest_id');
+            set({ guestId: null });
+            await storage.deleteItem('guest_id');
           } else {
-             console.error('[Auth] Failed to claim guest session', claimError);
+            console.error('[Auth] Failed to claim guest session', claimError);
           }
           // Do not block login
         }
@@ -97,7 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     } catch (error: any) {
       set({
-        error: error.response?.data?.detail || 'Failed to login',
+        error: extractApiError(error, 'Falha ao entrar. Verifique suas credenciais.'),
         isLoading: false
       });
       throw error;
@@ -111,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     } catch (error: any) {
       set({
-        error: error.response?.data?.detail || 'Failed to sign up',
+        error: extractApiError(error, 'Falha ao criar conta. Tente novamente.'),
         isLoading: false
       });
       throw error;
@@ -147,19 +148,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Hardening: Validate token format before trusting it
       if (token && !isLikelyJwt(token)) {
-          await storage.deleteItem('token');
-          token = null;
+        await storage.deleteItem('token');
+        token = null;
       }
 
       if (token) {
         set({ token, isAuthenticated: true });
         try {
-            const user = await userService.getProfile();
-            set({ user, isAuthenticated: true });
+          const user = await userService.getProfile();
+          set({ user, isAuthenticated: true });
         } catch (profileError) {
-             // If token is invalid/expired, clear it
-             await storage.deleteItem('token');
-             set({ token: null, user: null, isAuthenticated: false });
+          // If token is invalid/expired, clear it
+          await storage.deleteItem('token');
+          set({ token: null, user: null, isAuthenticated: false });
         }
       }
     } catch (error) {

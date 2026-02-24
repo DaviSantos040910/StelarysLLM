@@ -1,5 +1,6 @@
 import client from '../api/client';
-import { Workspace, StudyFile } from '../types';
+import { StudyFile, Workspace } from '../types';
+import { validateFile } from '../utils/fileValidation';
 
 export const workspaceService = {
   getSubscribedWorkspaces: async (): Promise<Workspace[]> => {
@@ -64,6 +65,10 @@ export const workspaceService = {
   },
 
   uploadFile: async (chatId: number, file: any) => {
+    // Validate file before upload
+    const validationError = validateFile(file);
+    if (validationError) throw new Error(validationError);
+
     const formData = new FormData();
 
     // React Native needs uri, name, type for FormData

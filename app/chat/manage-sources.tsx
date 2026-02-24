@@ -1,14 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertTriangle, ArrowLeft, FileText, Link as LinkIcon, Plus, Trash2, Youtube } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from 'nativewind';
 
 import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { chatService } from '../../src/services/chatService';
-import { ChatSource } from '../../src/types/chat';
 import { themeClasses } from '../../src/theme/classes';
+import { ChatSource } from '../../src/types/chat';
 
 export default function ManageSourcesScreen() {
     const router = useRouter();
@@ -84,13 +84,14 @@ export default function ManageSourcesScreen() {
                 s.id === tempId ? { ...newSource, status: 'processed' } : s
             ));
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
             // Mark as error
             setSources(prev => prev.map(s =>
                 s.id === tempId ? { ...s, status: 'error' } : s
             ));
-            Alert.alert("Erro", "Falha ao processar a fonte.");
+            const message = error?.message || "Falha ao processar a fonte.";
+            Alert.alert("Erro", message);
         }
     };
 

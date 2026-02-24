@@ -12,15 +12,15 @@ import { ChatMessageItem } from '../../src/components/chat/ChatMessageItem';
 import { ChatWelcome } from '../../src/components/chat/ChatWelcome';
 import { FloatingTutorCard } from '../../src/components/chat/FloatingTutorCard';
 import { KnowledgeActionSheet } from '../../src/components/chat/KnowledgeActionSheet';
+import { ReferencesSheet } from '../../src/components/chat/ReferencesSheet';
 import { useAttachmentPicker } from '../../src/hooks/useAttachmentPicker';
 import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 import { useChatStore } from '../../src/stores/chatStore';
-import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
 import { themeClasses } from '../../src/theme/classes';
-import { ReferencesSheet } from '../../src/components/chat/ReferencesSheet';
+import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
 
@@ -188,9 +188,10 @@ export default function ChatScreen() {
             const backendType = type === 'youtube' ? 'YOUTUBE' : type === 'url' ? 'URL' : 'FILE';
             await chatService.addChatSource(chatId, file, backendType);
             // On success (silent or toast if we had one)
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", "Falha ao processar fonte adicionada.");
+            const message = error?.message || "Falha ao processar fonte adicionada.";
+            Alert.alert("Erro", message);
         }
     };
 
