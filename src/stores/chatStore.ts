@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { chatService } from '../services/chatService';
 import { streamMessage } from '../services/streamApi';
 import { ChatListItem, Message } from '../types/chat';
+import { handleLimitError } from '../utils/parseApiError';
 
 interface ChatState {
     messages: Message[];
@@ -152,7 +153,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 console.error("Regenerate stream error:", err);
 
                 let errorMessage = 'Failed to regenerate message';
-                let isLimitError = false;
+                let code = err.code || '';
 
                 // Try to parse JSON error message (backend 422 return)
                 try {
@@ -160,31 +161,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
                     if (typeof msg === 'string' && (msg.startsWith('{') || msg.includes('"error":'))) {
                         const parsed = JSON.parse(msg);
                         if (parsed.error && parsed.code) {
-                            if (parsed.code.includes('limit') || parsed.code === 'trial_tutor_limit') {
-                                isLimitError = true;
-                            }
+                            code = parsed.code;
                             errorMessage = parsed.message || errorMessage;
                         }
                     }
                 } catch (e) {}
 
-                 // Also check existing properties
-                 if (!isLimitError) {
-                    if (err.code?.includes('limit') || (err.message || '').includes('atingiu') || (err.message || '').includes('quota')) {
-                        isLimitError = true;
-                    }
-                }
-
-                if (isLimitError) {
-                    const { useAuthStore } = require('./authStore'); // Local require
-                    const { isAuthenticated } = useAuthStore.getState();
-
-                    if (!isAuthenticated) {
-                        router.push({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
-                    } else {
-                        router.push('/plans');
-                    }
-                    errorMessage = "Limite atingido. Redirecionando...";
+                // Use centralized handler
+                if (handleLimitError(code) || handleLimitError(errorMessage)) {
+                     errorMessage = "Limite atingido. Redirecionando...";
                 }
 
                 set({ error: errorMessage, isStreaming: false });
@@ -279,41 +264,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 },
                 onError: (err: any) => {
                     let errorMessage = err.message || 'Failed to send message';
-                    let isLimitError = false;
+                    let code = err.code || '';
 
                     // Try to parse JSON error message (backend 422 return)
                     try {
                         if (typeof errorMessage === 'string' && (errorMessage.startsWith('{') || errorMessage.includes('"error":'))) {
                             const parsed = JSON.parse(errorMessage);
                             if (parsed.error && parsed.code) {
-                                // Update error info from parsed JSON
-                                if (parsed.code.includes('limit') || parsed.code === 'trial_tutor_limit') {
-                                    isLimitError = true;
-                                }
+                                code = parsed.code;
                                 errorMessage = parsed.message || errorMessage;
                             }
                         }
                     } catch (e) {}
 
-                    // Also check existing properties
-                    if (!isLimitError) {
-                        if (err.code?.includes('limit') || errorMessage.includes('atingiu') || errorMessage.includes('quota')) {
-                            isLimitError = true;
-                        }
-                    }
-
-                    if (isLimitError) {
-                         const { useAuthStore } = require('./authStore'); // Local require
-                         const { isAuthenticated } = useAuthStore.getState();
-
-                         // Prevent showing raw JSON in UI, show friendly message
+                    if (handleLimitError(code) || handleLimitError(errorMessage)) {
                          errorMessage = "Limite atingido. Redirecionando...";
-
-                         if (!isAuthenticated) {
-                             router.push({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
-                         } else {
-                             router.push('/plans');
-                         }
                     }
 
                     set({ error: errorMessage, isStreaming: false });

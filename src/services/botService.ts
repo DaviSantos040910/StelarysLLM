@@ -1,6 +1,7 @@
 import client from '../api/client';
 import { getAuthHeaders } from '../api/authHeaders';
 import { ChatBootstrap } from '../types/chat';
+import { parseApiError } from '../utils/parseApiError';
 
 export interface CreateBotData {
     name: string;
@@ -63,20 +64,7 @@ export const botService = {
           body: formData as any,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        // Try to find a meaningful error message
-        let errorMessage = errorData.detail || "Failed to create bot";
-        if (!errorData.detail) {
-            // Check for field errors (e.g. { name: ['required'] })
-            const fieldErrors = Object.entries(errorData).map(([key, val]) => {
-                const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
-                return `${key}: ${valStr}`;
-            }).join(', ');
-            if (fieldErrors) errorMessage = fieldErrors;
-        }
-        throw new Error(errorMessage);
-      }
+      await parseApiError(response);
 
       return await response.json();
   },
@@ -131,18 +119,7 @@ export const botService = {
           body: formData as any,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        let errorMessage = errorData.detail || "Failed to update bot";
-        if (!errorData.detail) {
-             const fieldErrors = Object.entries(errorData).map(([key, val]) => {
-                 const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
-                 return `${key}: ${valStr}`;
-             }).join(', ');
-             if (fieldErrors) errorMessage = fieldErrors;
-        }
-        throw new Error(errorMessage);
-      }
+      await parseApiError(response);
 
       return await response.json();
   },
