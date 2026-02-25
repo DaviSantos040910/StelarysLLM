@@ -42,11 +42,7 @@ export default function PlansScreen() {
 
   useEffect(() => {
     fetchStatus();
-    if (iapService.isIapSupported()) {
-        iapService.initialize().then(() => {
-            setUnavailableReason(iapService.unavailableReason);
-        });
-    }
+    // Lazy initialization: moved to handleSubscribe to avoid crash/unnecessary calls on mount
     return () => {
         // Optional: teardown if needed, but usually we keep connection open during session
     };
@@ -55,6 +51,8 @@ export default function PlansScreen() {
   const handleSubscribe = async () => {
     try {
       setIsPurchasing(true);
+      // Connection is ensured inside purchaseBasicPlan, but calling explicit ensureConnected here is safe
+      await iapService.ensureConnected();
       await iapService.purchaseBasicPlan();
       // Note: Success handled via listener in iapService which refreshes billing status
       // We rely on that to update UI or close modal if needed.

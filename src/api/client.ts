@@ -83,17 +83,18 @@ client.interceptors.response.use(
 
     if (isQuotaError) {
       try {
-        // Pass error details to paywall via params or store if needed
-        // For now, simple navigation triggers the modal
-        router.replace({
-          pathname: '/paywall',
-          params: {
-            title: 'Limite Atingido',
-            message: error.response?.data?.message || 'Você atingiu o limite do seu plano.'
-          }
-        });
+        const { isAuthenticated } = useAuthStore.getState();
+
+        if (!isAuthenticated) {
+          router.replace({
+            pathname: '/(auth)/login',
+            params: { redirectTo: '/plans' }
+          });
+        } else {
+          router.replace('/plans');
+        }
       } catch (navError) {
-        console.error("Failed to navigate to paywall", navError);
+        console.error("Failed to navigate to paywall/plans", navError);
       }
       return Promise.reject(error);
     }

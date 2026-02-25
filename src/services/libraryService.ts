@@ -34,7 +34,25 @@ export const libraryService = {
                 body: formData as any,
             });
 
-            if (!response.ok) throw new Error('Failed to create space');
+            if (!response.ok) {
+                if (response.status === 422) {
+                     // Try to parse limit error
+                     const errData = await response.json().catch(() => ({}));
+                     if (errData.error && (errData.code?.includes('limit') || errData.code === 'trial_study_space_limit')) {
+                         const { useAuthStore } = require('../stores/authStore');
+                         const { router } = require('expo-router');
+                         const { isAuthenticated } = useAuthStore.getState();
+
+                         if (!isAuthenticated) {
+                             router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+                         } else {
+                             router.replace('/plans');
+                         }
+                         throw new Error('Limite atingido. Redirecionando...');
+                     }
+                }
+                throw new Error('Failed to create space');
+            }
             return await response.json();
         } else {
             const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
@@ -75,14 +93,31 @@ export const libraryService = {
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            console.log('Add source error:', err);
-            // Try to extract detail from JSON if possible
             let message = 'Failed to add source';
+            const errText = await response.text();
+
             try {
-                const jsonErr = JSON.parse(err);
+                const jsonErr = JSON.parse(errText);
+
+                // Check for Limit/Quota Error
+                if (response.status === 422 && jsonErr.error && jsonErr.code?.includes('limit')) {
+                     const { useAuthStore } = require('../stores/authStore');
+                     const { router } = require('expo-router');
+                     const { isAuthenticated } = useAuthStore.getState();
+
+                     if (!isAuthenticated) {
+                         router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+                     } else {
+                         router.replace('/plans');
+                     }
+                     throw new Error('Limite atingido. Redirecionando...');
+                }
+
                 if (jsonErr.detail) message = jsonErr.detail;
-            } catch (e) {}
+                else if (jsonErr.message) message = jsonErr.message; // Fallback for other errors
+            } catch (e) {
+                console.log('Add source error parse failed:', e);
+            }
             throw new Error(message);
         }
         return await response.json();

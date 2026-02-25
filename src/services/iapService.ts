@@ -106,6 +106,10 @@ class IAPService {
   async purchaseBasicPlan() {
     try {
       if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
+
+      // Ensure connection is established before purchasing
+      await this.ensureConnected();
+
       if (!PLATFORM_SKUS || PLATFORM_SKUS.length === 0) throw new Error("No SKUs configured");
       const sku = PLATFORM_SKUS[0];
 
@@ -142,6 +146,10 @@ class IAPService {
   async restorePurchases() {
     try {
       if (!this.isIapSupported()) throw new Error("IAP_UNAVAILABLE");
+
+      // Ensure connection is established before restoring
+      await this.ensureConnected();
+
       const RNIap = await this.getModule();
       const purchases = await RNIap.getAvailablePurchases();
 
