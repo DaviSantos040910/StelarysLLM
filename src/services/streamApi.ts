@@ -32,7 +32,7 @@ export const streamMessage = async (
     content: string,
     callbacks: StreamCallbacks
 ): Promise<(() => void) | undefined> => {
-    const authHeaders = getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
 
     if (!authHeaders.Authorization && !authHeaders['X-Guest-Id']) {
         callbacks.onError(new Error('Authentication failed: No token or guest session'));

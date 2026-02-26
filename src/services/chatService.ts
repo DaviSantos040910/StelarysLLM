@@ -42,7 +42,7 @@ export const chatService = {
     }
     formData.append('reply_with_audio', 'false');
 
-    const headers = getAuthHeaders();
+    const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/voice-message/`, {
       method: 'POST',
       headers,
@@ -69,7 +69,7 @@ export const chatService = {
     } as any);
     formData.append('content', '');
 
-    const headers = getAuthHeaders();
+    const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/messages/attach/`, {
       method: 'POST',
       headers,
@@ -106,7 +106,8 @@ export const chatService = {
     // For simplicity, let's implement a direct fetch stream logic here mimicking streamApi but for regenerate url.
 
     const url = `${BASE_URL}/api/v1/chats/${chatId}/regenerate/`;
-    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const baseHeaders = await getAuthHeaders();
+    const headers = { ...baseHeaders, 'Content-Type': 'application/json' };
 
     try {
       const response = await fetch(url, {
@@ -196,7 +197,7 @@ export const chatService = {
       if (!fileOrUrl.name) formData.append('title', fileOrUrl.uri || fileOrUrl);
     }
 
-    const headers = getAuthHeaders();
+    const headers = await getAuthHeaders();
     const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/sources/`, {
       method: 'POST',
       headers,
@@ -243,7 +244,8 @@ export const chatService = {
     onError: (error: any) => void,
     onComplete: () => void
   ) => {
-    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const baseHeaders = await getAuthHeaders();
+    const headers = { ...baseHeaders, 'Content-Type': 'application/json' };
 
     try {
       const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream/`, {

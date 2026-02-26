@@ -33,7 +33,7 @@ export const libraryService = {
 
             const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/`, {
                 method: 'POST',
-                headers: getAuthHeaders(),
+                headers: await getAuthHeaders(),
                 body: formData as any,
             });
 
@@ -92,7 +92,7 @@ export const libraryService = {
 
         const response = await fetch(`${BASE_URL}/api/v1/studio/spaces/${spaceId}/add_source/`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: await getAuthHeaders(),
             body: formData as any,
         });
 

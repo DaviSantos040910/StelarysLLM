@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getInstallationId } from '../utils/installationId';
 
 
 // Get API URL from Expo public environment variable
@@ -34,7 +35,7 @@ export const isLikelyJwt = (token: string | null): boolean => {
 
 // Request Interceptor: Inject Token
 client.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Dynamic require to avoid circular dependency
     const { useAuthStore } = require('../stores/authStore');
     const { token, guestId } = useAuthStore.getState();
@@ -55,10 +56,22 @@ client.interceptors.request.use(
       config.headers['X-Guest-Id'] = guestId;
     }
 
+    // 3. Inject X-Installation-Id (persistent device ID)
+    try {
+      const installationId = await getInstallationId();
+      if (installationId) {
+        config.headers['X-Installation-Id'] = installationId;
+      }
+    } catch (e) {
+      // Should not happen, but don't block request
+      console.warn('Failed to inject installation ID', e);
+    }
+
     if (__DEV__) {
       console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
         hasAuth: !!config.headers.Authorization,
-        hasGuest: !!config.headers['X-Guest-Id']
+        hasGuest: !!config.headers['X-Guest-Id'],
+        installId: config.headers['X-Installation-Id']
       });
     }
 

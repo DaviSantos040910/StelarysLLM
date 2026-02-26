@@ -63,7 +63,7 @@ export const botService = {
 
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/`, {
           method: 'POST',
-          headers: getAuthHeaders(),
+          headers: await getAuthHeaders(),
           body: formData as any,
       });
 
@@ -155,7 +155,7 @@ export const botService = {
 
       const response = await fetch(`${client.defaults.baseURL}/api/v1/bots/${botId}/`, {
           method: 'PATCH',
-          headers: getAuthHeaders(),
+          headers: await getAuthHeaders(),
           body: formData as any,
       });
 
