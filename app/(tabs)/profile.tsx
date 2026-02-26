@@ -148,6 +148,12 @@ export default function ProfileScreen() {
         {isAuthenticated && (
             <SettingsSection title="Conta">
                 <SettingsItem
+                    icon={CreditCard}
+                    label="Planos e Consumo"
+                    onPress={() => router.push('/plans')}
+                    color="#f59e0b"
+                />
+                <SettingsItem
                     icon={User}
                     label="Editar Perfil"
                     onPress={() => router.push('/profile/edit')}
