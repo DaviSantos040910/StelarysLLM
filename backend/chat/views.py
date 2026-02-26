@@ -962,7 +962,7 @@ class ChatSourceView(APIView):
                     'id': source.id,
                     'title': source.title,
                     'source_type': source.source_type,
-                    'created_at': source.created_at
+                    'created_at': source.created_at.isoformat() if source.created_at else None
                 }, status=status.HTTP_201_CREATED)
         except DocumentInvalidException:
             raise
