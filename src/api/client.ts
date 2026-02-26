@@ -103,10 +103,20 @@ client.interceptors.response.use(
         if (isGuest) {
             router.replace({
                 pathname: '/(auth)/login',
-                params: { redirectTo: '/plans' }
+                params: {
+                    redirectTo: '/plans',
+                    reason: 'trial_limit',
+                    message: error.response?.data?.message || 'Limite do período de teste atingido.'
+                }
             });
         } else {
-            router.replace('/plans');
+            router.replace({
+                pathname: '/plans',
+                params: {
+                    reason: 'trial_limit',
+                    message: error.response?.data?.message || 'Limite do seu plano atingido.'
+                }
+            });
         }
       } catch (navError) {
         console.error("Failed to navigate from quota limit", navError);

@@ -34,6 +34,18 @@ export function extractApiError(error: any, fallback: string = 'Ocorreu um erro.
     if (Array.isArray(data.detail)) return data.detail.join('\n');
     if (typeof data.message === 'string') return data.message;
 
+    if (typeof data === 'object' && data !== null) {
+        const messages: string[] = [];
+        Object.entries(data).forEach(([field, value]) => {
+            if (Array.isArray(value)) {
+                messages.push(`${field}: ${value.join(' ')}`);
+            }
+        });
+        if (messages.length > 0) {
+            return messages.join('\n');
+        }
+    }
+
     return fallback;
 }
 

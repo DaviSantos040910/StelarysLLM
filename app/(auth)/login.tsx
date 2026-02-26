@@ -10,7 +10,7 @@ import { themeClasses } from '../../src/theme/classes';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { redirectTo } = useLocalSearchParams<{ redirectTo: string }>();
+  const { redirectTo, reason, message } = useLocalSearchParams<{ redirectTo: string; reason: string; message: string }>();
   const { login, isLoading, error } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -43,6 +43,17 @@ export default function LoginScreen() {
         <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Welcome Back</Text>
         <Text className={`${themeClasses.textSecondary} text-base`}>Sign in to continue to StelarysLM</Text>
       </View>
+
+      {reason === 'trial_limit' && (
+        <View className="bg-amber-900/50 border border-amber-500/50 p-4 rounded-xl mb-6 flex-row items-center">
+          <View className="mr-3">
+             <Rocket size={20} color="#fbbf24" />
+          </View>
+          <Text className="text-amber-100 flex-1 font-medium">
+            {message || 'Você atingiu o limite gratuito. Entre para ver opções.'}
+          </Text>
+        </View>
+      )}
 
       {error && (
         <View className="bg-red-900/50 border border-red-500/50 p-3 rounded-lg mb-4">

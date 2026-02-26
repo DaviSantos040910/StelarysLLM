@@ -11,7 +11,10 @@ export interface Usage {
   artifacts_count: number;
   tts_seconds_count: number;
   sources_count: number; // Added to match typical needs, though strictly in basic it's total not monthly
-  [key: string]: number;
+  bot_tutor_count?: number;
+  study_space_count?: number;
+  artifacts_breakdown?: Record<string, number>;
+  [key: string]: any;
 }
 
 export interface Flags {

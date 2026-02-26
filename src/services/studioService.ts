@@ -12,9 +12,14 @@ export const studioService = {
 
         // Normalize artifacts, especially Podcast structured content
         return response.data.map(artifact => {
-            if (artifact.type === 'PODCAST' && typeof artifact.content === 'object' && !Array.isArray(artifact.content)) {
+            if (
+                artifact.type === 'PODCAST' &&
+                artifact.content &&
+                typeof artifact.content === 'object' &&
+                !Array.isArray(artifact.content)
+            ) {
                 const content = artifact.content as any; // Cast to access new fields safely
-                const transcript = content.transcript || [];
+                const transcript = Array.isArray(content.transcript) ? content.transcript : [];
 
                 // 1. Process Transcript (ms -> seconds)
                 const mappedTranscript = transcript.length > 0
@@ -73,9 +78,14 @@ export const studioService = {
         const artifact = response.data;
 
         // Normalization logic specific to Podcast
-        if (artifact.type === 'PODCAST' && typeof artifact.content === 'object' && !Array.isArray(artifact.content)) {
+        if (
+            artifact.type === 'PODCAST' &&
+            artifact.content &&
+            typeof artifact.content === 'object' &&
+            !Array.isArray(artifact.content)
+        ) {
             const content = artifact.content as any;
-            const transcript = content.transcript || [];
+            const transcript = Array.isArray(content.transcript) ? content.transcript : [];
 
             const mappedTranscript = transcript.length > 0
                 ? transcript.map((t: any) => ({
