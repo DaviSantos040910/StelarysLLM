@@ -1,0 +1,12 @@
+app/(auth)/login.tsx(28,24): error TS2345: Argument of type 'string' is not assignable to parameter of type '"/(auth)/login" | "/plans" | "/login" | RelativePathString | ExternalPathString | "/paywall" | `/paywall?${string}` | `/paywall#${string}` | `/plans?${string}` | `/plans#${string}` | ... 92 more ... | { ...; }'.
+app/onboarding/index.tsx(101,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinearGradientProps): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [ColorValue, ColorValue, ...ColorValue[]]'.
+      Source provides no match for required element at position 0 in target.
+  Overload 2 of 2, '(props: LinearGradientProps, context: any): LinearGradient', gave the following error.
+    Type 'string[]' is not assignable to type 'readonly [ColorValue, ColorValue, ...ColorValue[]]'.
+      Source provides no match for required element at position 0 in target.
+src/components/studio/ArtifactConfigModal.tsx(137,25): error TS2322: Type '(ids: any, names: any) => void' is not assignable to type '(ids: string[]) => void'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/studio/ArtifactConfigModal.tsx(137,45): error TS7006: Parameter 'ids' implicitly has an 'any' type.
+src/components/studio/ArtifactConfigModal.tsx(137,50): error TS7006: Parameter 'names' implicitly has an 'any' type.

@@ -1,8 +1,8 @@
 # 🛡️ Backend Audit Report — Stellarys IA Robots
 
-**Date:** 2026-02-18
-**Scope:** Read-only comprehensive audit — Security, Performance, Production Config, Dead Code, Dependencies, Sentry, Cloud Run
-**Status:** No code changes made
+**Date:** 2026-02-18  
+**Scope:** Read-only comprehensive audit — Security, Performance, Production Config, Dead Code, Dependencies, Sentry, Cloud Run  
+**Status:** No code changes made  
 
 ---
 
@@ -44,8 +44,8 @@ The backend is a **Django 5.1 + DRF** application deployed on **Google Cloud Run
 ```python
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret")
 ```
-**Risk:** If `DJANGO_SECRET_KEY` is not set in production, the application uses `"dev-secret"` as the signing key for JWT tokens, CSRF tokens, and sessions. An attacker who knows this default can forge any token.
-**Also noted:** `env.prod.yaml` hardcodes `DJANGO_SECRET_KEY: Darth_S%40antos1931%23` — this file is in the repository and can be read by anyone with access.
+**Risk:** If `DJANGO_SECRET_KEY` is not set in production, the application uses `"dev-secret"` as the signing key for JWT tokens, CSRF tokens, and sessions. An attacker who knows this default can forge any token.  
+**Also noted:** `env.prod.yaml` hardcodes `DJANGO_SECRET_KEY: Darth_S%40antos1931%23` — this file is in the repository and can be read by anyone with access.  
 **Fix:** Use a secret manager (GCP Secret Manager) or Cloud Run secrets. **Remove hardcoded secrets from yaml files in git.** Ensure the app **crashes** on startup if `DJANGO_SECRET_KEY` is missing.
 
 ### C2. `ALLOWED_HOSTS = ["*"]`
@@ -53,7 +53,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret")
 ```python
 ALLOWED_HOSTS = ["*"]  # Change in production
 ```
-**Risk:** Allows **HTTP Host header injection attacks**, which can lead to cache poisoning, password reset link hijacking, and phishing. Django's Host header validation is one of its most effective security features.
+**Risk:** Allows **HTTP Host header injection attacks**, which can lead to cache poisoning, password reset link hijacking, and phishing. Django's Host header validation is one of its most effective security features.  
 **Fix:** Set `ALLOWED_HOSTS` from an environment variable, e.g.:
 ```python
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost").split(",")
@@ -65,7 +65,7 @@ In production, set to your Cloud Run domain: `backend-api-xxxxx-uc.a.run.app`
 ```python
 CORS_ALLOW_ALL_ORIGINS = True
 ```
-**Risk:** Any website can make authenticated API calls on behalf of your users if they have valid tokens. Combined with JWT in headers (not cookies), the risk is somewhat mitigated but not eliminated — especially for any cookie-based sessions (admin panel).
+**Risk:** Any website can make authenticated API calls on behalf of your users if they have valid tokens. Combined with JWT in headers (not cookies), the risk is somewhat mitigated but not eliminated — especially for any cookie-based sessions (admin panel).  
 **Fix:** Set to `False` and populate `CORS_ALLOWED_ORIGINS` with your actual frontend domain(s).
 
 ### C4. Missing SSL/HTTPS Security Headers
@@ -80,7 +80,7 @@ SECURE_HSTS_SECONDS
 SECURE_BROWSER_XSS_FILTER
 SECURE_CONTENT_TYPE_NOSNIFF
 ```
-**Risk:** Cloud Run terminates TLS at the proxy. Without `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')`, Django thinks all requests are HTTP, breaking HTTPS-only logic and making redirects insecure.
+**Risk:** Cloud Run terminates TLS at the proxy. Without `SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')`, Django thinks all requests are HTTP, breaking HTTPS-only logic and making redirects insecure.  
 **Fix:** Add these settings gated behind `not DEBUG`:
 ```python
 if not DEBUG:
@@ -100,7 +100,7 @@ This file contains:
 - `DATABASE_URL` (with password)
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (full JSON)
 
-**Risk:** Anyone with repo access has production credentials. If the repo is ever made public or leaked, **all production secrets are compromised**.
+**Risk:** Anyone with repo access has production credentials. If the repo is ever made public or leaked, **all production secrets are compromised**.  
 **Fix:** Move ALL secrets to **GCP Secret Manager** and reference them in Cloud Run service config. Remove `env.prod.yaml` from git and add it to `.gitignore`. Rotate all current secrets immediately.
 
 ---
@@ -112,7 +112,7 @@ This file contains:
 ```python
 print("SENDGRID_SENDER =", os.getenv("SENDGRID_SENDER"))
 ```
-**Risk:** Leaks the SendGrid sender email to stdout on every request worker startup in Cloud Run. This data is then visible in **Cloud Logging** to anyone with log access. Not catastrophic, but poor practice and may expose PII.
+**Risk:** Leaks the SendGrid sender email to stdout on every request worker startup in Cloud Run. This data is then visible in **Cloud Logging** to anyone with log access. Not catastrophic, but poor practice and may expose PII.  
 **Fix:** Remove this line entirely, or replace with a `logger.debug()` call gated behind `DEBUG`.
 
 ### H2. Internal Endpoints with `AllowAny` Permission
@@ -125,7 +125,7 @@ Both use `permission_classes = [permissions.AllowAny]` with custom secret-based 
 if env_secret and secret_header != env_secret:
     return Response({"error": "Unauthorized"}, status=403)
 ```
-**Risk:** If `CLOUD_TASKS_SECRET` is not set in the environment, the secret check **passes** because `env_secret` is falsy. This means in environments where the secret isn't configured, **anyone can hit these endpoints**.
+**Risk:** If `CLOUD_TASKS_SECRET` is not set in the environment, the secret check **passes** because `env_secret` is falsy. This means in environments where the secret isn't configured, **anyone can hit these endpoints**.  
 **Fix:** Fail closed — if the secret env var is not set in production, **reject all requests**:
 ```python
 if not env_secret:
@@ -138,7 +138,7 @@ if not env_secret:
 ```python
 session, created = GuestSession.objects.get_or_create(id=uuid_obj)
 ```
-**Risk:** Any client can create unlimited guest sessions by sending unique `X-Guest-Id` UUIDs. Each session gets a full trial (90 messages, artifacts, etc.). This is a **trial abuse vector** — an automated script could generate thousands of guest sessions.
+**Risk:** Any client can create unlimited guest sessions by sending unique `X-Guest-Id` UUIDs. Each session gets a full trial (90 messages, artifacts, etc.). This is a **trial abuse vector** — an automated script could generate thousands of guest sessions.  
 **Fix:** Implement rate limiting on guest session creation (e.g., per IP) and/or require a device fingerprint that's harder to forge.
 
 ### H4. Exception Messages Exposed to Clients
@@ -147,7 +147,7 @@ session, created = GuestSession.objects.get_or_create(id=uuid_obj)
 - `studio/views_internal.py:89`: `Response({"error": str(e)}, ...)`
 - `chat/views_internal.py:52`: `Response({"error": str(e)}, ...)`
 
-**Risk:** `str(e)` on unhandled exceptions can expose internal stack trace details, file paths, database table names, or SQL queries. This is information leakage.
+**Risk:** `str(e)` on unhandled exceptions can expose internal stack trace details, file paths, database table names, or SQL queries. This is information leakage.  
 **Fix:** Return generic error messages to clients. Log the full exception server-side with `logger.error(exc_info=True)`.
 
 ---
@@ -155,9 +155,9 @@ session, created = GuestSession.objects.get_or_create(id=uuid_obj)
 ## 4. 🟡 MEDIUM — Recommended Improvements
 
 ### M1. No Upload File Size/Type Validation
-**Files:** `chat/views.py` (attachment upload), `studio/views.py` (source upload)
-**Current state:** Django's default `FILE_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB) applies, but `DATA_UPLOAD_MAX_MEMORY_SIZE` is not configured. There is no explicit file type or size validation on upload endpoints.
-**Risk:** Users could upload very large files that consume memory/disk, or upload executable/malicious files.
+**Files:** `chat/views.py` (attachment upload), `studio/views.py` (source upload)  
+**Current state:** Django's default `FILE_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB) applies, but `DATA_UPLOAD_MAX_MEMORY_SIZE` is not configured. There is no explicit file type or size validation on upload endpoints.  
+**Risk:** Users could upload very large files that consume memory/disk, or upload executable/malicious files.  
 **Fix:** Add explicit `MAX_FILE_SIZE` checks in serializers/views and whitelist allowed MIME types. Configure `DATA_UPLOAD_MAX_MEMORY_SIZE` in settings.
 
 ### M2. `DEBUG` Defaults to `True`
@@ -165,7 +165,7 @@ session, created = GuestSession.objects.get_or_create(id=uuid_obj)
 ```python
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 ```
-**Risk:** If `DJANGO_DEBUG` is not explicitly set to `"False"` in production, Django runs in debug mode — full error pages with stack traces, SQL queries, and settings values are shown to all users.
+**Risk:** If `DJANGO_DEBUG` is not explicitly set to `"False"` in production, Django runs in debug mode — full error pages with stack traces, SQL queries, and settings values are shown to all users.  
 **Fix:** Default to `False`:
 ```python
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
@@ -178,11 +178,11 @@ def post(self, request):
     ...
     user.set_password(new_password)  # No validation!
 ```
-**Risk:** Users can set trivially weak passwords when changing their password. The `RegisterSerializer` uses `validate_password()`, but the change password flow does not.
+**Risk:** Users can set trivially weak passwords when changing their password. The `RegisterSerializer` uses `validate_password()`, but the change password flow does not.  
 **Fix:** Add `validate_password(new_password, user)` before `set_password()`.
 
 ### M4. `ResetPasswordView` — No Minimum Password Validation
-**File:** `accounts/views.py:253-276`
+**File:** `accounts/views.py:253-276`  
 Same issue as M3 — the password reset flow sets the password without Django's validators.
 
 ### M5. `Gunicorn --timeout 0`
@@ -190,7 +190,7 @@ Same issue as M3 — the password reset flow sets the password without Django's 
 ```
 CMD exec gunicorn --bind :$PORT --workers 2 --threads 8 --timeout 0 config.wsgi:application
 ```
-**Risk:** `--timeout 0` means workers **never time out**. A hung request (e.g., waiting on a Gemini API call that hangs) will tie up that worker forever, eventually exhausting all workers. Cloud Run has its own timeout (default 300s), but the worker itself will be stuck.
+**Risk:** `--timeout 0` means workers **never time out**. A hung request (e.g., waiting on a Gemini API call that hangs) will tie up that worker forever, eventually exhausting all workers. Cloud Run has its own timeout (default 300s), but the worker itself will be stuck.  
 **Fix:** Set `--timeout 120` (or similar). Cloud Run's maximum request timeout is configurable separately and provides a second layer of defense.
 
 ### M6. `threading.Thread` for Background Tasks in Production
@@ -200,7 +200,7 @@ threading.Thread(target=process_memory_background, args=(...)).start()
 ```
 **Risk:** Gunicorn with `--threads 8` uses actual OS threads. Spawning additional daemon threads for background work (memory processing, summarization) is risky because:
 1. Cloud Run can kill the container after the response is sent, killing your background threads mid-work.
-2. No error handling — if the thread crashes, nobody knows.
+2. No error handling — if the thread crashes, nobody knows.  
 **Fix:** Move background work to Cloud Tasks (which you already have infrastructure for) or use a proper task queue.
 
 ### M7. `ForgotPasswordView` Reveals User Existence
@@ -209,7 +209,7 @@ threading.Thread(target=process_memory_background, args=(...)).start()
 except User.DoesNotExist:
     return Response({"detail": "Usuário não encontrado."}, status=404)
 ```
-**Risk:** An attacker can enumerate which email addresses are registered by observing 404 vs 200 responses.
+**Risk:** An attacker can enumerate which email addresses are registered by observing 404 vs 200 responses.  
 **Fix:** Always return the same success message regardless of whether the user was found.
 
 ---
@@ -217,12 +217,12 @@ except User.DoesNotExist:
 ## 5. 🟢 LOW — Nice to Have
 
 ### L1. `LoginView` — No Rate Limiting
-**File:** `accounts/views.py:81-107`
-`RegisterView` has `@ratelimit(key="ip", rate="5/m")`, but `LoginView` does not.
+**File:** `accounts/views.py:81-107`  
+`RegisterView` has `@ratelimit(key="ip", rate="5/m")`, but `LoginView` does not.  
 **Fix:** Add rate limiting to prevent brute-force credential attacks.
 
 ### L2. `ResendVerificationView` — No Rate Limiting
-**File:** `accounts/views.py:64-78`
+**File:** `accounts/views.py:64-78`  
 Can be used to spam verification emails to users.
 
 ### L3. JWT Access Token Lifetime is 60 Minutes
@@ -233,7 +233,7 @@ Can be used to spam verification emails to users.
 This is reasonable for a mobile app but on the longer side. Consider 30 minutes with a proper refresh flow.
 
 ### L4. `MeView.delete` — Instant Account Deletion
-**File:** `accounts/views.py:126-129`
+**File:** `accounts/views.py:126-129`  
 No confirmation step, no soft-delete, no data export. `user.delete()` cascades and removes ALL data permanently.
 
 ### L5. `GCS default_acl` Set to String `"None"` Instead of Python `None`

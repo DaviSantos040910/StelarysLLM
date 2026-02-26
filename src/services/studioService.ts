@@ -1,8 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert } from 'react-native';
-import apiClient, { BASE_URL } from '../api/client';
 import { getAuthHeaders } from '../api/authHeaders';
-import { ArtifactType, KnowledgeArtifact, ContextSource, ArtifactGenerationOptions } from '../types/studio';
+import apiClient, { BASE_URL } from '../api/client';
+import { ArtifactGenerationOptions, ArtifactType, ContextSource, KnowledgeArtifact } from '../types/studio';
 
 export const studioService = {
     async getArtifacts(chatId: string): Promise<KnowledgeArtifact[]> {
@@ -52,7 +52,7 @@ export const studioService = {
                 // Calculate end times for chapters
                 for (let i = 0; i < mappedChapters.length; i++) {
                     if (i < mappedChapters.length - 1) {
-                        mappedChapters[i].end = mappedChapters[i+1].start;
+                        mappedChapters[i].end = mappedChapters[i + 1].start;
                     } else if (mappedTranscript.length > 0) {
                         mappedChapters[i].end = mappedTranscript[mappedTranscript.length - 1].end;
                     }
@@ -106,7 +106,7 @@ export const studioService = {
 
             for (let i = 0; i < mappedChapters.length; i++) {
                 if (i < mappedChapters.length - 1) {
-                    mappedChapters[i].end = mappedChapters[i+1].start;
+                    mappedChapters[i].end = mappedChapters[i + 1].start;
                 } else if (mappedTranscript.length > 0) {
                     mappedChapters[i].end = mappedTranscript[mappedTranscript.length - 1].end;
                 }
@@ -188,7 +188,7 @@ export const studioService = {
                 `${BASE_URL}/api/v1/studio/artifacts/${artifactId}/export/`,
                 fileUri,
                 {
-                    headers: getAuthHeaders()
+                    headers: await getAuthHeaders()
                 }
             );
 

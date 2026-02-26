@@ -259,6 +259,7 @@ QUEUE_BACKEND = os.getenv('QUEUE_BACKEND', 'thread')
 GCP_PROJECT = os.getenv('GCP_PROJECT', '')
 GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
 GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
+GCP_SERVICE_URL = os.getenv('GCP_SERVICE_URL', '')
 
 # --- Storage Configuration ---
 # 'local' = Local Filesystem (default)

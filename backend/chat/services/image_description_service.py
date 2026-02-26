@@ -62,7 +62,7 @@ Do not infer or assume information that is not visually present."""
                     types.Part.from_bytes(data=img_data, mime_type=mime_type)
                 ]
             )
-
+            
             return response.text if response.text else ""
 
         except Exception as e:

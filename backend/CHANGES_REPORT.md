@@ -1,8 +1,8 @@
 # 📋 Relatório de Mudanças — Implementação do Audit Report
 
-**Data:** 2026-02-23
-**Status:** Implementado com sucesso ✅
-**`manage.py check`:** Passou sem erros
+**Data:** 2026-02-23  
+**Status:** Implementado com sucesso ✅  
+**`manage.py check`:** Passou sem erros  
 
 ---
 
@@ -359,7 +359,7 @@ HTTP 429 Too Many Requests
 ### 5. ClaimGuestView — Mensagem de erro genérica
 **O que mudou:** Erros inesperados no claim de sessão agora retornam mensagem genérica em vez de detalhes internos.
 
-**Antes:** `{"detail": "DatabaseError: connection refused..."}`
+**Antes:** `{"detail": "DatabaseError: connection refused..."}`  
 **Depois:** `{"detail": "Erro ao processar sessão."}`
 
 **Impacto no frontend:** Nenhum — a lógica de tratamento de erro deve continuar funcionando. Apenas a mensagem foi higienizada.

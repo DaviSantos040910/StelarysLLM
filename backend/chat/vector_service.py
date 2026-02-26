@@ -188,7 +188,7 @@ class VectorService:
             docs.append(chunk)
             embeds.append(embedding)
             ids.append(str(uuid.uuid4()))
-
+            
             meta = {
                 'user_id': str(user_id),
                 'type': 'document',
@@ -203,12 +203,12 @@ class VectorService:
                 'source_type': source_type,
                 'source_url': source_url or ''
             }
-
+            
             if bot_id is not None:
                 meta['bot_id'] = str(bot_id)
             else:
                 meta['bot_id'] = ''
-
+                
             if study_space_id is not None:
                 meta['study_space_id'] = str(study_space_id)
             else:
@@ -260,9 +260,9 @@ class VectorService:
         return QueryType.GENERAL, None
 
     def get_available_documents(
-        self,
-        user_id: int,
-        bot_id: int,
+        self, 
+        user_id: int, 
+        bot_id: int, 
         study_space_ids: Optional[List[int]] = None,
         chat_id: Optional[int] = None
     ) -> List[Dict]:
@@ -402,7 +402,7 @@ class VectorService:
                 available_docs = [d for d in available_docs if d.get('source_id') in allowed_source_ids]
 
             available_sources = [d['source'] for d in available_docs]
-
+            
             # 3. Classificar Query
             query_type = QueryType.GENERAL
             specific_doc = None
@@ -461,12 +461,12 @@ class VectorService:
     def _build_or_filter(self, user_id: int, bot_id: int, study_space_ids: Optional[List[int]]) -> dict:
         or_list = [
             {"bot_id": str(bot_id)},
-            {"bot_id": "0"}
+            {"bot_id": "0"} 
         ]
         if study_space_ids:
             for sid in study_space_ids:
                 or_list.append({"study_space_id": str(sid)})
-
+        
         scope_condition = self._safe_or(or_list)
 
         and_list = [
@@ -483,21 +483,21 @@ class VectorService:
     ) -> List[Dict]:
         """Busca em um documento específico."""
         embedding = self._get_embedding(query, "retrieval_query")
-
+        
         where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
-
+        
         if "$and" in where_clause:
             and_conditions = where_clause["$and"]
         else:
             and_conditions = [where_clause] if where_clause else []
 
         and_conditions.append({"source": source})
-
+        
         if allowed_source_ids:
             and_conditions.append({"source_id": {"$in": allowed_source_ids}})
 
         final_where = {"$and": and_conditions}
-
+        
         results = self._execute_search(
             query_embedding=embedding,
             limit=limit,
@@ -517,17 +517,17 @@ class VectorService:
 
         for source in sources[:4]:
             where_clause = self._build_or_filter(user_id, bot_id, study_space_ids)
-
+            
             if "$and" in where_clause:
                 and_conditions = where_clause["$and"]
             else:
                 and_conditions = [where_clause] if where_clause else []
 
             and_conditions.append({"source": source})
-
+            
             if allowed_source_ids:
                 and_conditions.append({"source_id": {"$in": allowed_source_ids}})
-
+            
             final_where = {"$and": and_conditions}
 
             results = self._execute_search(
@@ -559,7 +559,7 @@ class VectorService:
                 # If allowed list is empty, return empty (nothing allowed)
                 # UNLESS we treat empty list as "none allowed" -> return empty.
                 return []
-
+            
             where_clause = {"$and": and_conditions}
 
         # Fetch candidates (3x limit) para reranking
@@ -664,7 +664,7 @@ class VectorService:
                     {"type": "memory"}
                 ]
             }
-
+        
         results = self._execute_search(
             query_embedding=embedding,
             limit=limit,

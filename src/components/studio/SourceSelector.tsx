@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { chatService } from '../../services/chatService';
 import { libraryService } from '../../services/libraryService';
-import { ContextSource } from '../../types/studio';
 import { themeClasses } from '../../theme/classes';
+import { ContextSource } from '../../types/studio';
 
 interface SourceSelectorProps {
     onClose: () => void;
-    onSelectionChange: (ids: string[]) => void;
+    onSelectionChange: (ids: string[], names?: Record<string, string>) => void;
     selectedIds: string[];
     chatId?: string; // If provided, fetches chat sources. Else fetches global library sources.
     mode?: 'chat' | 'global';
@@ -47,19 +47,19 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
                 // Using libraryService.getSources() as a general pool.
                 // In a real scenario, this should likely be `api/v1/chats/{id}/context-sources/`
-                 const contextSources = await chatService.getChatSources(chatId);
-                 data = contextSources.map((s: any) => ({
-                     id: s.id.toString(),
-                     name: s.title || s.name,
-                     type: s.source_type === 'YOUTUBE' || s.source_type === 'URL' ? 'kb' : 'file'
-                 }));
+                const contextSources = await chatService.getChatSources(chatId);
+                data = contextSources.map((s: any) => ({
+                    id: s.id.toString(),
+                    name: s.title || s.name,
+                    type: s.source_type === 'YOUTUBE' || s.source_type === 'URL' ? 'kb' : 'file'
+                }));
             } else {
-                 const libSources = await libraryService.getSources();
-                 data = libSources.map(s => ({
-                     id: s.id.toString(),
-                     name: s.title,
-                     type: s.source_type === 'YOUTUBE' || s.source_type === 'URL' ? 'kb' : 'file'
-                 }));
+                const libSources = await libraryService.getSources();
+                data = libSources.map(s => ({
+                    id: s.id.toString(),
+                    name: s.title,
+                    type: s.source_type === 'YOUTUBE' || s.source_type === 'URL' ? 'kb' : 'file'
+                }));
             }
             setSources(data);
         } catch (error) {
@@ -70,11 +70,20 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     };
 
     const toggleSelection = (id: string) => {
-        if (selectedIds.includes(id)) {
-            onSelectionChange(selectedIds.filter(s => s !== id));
-        } else {
-            onSelectionChange([...selectedIds, id]);
-        }
+        const newIds = selectedIds.includes(id)
+            ? selectedIds.filter(s => s !== id)
+            : [...selectedIds, id];
+
+        // Create a map of ID to name for all currently selected items
+        // This allows the parent component to know the names without a secondary search
+        const namesMap: Record<string, string> = {};
+        sources.forEach(s => {
+            if (newIds.includes(s.id)) {
+                namesMap[s.id] = s.name;
+            }
+        });
+
+        onSelectionChange(newIds, namesMap);
     };
 
     const filteredSources = sources.filter(s =>
@@ -129,9 +138,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         return (
                             <Pressable
                                 onPress={() => toggleSelection(item.id)}
-                                className={`flex-row items-center justify-between p-4 rounded-xl mb-2 border ${
-                                    isSelected ? 'bg-indigo-500/10 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/5`
-                                }`}
+                                className={`flex-row items-center justify-between p-4 rounded-xl mb-2 border ${isSelected ? 'bg-indigo-500/10 border-indigo-500' : `${themeClasses.softSurface} border-gray-200 dark:border-white/5`
+                                    }`}
                             >
                                 <View className="flex-row items-center flex-1 mr-4">
                                     <View className={`p-2 rounded-lg mr-3 ${isSelected ? 'bg-indigo-500/20' : 'bg-white/50 dark:bg-white/10'}`}>

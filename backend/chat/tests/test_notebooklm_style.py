@@ -30,11 +30,11 @@ class NotebookLMStyleTest(TestCase):
         """
         self.bot.prompt = "You are a grumpy Pirate Captain."
         self.bot.save()
-
+        
         # Setup: No context found
         mock_search.return_value = ([], [])
         mock_get_docs.return_value = [{'source': 'TreasureMap.pdf'}]
-
+        
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -57,13 +57,13 @@ class NotebookLMStyleTest(TestCase):
     @patch('chat.services.chat_service.get_ai_client')
     def test_strict_mode_no_context_fallback(self, mock_get_client, mock_get_docs, mock_search):
         """
-        Verify that when strict_context is True and no docs are found,
+        Verify that when strict_context is True and no docs are found, 
         it returns the fixed refusal template without calling AI (answer gen).
         """
         # Setup: No context
         mock_search.return_value = ([], [])
         mock_get_docs.return_value = [{'source': 'Physics.pdf'}]
-
+        
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -88,7 +88,7 @@ class NotebookLMStyleTest(TestCase):
         """
         mock_search.return_value = ([], [])
         mock_get_docs.return_value = []
-
+        
         # Mock style service again
         with patch('chat.services.chat_service.strict_style_service.rewrite_strict_refusal') as mock_rewrite:
             mock_rewrite.side_effect = lambda text, *args: text
@@ -109,10 +109,10 @@ class NotebookLMStyleTest(TestCase):
         self.bot.strict_context = False
         self.bot.allow_web_search = True
         self.bot.save()
-
+        
         # Setup: No context found
         mock_search.return_value = ([], [])
-
+        
         # Mock Gemini
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -122,15 +122,15 @@ class NotebookLMStyleTest(TestCase):
 
         # Execute
         get_ai_response(self.chat.id, "Cotação do dólar")
-
+        
         # Verify prompt
         call_args = mock_client.models.generate_content.call_args
         contents = call_args[1]['contents']
         prompt_text = contents[0]['parts'][0]['text']
-
+        
         self.assertIn("INSTRUCTION: You must answer using general knowledge/web search, but you MUST format it in two distinct blocks.", prompt_text)
         self.assertIn("Fora do contexto dos documentos, de forma geral:", prompt_text)
-
+        
         # Verify Tool was added
         config = call_args[1]['config']
         self.assertTrue(hasattr(config, 'tools'), "Config missing tools")
@@ -150,10 +150,10 @@ class NotebookLMStyleTest(TestCase):
             'source': 'Quantum.pdf',
             'source_id': '101'
         }]
-
+        
         mock_search.return_value = (docs_found, [])
         mock_get_docs.return_value = [{'source': 'Quantum.pdf'}]
-
+        
         # Mock Gemini
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -163,10 +163,10 @@ class NotebookLMStyleTest(TestCase):
 
         # Execute
         response = get_ai_response(self.chat.id, "Explain quantum")
-
+        
         # Verify content logic (We REMOVED the appended text, so checking for "Fontes:" in content should FAIL or be removed)
         self.assertIn("According to [1], physics is weird.", response['content'])
-
+        
         # Verify SOURCES field
         self.assertIn('sources', response)
         self.assertEqual(len(response['sources']), 1)

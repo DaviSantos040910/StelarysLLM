@@ -13,13 +13,13 @@ User = get_user_model()
 class ImageProcessingTest(TestCase):
     def setUp(self):
         self.user = User.objects.create(username="testimageuser")
-
+        
         # Create a dummy image
         img = Image.new('RGB', (100, 100), color='red')
         img_io = io.BytesIO()
         img.save(img_io, format='JPEG')
         img_io.seek(0)
-
+        
         self.test_image = SimpleUploadedFile(
             name='test_image.jpg',
             content=img_io.read(),
@@ -38,14 +38,14 @@ class ImageProcessingTest(TestCase):
 
         # Create source via View logic simulation (or directly calling logic if viewset is complex to test fully integrated)
         # Here we simulate the View logic: create instance -> describe -> save
-
+        
         source = KnowledgeSource.objects.create(
             user=self.user,
             title="Test Red Square",
             source_type=KnowledgeSource.SourceType.IMAGE,
             file=self.test_image
         )
-
+        
         # Simulate view's extraction step
         description = image_description_service.describe_image(source.file)
         source.extracted_text = description
@@ -65,6 +65,6 @@ class ImageProcessingTest(TestCase):
         mock_client.models.generate_content.return_value = mock_response
 
         result = image_description_service.describe_image(self.test_image)
-
+        
         self.assertEqual(result, "A test description.")
         mock_client.models.generate_content.assert_called()

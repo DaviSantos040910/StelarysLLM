@@ -20,7 +20,7 @@ class IngestionServiceTest(TestCase):
         # Setup mocks
         mock_extract.return_value = "Extracted text content"
         mock_chunk.return_value = ["chunk1", "chunk2"]
-
+        
         # Create source
         source = KnowledgeSource.objects.create(
             user=self.user,
@@ -28,18 +28,18 @@ class IngestionServiceTest(TestCase):
             source_type=KnowledgeSource.SourceType.FILE,
             file=self.file
         )
-
+        
         # Run Ingestion
         result = KnowledgeIngestionService.ingest_source(source, bot_id=10, study_space_id=20)
-
+        
         # Assertions
         self.assertTrue(result)
-
+        
         # Verify extraction
         mock_extract.assert_called_once()
         source.refresh_from_db()
         self.assertEqual(source.extracted_text, "Extracted text content")
-
+        
         # Verify indexing
         mock_chunk.assert_called_with("Extracted text content")
         mock_add.assert_called_with(
@@ -64,9 +64,9 @@ class IngestionServiceTest(TestCase):
                 source_type=KnowledgeSource.SourceType.IMAGE,
                 file=SimpleUploadedFile("img.jpg", b"fakeimg", content_type="image/jpeg")
             )
-
+            
             result = KnowledgeIngestionService.ingest_source(source)
-
+            
             self.assertTrue(result)
             mock_describe.assert_called_once()
             mock_add.assert_called()
@@ -79,22 +79,22 @@ class IngestionServiceTest(TestCase):
         Test that a source marked as FILE but with image mimetype is routed to image description service.
         """
         mock_describe.return_value = "Robust image description"
-
+        
         with patch('chat.file_processor.FileProcessor.chunk_text', return_value=['chunk']) as mock_chunk:
             # Create source as FILE but with .jpg extension/content_type
             source = KnowledgeSource.objects.create(
                 user=self.user,
                 title="Mislabelled Image",
-                source_type=KnowledgeSource.SourceType.FILE,
+                source_type=KnowledgeSource.SourceType.FILE, 
                 file=SimpleUploadedFile("photo.jpg", b"fakeimg", content_type="image/jpeg")
             )
-
+            
             result = KnowledgeIngestionService.ingest_source(source)
-
+            
             self.assertTrue(result)
             # Should call describe_image, NOT extract_text
             mock_describe.assert_called_once()
             mock_extract.assert_not_called()
-
+            
             source.refresh_from_db()
             self.assertEqual(source.extracted_text, "Robust image description")

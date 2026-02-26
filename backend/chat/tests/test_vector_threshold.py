@@ -23,7 +23,7 @@ class VectorThresholdTest(TestCase):
 
         # Need to provide user_id and bot_id. allowed_source_ids=None to search all.
         results = self.service._search_general("QUERY: What is physics?", user_id=1, bot_id=1, limit=5, allowed_source_ids=None)
-
+        
         # Note: _search_general returns candidates list of dicts with 'score' key
         # Depending on implementation, it might return formatted candidates.
         # Looking at code: it returns self._format_candidates(final_selection) which has 'score'
@@ -47,7 +47,7 @@ class VectorThresholdTest(TestCase):
         }
 
         results = self.service._search_general("QUERY: What is physics?", user_id=1, bot_id=1, limit=5, allowed_source_ids=None)
-
+        
         # Should be filtered out
         self.assertEqual(len(results), 0)
 

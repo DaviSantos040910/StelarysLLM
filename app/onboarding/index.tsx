@@ -1,13 +1,13 @@
-import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { ArrowRight } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import { useRef, useState } from 'react';
+import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../src/stores/appStore';
 import { themeClasses } from '../../src/theme/classes';
-import { useColorScheme } from 'nativewind';
-import { Image } from 'expo-image';
-import { ArrowRight } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -75,7 +75,7 @@ export default function OnboardingScreen() {
   // Dark mode: fade to black/dark blue at bottom
   // Light mode: fade to white at bottom (or dark if using white text on image?)
   // Assuming textPrimary is dark in light mode, we fade to white.
-  const gradientColors = isDark
+  const gradientColors: readonly [string, string, ...string[]] = isDark
     ? ['transparent', 'rgba(2, 6, 23, 0.8)', '#020617'] // slate-950
     : ['transparent', 'rgba(255, 255, 255, 0.8)', '#ffffff'];
 
@@ -141,11 +141,10 @@ export default function OnboardingScreen() {
           {slides.map((_, index) => (
             <View
               key={index}
-              className={`h-2 rounded-full transition-all ${
-                index === currentIndex
+              className={`h-2 rounded-full transition-all ${index === currentIndex
                   ? 'w-8 bg-indigo-600 dark:bg-indigo-400'
                   : 'w-2 bg-gray-300 dark:bg-gray-700'
-              }`}
+                }`}
             />
           ))}
         </View>

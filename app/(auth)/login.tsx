@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuthStore } from '../../src/stores/authStore';
-import { Input } from '../../src/components/Input';
-import { Button } from '../../src/components/Button';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Rocket } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '../../src/components/Button';
+import { Input } from '../../src/components/Input';
+import { useAuthStore } from '../../src/stores/authStore';
 import { themeClasses } from '../../src/theme/classes';
 
 export default function LoginScreen() {
@@ -25,7 +25,7 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       if (redirectTo) {
-        router.replace(redirectTo);
+        router.replace(redirectTo as any);
       } else {
         router.replace('/(tabs)');
       }
@@ -38,7 +38,7 @@ export default function LoginScreen() {
     <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-10 items-center">
         <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
-           <Rocket size={48} color="#6366f1" />
+          <Rocket size={48} color="#6366f1" />
         </View>
         <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Welcome Back</Text>
         <Text className={`${themeClasses.textSecondary} text-base`}>Sign in to continue to StelarysLM</Text>

@@ -128,14 +128,14 @@ class ArtifactGenerationTest(TestCase):
     @patch('studio.services.source_assembler.SourceAssemblyService.get_context_from_config')
     def test_generate_artifact_with_personality(self, mock_assembler, mock_get_model, mock_get_ai_client):
         """Testa se a personalidade do bot é incluída no prompt de geração."""
-
+        
         # Setup Mocks
         mock_assembler.return_value = "Context content."
         mock_get_model.return_value = 'gemini-2.5-flash'
-
+        
         mock_client = MagicMock()
         mock_get_ai_client.return_value = mock_client
-
+        
         mock_response = MagicMock()
         mock_response.parsed = {"summary": "Content"}
         mock_client.models.generate_content.return_value = mock_response
@@ -150,7 +150,7 @@ class ArtifactGenerationTest(TestCase):
 
         # Manually call _generate_content_with_ai to avoid threading complexity in this specific test
         view = KnowledgeArtifactViewSet()
-
+        
         # Options matching what perform_create extracts
         options = {
             'quantity': 5,
@@ -167,12 +167,12 @@ class ArtifactGenerationTest(TestCase):
         # Verify AI Call
         mock_client.models.generate_content.assert_called_once()
         _, kwargs = mock_client.models.generate_content.call_args
-
+        
         # Check System Instruction for Personality
         config = kwargs.get('config')
         self.assertIsNotNone(config)
         system_instruction = config.system_instruction
-
+        
         # Bot prompt was "You are a funny teacher."
         self.assertIn("You are a funny teacher.", system_instruction)
         self.assertIn("YOUR PERSONALITY/ROLE:", system_instruction)

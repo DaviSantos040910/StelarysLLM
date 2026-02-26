@@ -37,10 +37,10 @@ class StrictGuardrailTest(TestCase):
         # 3. Define behavior:
         # Call 1: The initial generation (HALLUCINATION - No citations)
         # Fallback: Deterministic refusal (no 2nd call to answering model)
-
+        
         response_hallucination = MagicMock()
         response_hallucination.text = "Paris is the capital of France." # No [1] citation!
-
+        
         mock_client.models.generate_content.return_value = response_hallucination
 
         # Mock style service to avoid LLM call there too
@@ -65,7 +65,7 @@ class StrictGuardrailTest(TestCase):
         """
         # Setup Context
         mock_search.return_value = ([{'content': 'Paris info', 'source': 'Doc.pdf', 'source_id': '1'}], [])
-
+        
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -83,6 +83,6 @@ class StrictGuardrailTest(TestCase):
         # The frontend uses structured sources now, not appended text.
         self.assertTrue(result['sources'])
         self.assertEqual(result['sources'][0]['id'], '1')
-
+        
         # Verify called only once
         self.assertEqual(mock_client.models.generate_content.call_count, 1)

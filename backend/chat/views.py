@@ -46,8 +46,6 @@ from .services import (
 )
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
-from studio.exceptions import DocumentInvalidException
-from billing.services.quotas import check_and_consume, QuotaExceededException
 from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
@@ -301,7 +299,7 @@ class ChatMessageListView(generics.ListCreateAPIView):
                 # Only attach sources to the LAST paragraph to avoid duplication in UI
                 sources = ai_sources if is_last_paragraph else []
                 warning = ai_warning if is_last_paragraph else None
-
+                
                 ai_message = ChatMessage(
                     chat=chat,
                     role=ChatMessage.Role.ASSISTANT,
@@ -524,7 +522,7 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'text/plain'
                     ]
-
+                    
                     text = None
                     if obj.attachment_type == 'file' and mime in processable_mimes:
                          # Pass the file object directly, not the path (which might not exist on GCS)
@@ -924,48 +922,38 @@ class ChatSourceView(APIView):
         else:
              return Response({"detail": "Unauthorized"}, status=401)
 
-        try:
-            with transaction.atomic():
-                # --- BILLING CHECK ---
-                owner_user = actor if actor_type == 'user' else None
-                owner_guest = actor if actor_type == 'guest' else None
-                check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
+        # 1. Create KnowledgeSource
+        title = request.data.get('title', 'Chat Upload')
+        source_type = request.data.get('source_type', 'FILE')
 
-                # 1. Create KnowledgeSource
-                title = request.data.get('title', 'Chat Upload')
-                source_type = request.data.get('source_type', 'FILE')
+        source = KnowledgeSource(
+            title=title,
+            source_type=source_type
+        )
+        if actor_type == 'user':
+            source.user = actor
+        else:
+            source.guest_session = actor
 
-                source = KnowledgeSource(
-                    title=title,
-                    source_type=source_type
-                )
-                if actor_type == 'user':
-                    source.user = actor
-                else:
-                    source.guest_session = actor
+        if source_type == 'FILE' and request.FILES.get('file'):
+            source.file = request.FILES['file']
+        elif source_type in ['URL', 'YOUTUBE']:
+            source.url = request.data.get('url')
 
-                if source_type == 'FILE' and request.FILES.get('file'):
-                    source.file = request.FILES['file']
-                elif source_type in ['URL', 'YOUTUBE']:
-                    source.url = request.data.get('url')
+        source.save()
 
-                source.save()
+        # 2. Ingest using centralized service for this Chat's Bot
+        KnowledgeIngestionService.ingest_source(source, bot_id=chat.bot.id)
 
-                # 2. Ingest using centralized service for this Chat's Bot
-                # If this raises DocumentInvalidException, transaction rolls back
-                KnowledgeIngestionService.ingest_source(source, bot_id=chat.bot.id)
+        # 4. Link to Chat
+        chat.sources.add(source)
 
-                # 4. Link to Chat
-                chat.sources.add(source)
-
-                return Response({
-                    'id': source.id,
-                    'title': source.title,
-                    'source_type': source.source_type,
-                    'created_at': source.created_at.isoformat() if source.created_at else None
-                }, status=status.HTTP_201_CREATED)
-        except DocumentInvalidException:
-            raise
+        return Response({
+            'id': source.id,
+            'title': source.title,
+            'source_type': source.source_type,
+            'created_at': source.created_at
+        }, status=status.HTTP_201_CREATED)
 
     def delete(self, request, chat_id, source_id):
         actor_type, actor = get_actor(request)
@@ -1021,7 +1009,7 @@ class ContextSourcesView(APIView):
                 'type': origin_type, # 'chat_source' ou 'space_source'
                 'source_type': s.source_type,
                 'url': s.url or safe_file_url(s.file),
-                'created_at': s.created_at.isoformat() if s.created_at else None,
+                'created_at': s.created_at,
                 'selected': True
             })
 

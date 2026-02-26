@@ -52,8 +52,8 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         await oldSound.playAsync();
         set({ isPlaying: true, isMinimized: false, isLoading: false });
       } catch (error) {
-         console.error('Error resuming existing sound:', error);
-         set({ isPlaying: false, isLoading: false });
+        console.error('Error resuming existing sound:', error);
+        set({ isPlaying: false, isLoading: false });
       }
       return;
     }
@@ -89,8 +89,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
         playThroughEarpieceAndroid: false,
       });
 
-      // Get auth headers (handles user or guest)
-      const headers = getAuthHeaders();
+      const headers = await getAuthHeaders();
 
       // 3. Race Condition com Timeout de 15s para evitar spinner eterno
       // IMPORTANT: shouldPlay: false to prevent ghost audio if timeout occurs
@@ -127,9 +126,9 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
       // Session Guard: Check if user cancelled/navigated/stopped while loading
       if (get().playSessionId !== currentSessionId) {
-          console.log("Audio loaded but session expired (orphaned). Unloading.");
-          await sound.unloadAsync();
-          return;
+        console.log("Audio loaded but session expired (orphaned). Unloading.");
+        await sound.unloadAsync();
+        return;
       }
 
       // 4. Sucesso (Sessão Válida) -> Agora damos play manual
@@ -155,7 +154,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
 
       // Se a sessão ainda for a mesma (ninguém clicou em outro play), marca como falha/parado
       if (get().playSessionId === currentSessionId) {
-          set({ isLoading: false, isPlaying: false });
+        set({ isLoading: false, isPlaying: false });
       }
 
       // Nota: Se o `loadPromise` terminar depois, ele retornará o `sound`.
@@ -211,7 +210,7 @@ export const useAudioPlayerStore = create<AudioPlayerState>((set, get) => ({
     try {
       if (sound) {
         // Tenta parar antes de descarregar
-        try { await sound.stopAsync(); } catch (e) {}
+        try { await sound.stopAsync(); } catch (e) { }
         await sound.unloadAsync();
       }
     } catch (error) {

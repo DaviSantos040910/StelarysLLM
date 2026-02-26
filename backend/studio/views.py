@@ -21,7 +21,6 @@ from chat.vector_service import vector_service
 from chat.services.content_extractor import ContentExtractor
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
-from studio.exceptions import DocumentInvalidException
 from studio.jobs.artifact_jobs import generate_artifact_job
 from core.perf import log_perf, now_ms, ms_since
 
@@ -77,18 +76,9 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
             else:
                 instance = serializer.save(guest_session=actor, user=None)
 
-        # Ingest using centralized service (Outside atomic block to allow saving invalid state)
-        # bot_id=0 signifies Global/Library context
-        try:
+            # Ingest using centralized service
+            # bot_id=0 signifies Global/Library context
             KnowledgeIngestionService.ingest_source(instance, bot_id=0)
-        except DocumentInvalidException as e:
-            # Mark source as invalid for audit/UI feedback, then re-raise to return 422
-            instance.extracted_text = ""
-            if not instance.metadata:
-                instance.metadata = {}
-            instance.metadata['error'] = 'document_invalid_scanned'
-            instance.save(update_fields=['extracted_text', 'metadata'])
-            raise e
 
     @action(detail=True, methods=['post'])
     def add_to_chat(self, request, pk=None):
@@ -237,48 +227,44 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
 
         actor_type, actor = get_actor(request)
 
-        try:
-            with transaction.atomic():
-                # --- BILLING CHECK ---
-                owner_user = actor if actor_type == 'user' else None
-                owner_guest = actor if actor_type == 'guest' else None
-                check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
+        # --- BILLING CHECK ---
+        owner_user = actor if actor_type == 'user' else None
+        owner_guest = actor if actor_type == 'guest' else None
+        check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
-                # 1. Create KnowledgeSource
-                title = request.data.get('title', 'Space Upload')
-                source_type = request.data.get('source_type', 'FILE')
+        # 1. Create KnowledgeSource
+        title = request.data.get('title', 'Space Upload')
+        source_type = request.data.get('source_type', 'FILE')
 
-                source = KnowledgeSource(
-                    title=title,
-                    source_type=source_type
-                )
+        # Map frontend type to backend choices if needed
+        # KnowledgeSource.SourceType: FILE, URL, YOUTUBE, TEXT
 
-                if actor_type == 'user':
-                    source.user = actor
-                else:
-                    source.guest_session = actor
+        source = KnowledgeSource(
+            title=title,
+            source_type=source_type
+        )
 
-                if source_type == 'FILE' and request.FILES.get('file'):
-                    source.file = request.FILES['file']
-                elif source_type in ['URL', 'YOUTUBE']:
-                    source.url = request.data.get('url')
-                    if not request.data.get('title'):
-                        source.title = source.url
+        if actor_type == 'user':
+            source.user = actor
+        else:
+            source.guest_session = actor
 
-                source.save()
+        if source_type == 'FILE' and request.FILES.get('file'):
+            source.file = request.FILES['file']
+        elif source_type in ['URL', 'YOUTUBE']:
+            source.url = request.data.get('url')
+            if not request.data.get('title'):
+                source.title = source.url
 
-                # 2. Ingest using centralized service for this Study Space
-                # If this raises DocumentInvalidException, transaction rolls back (quota + source)
-                KnowledgeIngestionService.ingest_source(source, study_space_id=space.id)
+        source.save()
 
-                # 3. Link to Space
-                space.sources.add(source)
+        # 2. Ingest using centralized service for this Study Space
+        KnowledgeIngestionService.ingest_source(source, study_space_id=space.id)
 
-                return Response(KnowledgeSourceSerializer(source).data, status=status.HTTP_201_CREATED)
+        # 3. Link to Space
+        space.sources.add(source)
 
-        except DocumentInvalidException:
-            # Re-raise to ensure 422 response. Transaction rollback is automatic.
-            raise
+        return Response(KnowledgeSourceSerializer(source).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def remove_source(self, request, pk=None):

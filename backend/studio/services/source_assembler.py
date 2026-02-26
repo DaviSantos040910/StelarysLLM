@@ -44,7 +44,7 @@ class SourceAssemblyService:
         if source_ids and query:
             clean_ids = [str(sid) for sid in source_ids]
             sources = KnowledgeSource.objects.filter(id__in=clean_ids)
-
+            
             # Garante que os textos foram extraídos/indexados (lazy extraction fallback)
             for source in sources:
                 if not source.extracted_text and source.file:
@@ -54,17 +54,17 @@ class SourceAssemblyService:
                         if content:
                             source.extracted_text = content
                             source.save(update_fields=['extracted_text'])
-
+                            
                             # Lazy Indexing Logic
                             bot_study_spaces = set(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else set()
                             source_study_spaces = set(source.study_spaces.values_list('id', flat=True))
-
+                            
                             common_spaces = bot_study_spaces.intersection(source_study_spaces)
-
+                            
                             target_study_space_id = list(common_spaces)[0] if common_spaces else None
-
+                            
                             target_bot_id = chat.bot.id if not target_study_space_id else None
-
+                            
                             chunks = FileProcessor.chunk_text(content)
                             vector_service.add_document_chunks(
                                 user_id=source.user.id,
@@ -79,7 +79,7 @@ class SourceAssemblyService:
 
             # Busca Vetorial Top-K (Limit ~20 chunks)
             study_space_ids = list(chat.bot.study_spaces.values_list('id', flat=True)) if chat.bot else []
-
+            
             doc_contexts, _ = vector_service.search_context(
                 query_text=query,
                 user_id=chat.user_id,
@@ -100,7 +100,7 @@ class SourceAssemblyService:
                     # Ideally we want an index 1..N relative to this list, but RAG returns arbitrary chunks.
                     # Simple format: [Source: Title] Content
                     formatted_chunks.append(f"[Source: {title}]\n{content}")
-
+                
                 rag_content = "\n\n".join(formatted_chunks)
                 rag_tokens = TokenService.estimate_tokens(rag_content)
 

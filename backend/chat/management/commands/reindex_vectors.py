@@ -17,7 +17,7 @@ class Command(BaseCommand):
         processed = 0
         errors = 0
 
-        # Optional: Reset collection?
+        # Optional: Reset collection? 
         # vector_service.collection.delete() # Dangerous if not intended
         # Better: We delete per source to be safe.
 
@@ -25,7 +25,7 @@ class Command(BaseCommand):
             try:
                 # 1. Clear old vectors for this source
                 try:
-                    # Delete where source_id matches.
+                    # Delete where source_id matches. 
                     # Note: add_document_chunks uses str(source.id).
                     vector_service.collection.delete(where={"source_id": str(source.id)})
                     # self.stdout.write(f"Cleared vectors for {source.id}")
@@ -33,7 +33,7 @@ class Command(BaseCommand):
                     pass
 
                 indexed_any = False
-
+                
                 # 2. Index for linked Study Spaces
                 for space in source.study_spaces.all():
                     success = KnowledgeIngestionService.ingest_source(
@@ -53,7 +53,7 @@ class Command(BaseCommand):
                             study_space_id=None
                         )
                         if success: indexed_any = True
-
+                
                 # 4. Fallback: Global Library (User Level)
                 # If not linked to anything specific, or just to ensure it's in the library scope?
                 # Usually items in Library should be accessible by User's bots (bot_id=0).
@@ -62,12 +62,12 @@ class Command(BaseCommand):
                 # If it's in a Study Space, it's shared.
                 # If it's in a Chat, it's private.
                 # If it's just in Library, it's global.
-
-                # Strategy:
+                
+                # Strategy: 
                 # If it has Study Spaces -> It's in those spaces.
                 # If it has Chats -> It's in those chats.
                 # If NONE -> It's User Global.
-
+                
                 if not indexed_any:
                     success = KnowledgeIngestionService.ingest_source(
                         source,

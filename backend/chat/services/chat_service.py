@@ -292,7 +292,7 @@ def get_ai_response(
         # Observability Log
         logger.info(f"[Context] Chat {chat_id} | Bot {bot.id} | Strict: {strict_context} | Web: {allow_web_search}")
         logger.info(f"[Context] Available Docs: {available_doc_names}")
-
+        
         # --- Format Contexts with Citations ---
         formatted_doc_contexts = []
         source_map = {} # source_id -> {index: 1, title: 'Title', 'type': ..., 'url': ...}
@@ -313,10 +313,10 @@ def get_ai_response(
                         'type': s_type,
                         'url': s_url
                     }
-
+                
                 s_idx = source_map[s_id]['index']
                 used_source_indices.append(s_idx)
-
+                
                 # Format: [1] Title\nContent
                 formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
@@ -418,14 +418,14 @@ def get_ai_response(
                 refusal_text = strict_boundary.build_strict_refusal(bot.name, user_message_text, has_any_sources=bool(available_doc_names))
                 result_data = _parse_ai_response(refusal_text)
                 # Clear citations legend logic triggers below since content changed
-                source_map = {}
+                source_map = {} 
 
         # Build Sources list for frontend
         sources_list = []
         if source_map:
             # Extract citations actually used in the FINAL text
             used_indices = set(re.findall(r'\[(\d+)\]', result_data['content']))
-
+            
             # Map back to source details
             unique_sources = {}
             for s_id, s_info in source_map.items():
@@ -438,7 +438,7 @@ def get_ai_response(
                             'url': s_info.get('url'),
                             'index': s_info['index']
                         }
-
+            
             # Safely create the list
             try:
                 sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
@@ -584,7 +584,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
 
         # Common Prep
         available_docs = vector_service.get_available_documents(effective_user_id, bot.id, study_space_ids)
-
+        
         # --- BRANCH 1: LIST SOURCES ---
         if mode == ResponseMode.LIST_SOURCES:
             source_text = source_service.list_available_sources_for_bot(bot.id, effective_user_id, study_space_ids)

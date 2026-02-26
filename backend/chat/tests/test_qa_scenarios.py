@@ -33,7 +33,7 @@ class QAScenariosTest(TestCase):
         self.bot.save()
 
         # Mock: No context found
-        mock_search.return_value = ([], [])
+        mock_search.return_value = ([], []) 
         mock_get_docs.return_value = [{'source': 'Doc1.pdf'}]
 
         mock_client = MagicMock()
@@ -70,7 +70,7 @@ class QAScenariosTest(TestCase):
 
         # Mock: No context
         mock_search.return_value = ([], [])
-
+        
         # Mock Gemini
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -122,7 +122,7 @@ class QAScenariosTest(TestCase):
         call_args = mock_client.models.generate_content.call_args
         config = call_args[1]['config']
         system_inst = config.system_instruction
-
+        
         self.assertIn("STRICT CONTEXT MODE: DISABLED", system_inst)
 
     @patch('chat.services.chat_service.vector_service.search_context')
@@ -139,12 +139,12 @@ class QAScenariosTest(TestCase):
         self.bot.save()
         mock_search.return_value = ([], [])
         mock_get_docs.return_value = [{'source': 'Doc1.pdf'}]
-
+        
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-
+        
         get_ai_response(self.chat.id, "Q1")
-
+        
         # Verify Strict Refusal Prompt (Should be ZERO CALL now)
         self.assertEqual(mock_client.models.generate_content.call_count, 0)
 
@@ -152,9 +152,9 @@ class QAScenariosTest(TestCase):
         self.bot.strict_context = False
         self.bot.allow_web_search = True # Mixed mode
         self.bot.save()
-
+        
         get_ai_response(self.chat.id, "Q2")
-
+        
         # Verify Mixed Prompt (Should call model)
         self.assertEqual(mock_client.models.generate_content.call_count, 1)
         args_b = mock_client.models.generate_content.call_args

@@ -32,39 +32,39 @@ class VectorSafeWhereTest(TestCase):
 
     def test_get_available_documents_single_scope(self):
         """
-        Verify get_available_documents constructs a safe where clause
+        Verify get_available_documents constructs a safe where clause 
         even when scopes result in a single condition.
         """
         # Mock backend.get_documents
         self.service.backend.get_documents.return_value = {'metadatas': []}
-
+        
         self.service.get_available_documents(user_id=1, bot_id=0)
-
+        
         # Check call args on backend
         call_args = self.service.backend.get_documents.call_args
         # backend.get_documents(where=...)
         where_clause = call_args[1]['where']
-
+        
         # Expecting $and with 3 elements, NO nested single $or
         self.assertIn("$and", where_clause)
         self.assertEqual(len(where_clause["$and"]), 3)
-
+        
         # Verify no "$or" with single element inside the $and list
         for condition in where_clause["$and"]:
             if "$or" in condition:
                 self.assertGreaterEqual(len(condition["$or"]), 2)
-
+            
     def test_get_available_documents_complex_scope(self):
         """
         Verify get_available_documents constructs a valid $or when needed.
         """
         self.service.backend.get_documents.return_value = {'metadatas': []}
-
+        
         self.service.get_available_documents(user_id=1, bot_id=8)
-
+        
         call_args = self.service.backend.get_documents.call_args
         where_clause = call_args[1]['where']
-
+        
         self.assertIn("$and", where_clause)
         # Find the scope condition
         scope_cond = next((c for c in where_clause["$and"] if "$or" in c), None)

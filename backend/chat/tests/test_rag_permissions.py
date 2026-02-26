@@ -11,7 +11,7 @@ class RAGPermissionTest(TestCase):
         self.bot_id = 99
         self.space_id = 55
         self.other_space_id = 66
-
+        
         # Reset mock collection for each test
         self.mock_collection = MagicMock()
         vector_service.collection = self.mock_collection
@@ -19,14 +19,14 @@ class RAGPermissionTest(TestCase):
         vector_service.backend = None
         # Mock embedding return
         vector_service._get_embedding = MagicMock(return_value=[0.1] * 3072)
-
+        
         # Mock query response
         self.mock_collection.query.return_value = {
             'documents': [['chunk1']],
             'metadatas': [[{'source': 'doc1', 'source_id': '100'}]],
             'distances': [[0.1]]
         }
-
+        
         # Mock get_available_documents to return something so search proceeds
         self.mock_collection.get.return_value = {
             'metadatas': [
@@ -46,7 +46,7 @@ class RAGPermissionTest(TestCase):
             study_space_ids=[self.space_id],
             limit=5
         )
-
+        
         doc_query_args = None
         for call in self.mock_collection.query.call_args_list:
             kwargs = call[1]
@@ -55,15 +55,15 @@ class RAGPermissionTest(TestCase):
             if {'type': 'document'} in and_conds:
                 doc_query_args = kwargs
                 break
-
+        
         self.assertIsNotNone(doc_query_args, "Document query was not executed")
-
+        
         where_clause = doc_query_args['where']
         and_conditions = where_clause['$and']
-
+        
         or_clause = next((item for item in and_conditions if '$or' in item), None)
         self.assertIsNotNone(or_clause)
-
+        
         or_list = or_clause['$or']
         self.assertIn({'bot_id': str(self.bot_id)}, or_list)
         self.assertIn({'study_space_id': str(self.space_id)}, or_list)
@@ -90,7 +90,7 @@ class RAGPermissionTest(TestCase):
             if {'type': 'document'} in and_conds:
                 doc_query_args = kwargs
                 break
-
+        
         self.assertIsNotNone(doc_query_args)
         where_clause = doc_query_args['where']
         and_conditions = where_clause['$and']

@@ -11,18 +11,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Only run on PostgreSQL
-        migrations.RunSQL(
-            sql="CREATE EXTENSION IF NOT EXISTS vector;",
-            reverse_sql="DROP EXTENSION IF EXISTS vector;",
-            elidable=True
-        ) if 'postgresql' in migrations.RunSQL.__module__ else migrations.RunSQL("SELECT 1;"), # This check is wrong. Migration logic should be db agnostic or check inside.
-
-        # Better: use a function to check connection.vendor but operations are declarative.
-        # So we can't easily check inside the list.
-        # But we can assume if we are running locally with sqlite, we don't need vector extension.
-        # The issue is `VectorField` below.
-
+        migrations.RunSQL("CREATE EXTENSION IF NOT EXISTS vector;", reverse_sql="DROP EXTENSION IF EXISTS vector;"),
         migrations.CreateModel(
             name="VectorChunk",
             fields=[
