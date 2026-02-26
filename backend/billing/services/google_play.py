@@ -20,15 +20,18 @@ BASIC_PLAN_CODE = 'basic'
 class GooglePlayService:
     def __init__(self):
         self.service = None
-        self._initialize_service()
+        # Lazy initialization: Do NOT call _initialize_service() here.
 
-    def _initialize_service(self):
-        """Initializes the Android Publisher API service using credentials."""
+    def _get_service(self):
+        """Lazily initializes the Android Publisher API service using credentials."""
+        if self.service:
+            return self.service
+
         try:
             creds_json = getattr(settings, 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON', None)
             if not creds_json:
                 logger.warning("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured. Billing verification will fail.")
-                return
+                return None
 
             if isinstance(creds_json, str):
                 try:
@@ -37,21 +40,24 @@ class GooglePlayService:
                     # Maybe it's a path?
                     creds_info = None # Handle path logic if needed, but usually ENV var has JSON content
                     logger.error("Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
-                    return
+                    return None
             else:
                 creds_info = creds_json
 
             credentials = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
             self.service = build('androidpublisher', 'v3', credentials=credentials)
+            return self.service
         except Exception as e:
             logger.error(f"Failed to initialize Google Play Service: {e}")
+            return None
 
     def verify_purchase(self, product_id: str, purchase_token: str) -> Dict[str, Any]:
         """
         Verifies a subscription purchase with Google Play.
         Returns the subscription resource.
         """
-        if not self.service:
+        service = self._get_service()
+        if not service:
             # In Dev/Test without creds, maybe mock?
             if settings.DEBUG:
                 logger.info("[Mock] Verifying purchase in DEBUG mode")
@@ -64,7 +70,7 @@ class GooglePlayService:
 
         try:
             # Call purchases.subscriptions.get
-            request = self.service.purchases().subscriptions().get(
+            request = service.purchases().subscriptions().get(
                 packageName=PACKAGE_NAME,
                 subscriptionId=product_id,
                 token=purchase_token

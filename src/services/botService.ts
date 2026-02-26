@@ -1,6 +1,10 @@
 import client from '../api/client';
 import { getAuthHeaders } from '../api/authHeaders';
 import { ChatBootstrap } from '../types/chat';
+import { parseApiError } from '../utils/parseApiError';
+import { router } from 'expo-router';
+import { useAuthStore } from '../stores/authStore';
+import { isLikelyJwt } from '../api/client';
 
 export interface CreateBotData {
     name: string;
@@ -65,14 +69,38 @@ export const botService = {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // Handle Quota/Trial Limits via Central Parser
+        // We reconstruct an error-like object for the parser since fetch doesn't give AxiosError
+        const errorObj = { response: { status: response.status, data: errorData } };
+        const parsedError = parseApiError(errorObj);
+
+        if (parsedError.isQuotaError) {
+            const { token } = useAuthStore.getState();
+            const isGuest = !token || !isLikelyJwt(token);
+
+            if (isGuest) {
+                router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+            } else {
+                router.replace('/plans');
+            }
+            // Return a pending promise or throw a special error to stop UI processing?
+            // Throwing allows caller to stop loading state, but we don't want to show alert.
+            // We can throw an error with a flag.
+            const e: any = new Error(parsedError.message);
+            e.isHandled = true;
+            throw e;
+        }
+
         // Try to find a meaningful error message
-        let errorMessage = errorData.detail || "Failed to create bot";
-        if (!errorData.detail) {
+        let errorMessage = parsedError.message || "Failed to create bot";
+        if (!errorData.detail && !errorData.message) {
             // Check for field errors (e.g. { name: ['required'] })
             const fieldErrors = Object.entries(errorData).map(([key, val]) => {
+                if (key === 'error' || key === 'code') return null; // Skip metadata
                 const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
                 return `${key}: ${valStr}`;
-            }).join(', ');
+            }).filter(Boolean).join(', ');
             if (fieldErrors) errorMessage = fieldErrors;
         }
         throw new Error(errorMessage);

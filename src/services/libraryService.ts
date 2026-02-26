@@ -1,6 +1,9 @@
-import apiClient, { BASE_URL } from '../api/client';
+import apiClient, { BASE_URL, isLikelyJwt } from '../api/client';
 import { getAuthHeaders } from '../api/authHeaders';
 import { CreateSpaceParams, StudySpace } from '../types/studio';
+import { parseApiError } from '../utils/parseApiError';
+import { router } from 'expo-router';
+import { useAuthStore } from '../stores/authStore';
 
 export const libraryService = {
     async getSpaces(): Promise<StudySpace[]> {
@@ -34,7 +37,26 @@ export const libraryService = {
                 body: formData as any,
             });
 
-            if (!response.ok) throw new Error('Failed to create space');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const errorObj = { response: { status: response.status, data: errorData } };
+                const parsedError = parseApiError(errorObj);
+
+                if (parsedError.isQuotaError) {
+                    const { token } = useAuthStore.getState();
+                    const isGuest = !token || !isLikelyJwt(token);
+
+                    if (isGuest) {
+                        router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+                    } else {
+                        router.replace('/plans');
+                    }
+                    const e: any = new Error(parsedError.message);
+                    e.isHandled = true;
+                    throw e;
+                }
+                throw new Error(parsedError.message || 'Failed to create space');
+            }
             return await response.json();
         } else {
             const response = await apiClient.post<StudySpace>('/api/v1/studio/spaces/', data);
@@ -76,14 +98,30 @@ export const libraryService = {
 
         if (!response.ok) {
             const err = await response.text();
-            console.log('Add source error:', err);
-            // Try to extract detail from JSON if possible
-            let message = 'Failed to add source';
+            let jsonErr = {};
             try {
-                const jsonErr = JSON.parse(err);
-                if (jsonErr.detail) message = jsonErr.detail;
+                jsonErr = JSON.parse(err);
             } catch (e) {}
-            throw new Error(message);
+
+            const errorObj = { response: { status: response.status, data: jsonErr } };
+            const parsedError = parseApiError(errorObj);
+
+            if (parsedError.isQuotaError) {
+                const { token } = useAuthStore.getState();
+                const isGuest = !token || !isLikelyJwt(token);
+
+                if (isGuest) {
+                    router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+                } else {
+                    router.replace('/plans');
+                }
+                const e: any = new Error(parsedError.message);
+                e.isHandled = true;
+                throw e;
+            }
+
+            console.log('Add source error:', err);
+            throw new Error(parsedError.message || 'Failed to add source');
         }
         return await response.json();
     },
