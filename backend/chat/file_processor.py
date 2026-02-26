@@ -45,8 +45,19 @@ class FileProcessor:
                 if not use_local_path:
                     # Arquivo remoto (GCS) ou em memória -> baixar para temp
                     with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                        file_source.open('rb')
-                        shutil.copyfileobj(file_source, tmp)
+                        # Job B: Ensure handle is closed even if copyfileobj fails
+                        opened = False
+                        try:
+                            file_source.open('rb')
+                            opened = True
+                            shutil.copyfileobj(file_source, tmp)
+                        finally:
+                            if opened:
+                                try:
+                                    file_source.close()
+                                except Exception:
+                                    pass  # Ignore error during close
+
                         temp_path = tmp.name
                         file_path = temp_path
 
