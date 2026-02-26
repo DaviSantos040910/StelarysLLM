@@ -9,6 +9,7 @@ import { AttachmentSheet } from '../../src/components/chat/AttachmentSheet';
 import { chatService } from '../../src/services/chatService';
 import { themeClasses } from '../../src/theme/classes';
 import { ChatSource } from '../../src/types/chat';
+import { parseApiError } from '../../src/utils/parseApiError';
 
 export default function ManageSourcesScreen() {
     const router = useRouter();
@@ -90,7 +91,11 @@ export default function ManageSourcesScreen() {
             setSources(prev => prev.map(s =>
                 s.id === tempId ? { ...s, status: 'error' } : s
             ));
-            const message = error?.message || "Falha ao processar a fonte.";
+
+            const parsed = parseApiError(error);
+            if (parsed.isHandled) return;
+
+            const message = parsed.message || "Falha ao processar a fonte.";
             Alert.alert("Erro", message);
         }
     };

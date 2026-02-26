@@ -21,6 +21,7 @@ import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { themeClasses } from '../../src/theme/classes';
 import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
+import { parseApiError } from '../../src/utils/parseApiError';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<Message>);
 
@@ -190,7 +191,10 @@ export default function ChatScreen() {
             // On success (silent or toast if we had one)
         } catch (error: any) {
             console.error(error);
-            const message = error?.message || "Falha ao processar fonte adicionada.";
+            const parsed = parseApiError(error);
+            if (parsed.isHandled) return;
+
+            const message = parsed.message || "Falha ao processar fonte adicionada.";
             Alert.alert("Erro", message);
         }
     };

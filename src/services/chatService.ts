@@ -1,8 +1,11 @@
 import { getAuthHeaders } from '../api/authHeaders';
-import apiClient, { BASE_URL } from '../api/client';
+import apiClient, { BASE_URL, isLikelyJwt } from '../api/client';
 import { ChatListItem, ChatSource, Message } from '../types/chat';
 import { validateFile } from '../utils/fileValidation';
 import { StreamCallbacks } from './streamApi';
+import { parseApiError } from '../utils/parseApiError';
+import { useAuthStore } from '../stores/authStore';
+import { router } from 'expo-router';
 
 interface PaginatedResponse<T> {
   count: number;
@@ -206,6 +209,24 @@ export const chatService = {
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null);
+
+      const errorObj = { response: { status: response.status, data: errorBody } };
+      const parsedError = parseApiError(errorObj);
+
+      if (parsedError.isQuotaError) {
+          const { token } = useAuthStore.getState();
+          const isGuest = !token || !isLikelyJwt(token);
+
+          if (isGuest) {
+              router.replace({ pathname: '/(auth)/login', params: { redirectTo: '/plans' } });
+          } else {
+              router.replace('/plans');
+          }
+          const e: any = new Error(parsedError.message);
+          e.isHandled = true;
+          throw e;
+      }
+
       throw new Error(errorBody?.detail || 'Falha ao adicionar fonte.');
     }
     return await response.json();
