@@ -207,10 +207,11 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                     </View>
                 </View>
 
-                {/* Divider */}
-                <View className={`h-[1px] bg-gray-200 dark:bg-white/5 mx-6 mb-4`} />
+                {/* Divider - Hidden for now */}
+                {false && <View className={`h-[1px] bg-gray-200 dark:bg-white/5 mx-6 mb-4`} />}
 
-                {/* Model Footer */}
+                {/* Model Footer - Hidden for now */}
+                {false && (
                 <View className="px-6 pb-2 z-50">
                     <View className="flex-row justify-between items-center">
                         <Text className={`${themeClasses.textSecondary} font-medium`}>Modelo</Text>
@@ -248,6 +249,7 @@ export const AttachmentSheet: React.FC<AttachmentSheetProps> = ({ visible, onClo
                         </View>
                     )}
                 </View>
+                )}
             </>
         )}
 

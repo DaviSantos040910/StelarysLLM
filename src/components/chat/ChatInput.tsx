@@ -233,14 +233,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             <Pressable
                                 onPress={handleSendPress}
                                 disabled={disabled}
-                                className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-white/10'}`}
+                                className={`p-3 rounded-full ${value.trim() || attachments.length > 0 ? 'bg-cosmic-purple' : 'bg-gray-100 dark:bg-white/10'}`}
                                 accessibilityLabel={value.trim() ? "Enviar mensagem" : "Gravar áudio"}
                             >
                                 {value.trim() || attachments.length > 0 ? (
                                     <Send color="white" size={20} />
                                 ) : (
                                     <Animated.View style={animatedMicStyle}>
-                                        <Mic color={disabled ? "#64748b" : "#ffffff"} size={20} />
+                                        <Mic color={disabled ? "#9ca3af" : "#4b5563"} size={20} />
                                     </Animated.View>
                                 )}
                             </Pressable>

@@ -366,7 +366,7 @@ export default function ChatScreen() {
                             keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
-                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 100 }}
+                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 160 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
                             onEndReached={() => loadMoreMessages(chatId)}
@@ -404,7 +404,7 @@ export default function ChatScreen() {
                             value={inputText}
                             onChangeText={setInputText}
                             onSend={() => handleSend()}
-                            onPlusPress={() => setIsAttachmentSheetVisible(true)}
+                            onPlusPress={() => router.push({ pathname: '/chat/manage-sources', params: { chatId } })}
                             onAudioRecorded={handleAudioRecorded}
                             disabled={isStreaming || isPickerLoading}
                             attachments={stagedAttachments}
