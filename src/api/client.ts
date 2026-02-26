@@ -82,18 +82,21 @@ client.interceptors.response.use(
       (error.response?.status === 422 && error.response?.data?.error === true);
 
     if (isQuotaError) {
+      const { useAuthStore } = require('../stores/authStore');
+      const { token } = useAuthStore.getState();
+      const isGuest = !token || !isLikelyJwt(token);
+
       try {
-        // Pass error details to paywall via params or store if needed
-        // For now, simple navigation triggers the modal
-        router.replace({
-          pathname: '/paywall',
-          params: {
-            title: 'Limite Atingido',
-            message: error.response?.data?.message || 'Você atingiu o limite do seu plano.'
-          }
-        });
+        if (isGuest) {
+            router.replace({
+                pathname: '/(auth)/login',
+                params: { redirectTo: '/plans' }
+            });
+        } else {
+            router.replace('/plans');
+        }
       } catch (navError) {
-        console.error("Failed to navigate to paywall", navError);
+        console.error("Failed to navigate from quota limit", navError);
       }
       return Promise.reject(error);
     }

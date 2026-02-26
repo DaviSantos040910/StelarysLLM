@@ -42,11 +42,6 @@ export default function PlansScreen() {
 
   useEffect(() => {
     fetchStatus();
-    if (iapService.isIapSupported()) {
-        iapService.initialize().then(() => {
-            setUnavailableReason(iapService.unavailableReason);
-        });
-    }
     return () => {
         // Optional: teardown if needed, but usually we keep connection open during session
     };

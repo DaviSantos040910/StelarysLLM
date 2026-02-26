@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/stores/authStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
@@ -10,6 +10,7 @@ import { themeClasses } from '../../src/theme/classes';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { redirectTo } = useLocalSearchParams<{ redirectTo: string }>();
   const { login, isLoading, error } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -23,7 +24,11 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      router.replace('/(tabs)');
+      if (redirectTo) {
+        router.replace(redirectTo);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (e) {
       // Error is handled in store and displayed via Alert or UI
     }
