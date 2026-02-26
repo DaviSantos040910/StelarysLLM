@@ -62,14 +62,20 @@ class SubscribedBotListView(generics.ListAPIView):
 class BotDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     API view for retrieving, updating, and deleting a bot.
+    Enforces object-level ownership: only owner (User or Guest) can access.
     """
-    queryset = Bot.objects.all()
+    # queryset removed because get_queryset is overridden dynamically
     serializer_class = BotDetailSerializer
     permission_classes = [IsUserOrGuest]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
-        return Bot.objects.all()
+        actor_type, actor = get_actor(self.request)
+        if actor_type == 'user':
+            return Bot.objects.filter(owner=actor)
+        elif actor_type == 'guest':
+            return Bot.objects.filter(guest_session=actor)
+        return Bot.objects.none()
 
     def get_serializer_class(self):
         # Use BotSerializer for write operations (update/create) to support all fields
