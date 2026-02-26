@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { X, Upload, FileText } from 'lucide-react-native';
 import { themeClasses } from '../../src/theme/classes';
 import { useColorScheme } from 'nativewind';
+import { parseApiError } from '../../src/utils/parseApiError';
 
 const CATEGORIES = [
   { id: 'productivity', label: 'Productivity' },
@@ -59,7 +60,11 @@ export default function CreateStudyScreen() {
       });
       router.back();
     } catch (e) {
-      // Error is handled in store
+      // Check if handled by interceptor
+      const parsed = parseApiError(e);
+      if (parsed.isHandled) return;
+
+      Alert.alert('Error', parsed.message);
     }
   };
 

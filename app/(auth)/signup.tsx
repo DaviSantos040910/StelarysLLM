@@ -35,8 +35,10 @@ export default function SignupScreen() {
       Alert.alert('Success', 'Account created! Please check your email to verify.', [
         { text: 'OK', onPress: () => router.back() }
       ]);
-    } catch (e) {
-      // Error handled in store
+    } catch (e: any) {
+      // Error might be handled by interceptor if quota/etc (unlikely for signup but good practice)
+      if (e?.isHandled) return;
+      // Otherwise error is handled in store (displayed in UI)
     }
   };
 

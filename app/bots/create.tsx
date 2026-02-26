@@ -12,6 +12,7 @@ import { libraryService } from '../../src/services/libraryService';
 import { useChatStore } from '../../src/stores/chatStore';
 import { StudySpace } from '../../src/types/studio';
 import { themeClasses } from '../../src/theme/classes';
+import { parseApiError } from '../../src/utils/parseApiError';
 
 export default function CreateBotScreen() {
     const router = useRouter();
@@ -212,7 +213,10 @@ export default function CreateBotScreen() {
 
         } catch (error: any) {
             console.error(error);
-            const msg = error.message || "Falha ao salvar o tutor.";
+            const parsed = parseApiError(error);
+            if (parsed.isHandled) return;
+
+            const msg = parsed.message || "Falha ao salvar o tutor.";
             Alert.alert("Erro", msg);
         } finally {
             setIsSubmitting(false);

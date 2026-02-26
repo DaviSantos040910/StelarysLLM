@@ -1009,7 +1009,7 @@ class ContextSourcesView(APIView):
                 'type': origin_type, # 'chat_source' ou 'space_source'
                 'source_type': s.source_type,
                 'url': s.url or safe_file_url(s.file),
-                'created_at': s.created_at,
+                'created_at': s.created_at.isoformat() if s.created_at else None,
                 'selected': True
             })
 

@@ -1,5 +1,6 @@
 export interface ApiErrorResult {
     isQuotaError: boolean;
+    isHandled?: boolean;
     code?: string;
     message: string;
     meta?: any;
@@ -14,8 +15,14 @@ export const TRIAL_LIMIT_CODES = [
 export function parseApiError(error: any): ApiErrorResult {
     let result: ApiErrorResult = {
         isQuotaError: false,
+        isHandled: false,
         message: 'An unexpected error occurred.',
     };
+
+    // Check if error is already marked as handled (e.g. by interceptor)
+    if (error?.isHandled === true) {
+        result.isHandled = true;
+    }
 
     // If it's an Axios error or similar object with response.data
     const data = error?.response?.data || error;
@@ -55,6 +62,11 @@ export function parseApiError(error: any): ApiErrorResult {
         }
     } else if (error.message) {
         result.message = error.message;
+    }
+
+    // If it is a quota error, we consider it handled by the interceptor (redirection)
+    if (result.isQuotaError) {
+        result.isHandled = true;
     }
 
     return result;
