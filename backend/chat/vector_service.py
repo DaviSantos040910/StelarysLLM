@@ -169,7 +169,9 @@ class VectorService:
         source_id: str,
         bot_id: Optional[int] = None,
         study_space_id: Optional[int] = None,
-        message_id: Optional[int] = None
+        message_id: Optional[int] = None,
+        source_type: str = 'FILE',
+        source_url: Optional[str] = None
     ) -> None:
         """Adiciona chunks de documento com metadados completos."""
         if not self.backend or not chunks:
@@ -197,7 +199,9 @@ class VectorService:
                 'chunk_index': i,
                 'total_chunks': len(chunks),
                 'timestamp': timestamp,
-                'message_id': str(message_id) if message_id else ''
+                'message_id': str(message_id) if message_id else '',
+                'source_type': source_type,
+                'source_url': source_url or ''
             }
 
             if bot_id is not None:
@@ -641,7 +645,9 @@ class VectorService:
                 'title': meta.get('title') or meta.get('source_title') or meta.get('source') or 'Documento',
                 'chunk_index': meta.get('chunk_index', 0),
                 'total_chunks': meta.get('total_chunks', 1),
-                'score': c['dist'] # Added score (distance)
+                'score': c['dist'],
+                'source_type': meta.get('source_type', 'FILE'),
+                'source_url': meta.get('source_url', None)
             })
         return contexts
 
@@ -692,7 +698,9 @@ class VectorService:
                 'title': meta.get('title') or meta.get('source_title') or meta.get('source') or 'Documento',
                 'chunk_index': meta.get('chunk_index', 0),
                 'total_chunks': meta.get('total_chunks', 1),
-                'score': dist
+                'score': dist,
+                'source_type': meta.get('source_type', 'FILE'),
+                'source_url': meta.get('source_url', None)
             })
 
         return contexts

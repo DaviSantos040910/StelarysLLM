@@ -295,7 +295,7 @@ def get_ai_response(
 
         # --- Format Contexts with Citations ---
         formatted_doc_contexts = []
-        source_map = {} # source_id -> {index: 1, title: 'Title'}
+        source_map = {} # source_id -> {index: 1, title: 'Title', 'type': ..., 'url': ...}
         used_source_indices = []
 
         if doc_contexts:
@@ -303,9 +303,16 @@ def get_ai_response(
                 # chunk is now a Dict: {content, source, source_id, ...}
                 s_id = chunk.get('source_id') or chunk.get('source') # Fallback to title if ID missing
                 s_title = chunk.get('source', 'Documento')
+                s_type = chunk.get('source_type', 'file')
+                s_url = chunk.get('source_url', None)
 
                 if s_id not in source_map:
-                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
+                    source_map[s_id] = {
+                        'index': len(source_map) + 1,
+                        'title': s_title,
+                        'type': s_type,
+                        'url': s_url
+                    }
 
                 s_idx = source_map[s_id]['index']
                 used_source_indices.append(s_idx)
@@ -427,7 +434,8 @@ def get_ai_response(
                         unique_sources[s_id] = {
                             'id': s_id,
                             'title': s_info['title'],
-                            'type': 'file', # Default, could be refined if source_map had type
+                            'type': s_info.get('type', 'file'),
+                            'url': s_info.get('url'),
                             'index': s_info['index']
                         }
 
@@ -644,8 +652,16 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             for chunk in doc_contexts:
                 s_id = chunk.get('source_id') or chunk.get('source')
                 s_title = chunk.get('source', 'Documento')
+                s_type = chunk.get('source_type', 'file')
+                s_url = chunk.get('source_url', None)
+
                 if s_id not in source_map:
-                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
+                    source_map[s_id] = {
+                        'index': len(source_map) + 1,
+                        'title': s_title,
+                        'type': s_type,
+                        'url': s_url
+                    }
                 s_idx = source_map[s_id]['index']
                 formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
@@ -724,7 +740,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                             unique_sources[s_id] = {
                                 'id': s_id,
                                 'title': s_info['title'],
-                                'type': 'file',
+                                'type': s_info.get('type', 'file'),
+                                'url': s_info.get('url'),
                                 'index': s_info['index']
                             }
                 try:
@@ -794,8 +811,15 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 for chunk in doc_contexts:
                     s_id = chunk.get('source_id') or chunk.get('source')
                     s_title = chunk.get('source', 'Documento')
+                    s_type = chunk.get('source_type', 'file')
+                    s_url = chunk.get('source_url', None)
                     if s_id not in source_map:
-                        source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
+                        source_map[s_id] = {
+                            'index': len(source_map) + 1,
+                            'title': s_title,
+                            'type': s_type,
+                            'url': s_url
+                        }
                     s_idx = source_map[s_id]['index']
                     formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
@@ -956,7 +980,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                             unique_sources[s_id] = {
                                 'id': s_id,
                                 'title': s_info['title'],
-                                'type': 'file',
+                                'type': s_info.get('type', 'file'),
+                                'url': s_info.get('url'),
                                 'index': s_info['index']
                             }
                 try:
