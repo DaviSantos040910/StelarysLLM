@@ -95,6 +95,10 @@ class PersonaGuard:
         # Ex: "Como uma inteligência artificial, eu..." -> "Eu..."
 
         patterns = [
+            # Removes robotic intros like "Eu sou o Tutor, seu tutor dedicado..."
+            (r"^(olá|oi|saudações)?[\s,]*eu sou (o|a) .+?, (seu|sua) (tutor|assistente|guia) (dedicado|inteligente).+?(\.|\!)", r"\1"),
+
+            # Removes AI disclaimers
             (r"(como|enquanto) (uma )?(inteligência artificial|ia|modelo de linguagem|assistente virtual),? (eu )?", ""),
             (r"sou (uma )?(inteligência artificial|ia|modelo de linguagem|programa de computador)\.?", f"Sou o {bot_name}."),
             (r"não (tenho|posso ter|posso sentir) (sentimentos|emoções|corpo físico|opiniões pessoais)\.?", "Prefiro focar no nosso estudo."),
