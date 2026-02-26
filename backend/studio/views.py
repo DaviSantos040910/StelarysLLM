@@ -21,6 +21,7 @@ from chat.vector_service import vector_service
 from chat.services.content_extractor import ContentExtractor
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
+from studio.exceptions import DocumentInvalidException
 from studio.jobs.artifact_jobs import generate_artifact_job
 from core.perf import log_perf, now_ms, ms_since
 
@@ -76,9 +77,18 @@ class KnowledgeSourceViewSet(viewsets.ModelViewSet):
             else:
                 instance = serializer.save(guest_session=actor, user=None)
 
-            # Ingest using centralized service
-            # bot_id=0 signifies Global/Library context
+        # Ingest using centralized service (Outside atomic block to allow saving invalid state)
+        # bot_id=0 signifies Global/Library context
+        try:
             KnowledgeIngestionService.ingest_source(instance, bot_id=0)
+        except DocumentInvalidException as e:
+            # Mark source as invalid for audit/UI feedback, then re-raise to return 422
+            instance.extracted_text = ""
+            if not instance.metadata:
+                instance.metadata = {}
+            instance.metadata['error'] = 'document_invalid_scanned'
+            instance.save(update_fields=['extracted_text', 'metadata'])
+            raise e
 
     @action(detail=True, methods=['post'])
     def add_to_chat(self, request, pk=None):

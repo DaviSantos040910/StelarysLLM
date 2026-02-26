@@ -7,6 +7,7 @@ from chat.services.content_extractor import ContentExtractor
 from chat.services.image_description_service import image_description_service
 from chat.vector_service import vector_service
 from chat.services.ingestion_queue_provider import enqueue_youtube_ingestion
+from studio.exceptions import DocumentInvalidException
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,36 @@ class KnowledgeIngestionService:
                 elif source.source_type == KnowledgeSource.SourceType.URL and source.url:
                     extracted_text = ContentExtractor.extract_from_url(source.url)
 
-                if extracted_text:
+                # Validation for Scanned Documents (PDF/Images without text)
+                # We enforce a minimum length for FILE types that are not images
+                is_file = (source.source_type == KnowledgeSource.SourceType.FILE)
+                # Check if it was treated as an image
+                is_image_file = False
+                if is_file and source.file:
+                    mime_type, _ = mimetypes.guess_type(source.file.name)
+                    if mime_type and mime_type.startswith('image/'):
+                        is_image_file = True
+
+                # Determine validity
+                is_valid = False
+                if extracted_text and len(extracted_text.strip()) >= 50:
+                    is_valid = True
+                elif is_image_file and extracted_text and len(extracted_text.strip()) > 5:
+                     # Relaxed limit for images (captions can be short)
+                     is_valid = True
+
+                if is_valid:
                     source.extracted_text = extracted_text
                     source.save(update_fields=['extracted_text'])
                 else:
+                    if is_file and not is_image_file:
+                        # Mark invalid for auditing (optional, but transaction rollback prevents saving)
+                        # We raise exception to notify user
+                        raise DocumentInvalidException(
+                            detail="Não foi possível ler esse documento. Parece ser um PDF escaneado (sem texto). Envie uma versão com texto ou outro arquivo.",
+                            meta={"source_id": source.id}
+                        )
+
                     logger.warning(f"No text extracted for source {source.id} ({source.title})")
                     return False
 
@@ -88,6 +115,8 @@ class KnowledgeIngestionService:
 
             return False
 
+        except DocumentInvalidException:
+            raise
         except Exception as e:
             logger.error(f"Error processing KnowledgeSource {source.id}: {e}", exc_info=True)
             return False

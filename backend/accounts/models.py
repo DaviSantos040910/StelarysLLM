@@ -27,6 +27,7 @@ class GuestSession(models.Model):
     is_active = models.BooleanField(default=True)
     trial_expires_at = models.DateTimeField(null=True, blank=True)
     device_label = models.CharField(max_length=255, null=True, blank=True)
+    installation_id = models.UUIDField(null=True, blank=True, db_index=True)
 
     def save(self, *args, **kwargs):
         if not self.trial_expires_at:
