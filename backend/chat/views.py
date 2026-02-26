@@ -47,6 +47,7 @@ from .services import (
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
 from studio.exceptions import DocumentInvalidException
+from billing.services.quotas import check_and_consume, QuotaExceededException
 from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
@@ -925,6 +926,11 @@ class ChatSourceView(APIView):
 
         try:
             with transaction.atomic():
+                # --- BILLING CHECK ---
+                owner_user = actor if actor_type == 'user' else None
+                owner_guest = actor if actor_type == 'guest' else None
+                check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
+
                 # 1. Create KnowledgeSource
                 title = request.data.get('title', 'Chat Upload')
                 source_type = request.data.get('source_type', 'FILE')
