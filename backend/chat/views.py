@@ -46,6 +46,7 @@ from .services import (
 )
 from chat.services.image_description_service import image_description_service
 from studio.services.knowledge_ingestion_service import KnowledgeIngestionService
+from studio.exceptions import DocumentInvalidException
 from config.pagination import StandardMessagePagination
 from .vector_service import vector_service
 from .file_processor import FileProcessor
@@ -922,38 +923,43 @@ class ChatSourceView(APIView):
         else:
              return Response({"detail": "Unauthorized"}, status=401)
 
-        # 1. Create KnowledgeSource
-        title = request.data.get('title', 'Chat Upload')
-        source_type = request.data.get('source_type', 'FILE')
+        try:
+            with transaction.atomic():
+                # 1. Create KnowledgeSource
+                title = request.data.get('title', 'Chat Upload')
+                source_type = request.data.get('source_type', 'FILE')
 
-        source = KnowledgeSource(
-            title=title,
-            source_type=source_type
-        )
-        if actor_type == 'user':
-            source.user = actor
-        else:
-            source.guest_session = actor
+                source = KnowledgeSource(
+                    title=title,
+                    source_type=source_type
+                )
+                if actor_type == 'user':
+                    source.user = actor
+                else:
+                    source.guest_session = actor
 
-        if source_type == 'FILE' and request.FILES.get('file'):
-            source.file = request.FILES['file']
-        elif source_type in ['URL', 'YOUTUBE']:
-            source.url = request.data.get('url')
+                if source_type == 'FILE' and request.FILES.get('file'):
+                    source.file = request.FILES['file']
+                elif source_type in ['URL', 'YOUTUBE']:
+                    source.url = request.data.get('url')
 
-        source.save()
+                source.save()
 
-        # 2. Ingest using centralized service for this Chat's Bot
-        KnowledgeIngestionService.ingest_source(source, bot_id=chat.bot.id)
+                # 2. Ingest using centralized service for this Chat's Bot
+                # If this raises DocumentInvalidException, transaction rolls back
+                KnowledgeIngestionService.ingest_source(source, bot_id=chat.bot.id)
 
-        # 4. Link to Chat
-        chat.sources.add(source)
+                # 4. Link to Chat
+                chat.sources.add(source)
 
-        return Response({
-            'id': source.id,
-            'title': source.title,
-            'source_type': source.source_type,
-            'created_at': source.created_at
-        }, status=status.HTTP_201_CREATED)
+                return Response({
+                    'id': source.id,
+                    'title': source.title,
+                    'source_type': source.source_type,
+                    'created_at': source.created_at
+                }, status=status.HTTP_201_CREATED)
+        except DocumentInvalidException:
+            raise
 
     def delete(self, request, chat_id, source_id):
         actor_type, actor = get_actor(request)

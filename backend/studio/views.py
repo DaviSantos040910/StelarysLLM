@@ -237,44 +237,48 @@ class StudySpaceViewSet(viewsets.ModelViewSet):
 
         actor_type, actor = get_actor(request)
 
-        # --- BILLING CHECK ---
-        owner_user = actor if actor_type == 'user' else None
-        owner_guest = actor if actor_type == 'guest' else None
-        check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
+        try:
+            with transaction.atomic():
+                # --- BILLING CHECK ---
+                owner_user = actor if actor_type == 'user' else None
+                owner_guest = actor if actor_type == 'guest' else None
+                check_and_consume(user=owner_user, guest_session=owner_guest, resource='source', quantity=1)
 
-        # 1. Create KnowledgeSource
-        title = request.data.get('title', 'Space Upload')
-        source_type = request.data.get('source_type', 'FILE')
+                # 1. Create KnowledgeSource
+                title = request.data.get('title', 'Space Upload')
+                source_type = request.data.get('source_type', 'FILE')
 
-        # Map frontend type to backend choices if needed
-        # KnowledgeSource.SourceType: FILE, URL, YOUTUBE, TEXT
+                source = KnowledgeSource(
+                    title=title,
+                    source_type=source_type
+                )
 
-        source = KnowledgeSource(
-            title=title,
-            source_type=source_type
-        )
+                if actor_type == 'user':
+                    source.user = actor
+                else:
+                    source.guest_session = actor
 
-        if actor_type == 'user':
-            source.user = actor
-        else:
-            source.guest_session = actor
+                if source_type == 'FILE' and request.FILES.get('file'):
+                    source.file = request.FILES['file']
+                elif source_type in ['URL', 'YOUTUBE']:
+                    source.url = request.data.get('url')
+                    if not request.data.get('title'):
+                        source.title = source.url
 
-        if source_type == 'FILE' and request.FILES.get('file'):
-            source.file = request.FILES['file']
-        elif source_type in ['URL', 'YOUTUBE']:
-            source.url = request.data.get('url')
-            if not request.data.get('title'):
-                source.title = source.url
+                source.save()
 
-        source.save()
+                # 2. Ingest using centralized service for this Study Space
+                # If this raises DocumentInvalidException, transaction rolls back (quota + source)
+                KnowledgeIngestionService.ingest_source(source, study_space_id=space.id)
 
-        # 2. Ingest using centralized service for this Study Space
-        KnowledgeIngestionService.ingest_source(source, study_space_id=space.id)
+                # 3. Link to Space
+                space.sources.add(source)
 
-        # 3. Link to Space
-        space.sources.add(source)
+                return Response(KnowledgeSourceSerializer(source).data, status=status.HTTP_201_CREATED)
 
-        return Response(KnowledgeSourceSerializer(source).data, status=status.HTTP_201_CREATED)
+        except DocumentInvalidException:
+            # Re-raise to ensure 422 response. Transaction rollback is automatic.
+            raise
 
     @action(detail=True, methods=['post'])
     def remove_source(self, request, pk=None):
