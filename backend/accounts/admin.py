@@ -1,7 +1,7 @@
 # accounts/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from .models import User
+from .models import User, GuestSession
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
@@ -15,3 +15,10 @@ class UserAdmin(DjangoUserAdmin):
     fieldsets = DjangoUserAdmin.fieldsets + (
         ('Premium Status', {'fields': ('is_premium',)}),
     )
+
+@admin.register(GuestSession)
+class GuestSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "is_active", "created_at", "last_seen_at", "claimed_by", "claimed_at", "trial_expires_at", "device_label", "installation_id")
+    list_filter = ("is_active", "claimed_at")
+    search_fields = ("id", "device_label", "claimed_by__email", "claimed_by__username", "installation_id")
+    readonly_fields = ("created_at", "last_seen_at", "claimed_at")
