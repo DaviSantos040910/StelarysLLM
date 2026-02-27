@@ -8,7 +8,7 @@ import { X, Check, Zap, Clock, FileText, MessageSquare, Mic, Crown, AlertTriangl
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const UsageBar = ({ label, used, limit, icon: Icon, unit = '' }: any) => {
-  const percentage = Math.min(100, Math.max(0, (used / limit) * 100));
+  const percentage = (limit > 0) ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
   const isFull = used >= limit;
 
   return (
@@ -168,7 +168,7 @@ export default function PlansScreen() {
                 <UsageBar
                   label="TTS (Áudio)"
                   used={status.usage?.tts_seconds_count || 0}
-                  limit={status.limits?.tts_seconds_monthly || 0}
+                  limit={status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0}
                   unit="s"
                   icon={Mic}
                 />

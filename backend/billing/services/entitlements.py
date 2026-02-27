@@ -165,6 +165,7 @@ def _populate_trial_entitlements(user, guest_session, response):
         'bot_tutor_total': TRIAL_LIMITS['bot_tutor'],
         'study_space_total': TRIAL_LIMITS['study_space'],
         'memory_run_total': TRIAL_LIMITS['memory_run'],
+        'tts_seconds_total': TRIAL_LIMITS['tts_seconds'],
         'rag_chunk_limit': TRIAL_LIMITS['rag_chunk_limit'],
         'context_history_limit': 12, # Standard (not optimized)
         'auto_summarize_after_messages': 0 # OFF
@@ -196,6 +197,7 @@ def _populate_trial_entitlements(user, guest_session, response):
         'bot_tutor_count': tutor,
         'study_space_count': space,
         'memory_run_used': mem_used,
+        'tts_seconds_count': 0,
         # Legacy/Descriptive
         'messages_total': msgs,
         'sources_total': srcs,
