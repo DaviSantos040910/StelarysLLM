@@ -16,11 +16,11 @@ class TestClaimGuestSession(TestCase):
         user = User.objects.create(email="test@example.com", username="testuser")
         session = GuestSession.objects.create()
 
-        # Create usage for guest
         TrialUsageCounter.objects.create(
             guest_session=session,
             messages_count=10,
-            bot_tutor_count=1
+            bot_tutor_count=1,
+            tutor_count=1
         )
 
         # Claim
@@ -33,6 +33,7 @@ class TestClaimGuestSession(TestCase):
         user_usage = TrialUsageCounter.objects.get(user=user)
         self.assertEqual(user_usage.messages_count, 10)
         self.assertEqual(user_usage.bot_tutor_count, 1)
+        self.assertEqual(user_usage.tutor_count, 1)
 
     def test_trial_usage_merge(self):
         """Verify usage merges when both guest and user have existing usage."""
@@ -52,6 +53,7 @@ class TestClaimGuestSession(TestCase):
             guest_session=session,
             messages_count=15,
             bot_tutor_count=1,
+            tutor_count=1,
             artifacts_usage={"summary": 2, "podcast": 1}
         )
 
@@ -62,6 +64,7 @@ class TestClaimGuestSession(TestCase):
         user_usage = TrialUsageCounter.objects.get(user=user)
         self.assertEqual(user_usage.messages_count, 20) # 5 + 15
         self.assertEqual(user_usage.bot_tutor_count, 1) # 0 + 1
+        self.assertEqual(user_usage.tutor_count, 1)
 
         # Check artifacts merge
         arts = user_usage.artifacts_usage
@@ -102,3 +105,49 @@ class TestClaimGuestSession(TestCase):
 
         user.refresh_from_db()
         self.assertEqual(user.trial_ends_at, session.trial_expires_at)
+
+    def test_tutor_limit_preserved_after_claim(self):
+        """Verify that tutor_count is preserved after claim when user already has a counter."""
+        from billing.services.quotas import check_and_consume
+        from billing.api.exceptions import QuotaExceededException
+        from billing.constants import TRIAL_TUTOR_LIMIT
+
+        user = User.objects.create(email="user_tutor@example.com", username="user_tutor")
+        TrialUsageCounter.objects.create(user=user, tutor_count=0)
+
+        session = GuestSession.objects.create()
+        TrialUsageCounter.objects.create(
+            guest_session=session,
+            tutor_count=1,
+            bot_tutor_count=1
+        )
+
+        claim_guest_session(user, str(session.id))
+
+        with self.assertRaises(QuotaExceededException) as cm:
+            check_and_consume(user=user, resource="bot_tutor")
+        
+        self.assertEqual(cm.exception.default_code, TRIAL_TUTOR_LIMIT)
+
+    def test_space_limit_preserved_after_claim(self):
+        """Verify that space_count is preserved after claim."""
+        from billing.services.quotas import check_and_consume
+        from billing.api.exceptions import QuotaExceededException
+        from billing.constants import TRIAL_SPACE_LIMIT
+
+        user = User.objects.create(email="user_space@example.com", username="user_space")
+        TrialUsageCounter.objects.create(user=user, space_count=0)
+
+        session = GuestSession.objects.create()
+        TrialUsageCounter.objects.create(
+            guest_session=session,
+            space_count=1,
+            study_space_count=1
+        )
+
+        claim_guest_session(user, str(session.id))
+
+        with self.assertRaises(QuotaExceededException) as cm:
+            check_and_consume(user=user, resource="study_space")
+        
+        self.assertEqual(cm.exception.default_code, TRIAL_SPACE_LIMIT)

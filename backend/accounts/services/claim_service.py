@@ -108,9 +108,12 @@ def claim_guest_session(user, guest_id):
                 # Merge logic
                 user_usage.messages_count += guest_usage.messages_count
                 user_usage.source_count += guest_usage.source_count
+                user_usage.tutor_count += guest_usage.tutor_count
+                user_usage.space_count += guest_usage.space_count
                 user_usage.bot_tutor_count += guest_usage.bot_tutor_count
                 user_usage.study_space_count += guest_usage.study_space_count
                 user_usage.memory_run_used = user_usage.memory_run_used or guest_usage.memory_run_used
+                user_usage.memory_used = user_usage.memory_used or guest_usage.memory_used
                 user_usage.tts_seconds_count += guest_usage.tts_seconds_count
 
                 # Merge artifacts breakdown (JSON field)
