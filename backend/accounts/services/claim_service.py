@@ -2,6 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from datetime import timedelta
 
 from accounts.models import GuestSession
 from bots.models import Bot
@@ -9,6 +10,7 @@ from chat.models import Chat
 from chat.vector_service import vector_service
 from studio.models import StudySpace, KnowledgeSource
 from explore.models import SearchHistory
+from billing.models import TrialUsageCounter
 
 import logging
 
@@ -91,7 +93,64 @@ def claim_guest_session(user, guest_id):
 
         counts['history'] = history_count
 
-        # 6. Mark Session
+        # 6. Migrate Trial Usage Counter
+        guest_usage = TrialUsageCounter.objects.filter(guest_session=session).first()
+        user_usage = TrialUsageCounter.objects.filter(user=user).first()
+
+        if guest_usage:
+            if not user_usage:
+                # Simple migration
+                guest_usage.user = user
+                guest_usage.guest_session = None
+                guest_usage.save(update_fields=["user", "guest_session"])
+                counts['trial_usage'] = 'migrated'
+            else:
+                # Merge logic
+                user_usage.messages_count += guest_usage.messages_count
+                user_usage.source_count += guest_usage.source_count
+                user_usage.bot_tutor_count += guest_usage.bot_tutor_count
+                user_usage.study_space_count += guest_usage.study_space_count
+                user_usage.memory_run_used = user_usage.memory_run_used or guest_usage.memory_run_used
+                user_usage.tts_seconds_count += guest_usage.tts_seconds_count
+
+                # Merge artifacts breakdown (JSON field)
+                user_artifacts = user_usage.artifacts_usage or {}
+                guest_artifacts = guest_usage.artifacts_usage or {}
+
+                for key, val in guest_artifacts.items():
+                    user_artifacts[key] = user_artifacts.get(key, 0) + val
+
+                user_usage.artifacts_usage = user_artifacts
+                user_usage.save()
+
+                # Delete guest counter
+                guest_usage.delete()
+                counts['trial_usage'] = 'merged'
+
+        # 7. Migrate Trial Time
+        # Ensure user doesn't get "extra" time by claiming a guest session
+        if session.trial_expires_at:
+            if user.trial_ends_at:
+                # User already has a trial end date, take the stricter one (earlier date)
+                if session.trial_expires_at < user.trial_ends_at:
+                    user.trial_ends_at = session.trial_expires_at
+                    # We don't strictly need to adjust started_at if we trust ends_at,
+                    # but keeping it consistent is good practice if derived elsewhere.
+            else:
+                # User has no trial data yet, inherit from guest
+                user.trial_ends_at = session.trial_expires_at
+                # Back-calculate start time assuming standard duration (or just copy gap)
+                # But strictly we just need the end date for enforcement.
+                # Let's set started_at to maintain consistency with the expiration.
+                # Assuming standard 3-day trial if we can't infer start.
+                # Better: just set ends_at.
+                # However, if user.trial_started_at is mandatory/used for "Days Left" display:
+                if not user.trial_started_at:
+                    user.trial_started_at = timezone.now() # Fallback, or calculate?
+
+            user.save(update_fields=['trial_ends_at', 'trial_started_at'])
+
+        # 8. Mark Session
         session.claimed_by = user
         session.claimed_at = timezone.now()
         session.is_active = False

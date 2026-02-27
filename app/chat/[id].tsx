@@ -18,6 +18,7 @@ import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
+import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { themeClasses } from '../../src/theme/classes';
 import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
@@ -32,6 +33,7 @@ export default function ChatScreen() {
 
     const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, updateMessage, regenerateMessage } = useChatStore();
     const { play } = useAudioPlayerStore();
+    const { isLoading: isAuthLoading, token, guestId } = useAuthStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
 
@@ -114,6 +116,10 @@ export default function ChatScreen() {
             };
             if (setCurrentChat) setCurrentChat(minimalChat);
         }
+
+        if (isAuthLoading) return;
+        if (!token && !guestId) return;
+
         loadMessages(chatId);
         if (botId) {
             botService.getChatBootstrap(botId as string).then(data => {
@@ -137,7 +143,7 @@ export default function ChatScreen() {
                 }
             }).catch(console.error);
         }
-    }, [chatId, botId]);
+    }, [chatId, botId, isAuthLoading, token, guestId]);
 
     // Smart Auto-Scroll: Only scroll to bottom if a NEW message arrives (user or bot).
     // Ignores updates to existing messages (streaming, status changes) to prevent UX jumping.

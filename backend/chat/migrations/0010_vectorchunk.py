@@ -2,7 +2,15 @@
 
 from pgvector.django import VectorField
 from django.db import migrations, models
+from django.db import connection
 
+def create_extension(apps, schema_editor):
+    if schema_editor.connection.vendor != 'sqlite':
+        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+def drop_extension(apps, schema_editor):
+    if schema_editor.connection.vendor != 'sqlite':
+        schema_editor.execute("DROP EXTENSION IF EXISTS vector;")
 
 class Migration(migrations.Migration):
 
@@ -11,7 +19,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL("CREATE EXTENSION IF NOT EXISTS vector;", reverse_sql="DROP EXTENSION IF EXISTS vector;"),
+        migrations.RunPython(create_extension, reverse_code=drop_extension),
         migrations.CreateModel(
             name="VectorChunk",
             fields=[
@@ -19,6 +27,10 @@ class Migration(migrations.Migration):
                     "id",
                     models.UUIDField(editable=False, primary_key=True, serialize=False),
                 ),
+                # Use TextField for sqlite fallback during tests if needed, but VectorField is specific to PG
+                # For testing with SQLite, we might need to mock this or skip it.
+                # However, VectorField might fail on SQLite even if we don't use it.
+                # Let's try to keep it as is, but suppress the SQL execution.
                 ("content", models.TextField()),
                 ("embedding", VectorField(dimensions=3072)),
                 ("metadata", models.JSONField(default=dict)),

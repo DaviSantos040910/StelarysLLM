@@ -87,17 +87,21 @@ class TrialUsageCounter(models.Model):
     source_count = models.IntegerField(default=0)
     tutor_count = models.IntegerField(default=0)
     space_count = models.IntegerField(default=0)
+    bot_tutor_count = models.IntegerField(default=0)
+    study_space_count = models.IntegerField(default=0)
+    memory_run_used = models.BooleanField(default=False)
+    tts_seconds_count = models.IntegerField(default=0)
 
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
             CheckConstraint(
-                check=Q(user__isnull=False) | Q(guest_session__isnull=False),
+                condition=Q(user__isnull=False) | Q(guest_session__isnull=False),
                 name='trial_usage_owner_required'
             ),
             CheckConstraint(
-                check=~(Q(user__isnull=False) & Q(guest_session__isnull=False)),
+                condition=~(Q(user__isnull=False) & Q(guest_session__isnull=False)),
                 name='trial_usage_owner_exclusive'
             )
         ]
