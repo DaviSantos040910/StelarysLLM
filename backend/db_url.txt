@@ -1,2 +1,0 @@
-﻿postgres://appuser:Darth_S%40antos1931%23@/app_db?host=/cloudsql/stellarys-lm:us-central1:stellarys-db
-
