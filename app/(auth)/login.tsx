@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Rocket } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
@@ -37,9 +37,11 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-10 items-center">
-        <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
-          <Rocket size={48} color="#6366f1" />
-        </View>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={{ width: 100, height: 100, borderRadius: 24, marginBottom: 16 }}
+          resizeMode="cover"
+        />
         <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Welcome Back</Text>
         <Text className={`${themeClasses.textSecondary} text-base`}>Sign in to continue to StelarysLM</Text>
       </View>
@@ -47,7 +49,7 @@ export default function LoginScreen() {
       {reason === 'trial_limit' && (
         <View className="bg-amber-900/50 border border-amber-500/50 p-4 rounded-xl mb-6 flex-row items-center">
           <View className="mr-3">
-             <Rocket size={20} color="#fbbf24" />
+            <Rocket size={20} color="#fbbf24" />
           </View>
           <Text className="text-amber-100 flex-1 font-medium">
             {message || 'Você atingiu o limite gratuito. Entre para ver opções.'}

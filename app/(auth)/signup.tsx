@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Star } from 'lucide-react-native';
+
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
@@ -45,9 +45,11 @@ export default function SignupScreen() {
   return (
     <SafeAreaView className={`${themeClasses.screen} p-6 justify-center`}>
       <View className="mb-8 items-center">
-        <View className={`p-4 rounded-full mb-4 ${themeClasses.softSurface}`}>
-          <Star size={48} color="#d946ef" />
-        </View>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={{ width: 100, height: 100, borderRadius: 24, marginBottom: 16 }}
+          resizeMode="cover"
+        />
         <Text className={`${themeClasses.textPrimary} text-3xl font-bold mb-2`}>Create Account</Text>
         <Text className={`${themeClasses.textSecondary} text-base`}>Join StelarysLM to start learning</Text>
       </View>

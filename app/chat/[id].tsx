@@ -376,7 +376,7 @@ export default function ChatScreen() {
                             keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
-                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 160 }}
+                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 160, flexGrow: 1 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
                             onEndReached={() => loadMoreMessages(chatId)}
