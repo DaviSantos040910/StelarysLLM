@@ -1,0 +1,36 @@
+{% extends "pdf/pdf_base.html" %}
+{% load studio_extras %}
+
+{% block content %}
+    {% for item in content %}
+    <div class="question-block">
+        <div class="question-text">{{ forloop.counter }}. {{ item.question }}</div>
+        {% for opt in item.options %}
+            <div class="option">
+                ( ) {{ opt }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- Gabarito -->
+    <div class="answer-key">
+        <h2>Gabarito</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Questão</th>
+                    <th>Resposta Correta</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in content %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.options|get_item:item.correctAnswerIndex }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+# Python venvs
+venv/
+.venv/
+venv_linux/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django / logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Node (se existir)
+node_modules/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

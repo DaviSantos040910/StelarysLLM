@@ -1,0 +1,73 @@
+/* Custom Admin CSS for Stelarys Premium Look */
+:root {
+    --primary-bg: #1e1e2e;
+    --sidebar-bg: #181825;
+    --accent-color: #cba6f7;
+    --text-color: #cdd6f4;
+}
+
+body.theme-slate {
+    background-color: var(--primary-bg) !important;
+    color: var(--text-color) !important;
+}
+
+.main-sidebar {
+    background-color: var(--sidebar-bg) !important;
+}
+
+.brand-link {
+    border-bottom: 1px solid #313244 !important;
+}
+
+.nav-link.active {
+    background-color: var(--accent-color) !important;
+    color: #11111b !important;
+}
+
+.card {
+    background-color: #313244 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.card-header {
+    border-bottom: 1px solid #45475a !important;
+}
+
+.table {
+    color: var(--text-color) !important;
+}
+
+.table thead th {
+    border-top: none !important;
+    border-bottom: 2px solid #45475a !important;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+.btn-primary {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+    color: #11111b !important;
+    font-weight: 600 !important;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #181825;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #45475a;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #585b70;
+}

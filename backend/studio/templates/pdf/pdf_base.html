@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ artifact.title }}</title>
+    <style>
+        {% include "pdf/pdf.css" %}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ artifact.title }}</h1>
+        <div class="meta-info">
+            Gerado por Stelarys LM em {{ artifact.created_at|date:"d/m/Y" }}<br>
+            Tipo: {{ artifact.get_type_display }}
+        </div>
+    </div>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
