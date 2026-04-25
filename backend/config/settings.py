@@ -190,7 +190,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all in development
 
 # Email settings (Brevo integration)
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-replay@stellarysapp.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@stellarysapp.com')
 
 # Optional basic rate-limiting config (requires django-ratelimit if used)
 RATELIMIT_ENABLE = True
