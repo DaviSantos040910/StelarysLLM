@@ -872,28 +872,34 @@ class MessageTTSView(APIView):
     permission_classes = [IsUserOrGuest]
 
     def get(self, request, chat_pk, message_id):
+        # --- OWNERSHIP CHECK (IDOR Prevention) ---
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
         m = get_object_or_404(
             ChatMessage,
             id=message_id,
-            chat_id=chat_pk,
+            chat=chat,
             role=ChatMessage.Role.ASSISTANT
         )
 
         if not m.content:
             return Response({"detail": "No content"}, status=400)
 
-        # We don't define a path here, we let the service manage cache paths
-        # Passed user for rate limiting
-        actor_type, actor = get_actor(request)
-        # Using actor as user for rate limiting (might need adapter if guest)
         res = generate_tts_audio(m.content, voice_name="Kore", user=actor)
 
         if res.get('success'):
             file_path = res['file_path']
             if os.path.exists(file_path):
-                return FileResponse(
+                return CleanupFileResponse(
                     open(file_path, 'rb'),
-                    content_type='audio/wav'
+                    content_type='audio/wav',
+                    cleanup_path=file_path
                 )
 
         error_msg = res.get('error', 'Unknown Error')
