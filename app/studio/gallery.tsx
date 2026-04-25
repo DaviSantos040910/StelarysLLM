@@ -39,7 +39,6 @@ import { themeClasses } from '../../src/theme/classes';
 
 const FILTER_TABS = [
     { id: 'ALL', label: 'Todos' },
-    { id: 'PODCAST', label: 'Áudio' },
     { id: 'DOCS', label: 'Docs' },
     { id: 'QUIZ', label: 'Quiz' },
 ];

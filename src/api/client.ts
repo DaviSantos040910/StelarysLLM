@@ -50,11 +50,10 @@ client.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 2. Inject X-Guest-Id (always if exists, allowing merge)
-    // We check if it's already set by the caller to avoid overriding specific intent
-    if (guestId && !config.headers['X-Guest-Id']) {
-      config.headers['X-Guest-Id'] = guestId;
-    }
+    // 2. X-Guest-Id injection disabled (guest mode off for launch)
+    // if (guestId && !config.headers['X-Guest-Id']) {
+    //   config.headers['X-Guest-Id'] = guestId;
+    // }
 
     // 3. Inject X-Installation-Id (persistent device ID)
     try {
@@ -95,29 +94,14 @@ client.interceptors.response.use(
       (error.response?.status === 422 && error.response?.data?.error === true);
 
     if (isQuotaError) {
-      const { useAuthStore } = require('../stores/authStore');
-      const { token } = useAuthStore.getState();
-      const isGuest = !token || !isLikelyJwt(token);
-
       try {
-        if (isGuest) {
-            router.replace({
-                pathname: '/(auth)/login',
-                params: {
-                    redirectTo: '/plans',
-                    reason: 'trial_limit',
-                    message: error.response?.data?.message || 'Limite do período de teste atingido.'
-                }
-            });
-        } else {
-            router.replace({
-                pathname: '/plans',
-                params: {
-                    reason: 'trial_limit',
-                    message: error.response?.data?.message || 'Limite do seu plano atingido.'
-                }
-            });
-        }
+        router.replace({
+            pathname: '/plans',
+            params: {
+                reason: 'trial_limit',
+                message: error.response?.data?.message || 'Limite do seu plano atingido.'
+            }
+        });
       } catch (navError) {
         console.error("Failed to navigate from quota limit", navError);
       }

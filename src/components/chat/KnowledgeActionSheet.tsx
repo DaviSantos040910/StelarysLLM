@@ -37,8 +37,9 @@ interface KnowledgeActionSheetProps {
   chatId?: string;
 }
 
-// Feature Flags - Desabilita features que ainda não estão prontas no backend
+// Feature Flags - Desabilita features que ainda não estão prontas para lançamento
 const FEATURE_FLAGS = {
+  enablePodcast: false,       // PODCAST — TTS complexo, feature futura
   enablePresentations: false, // SLIDE
   enableSpreadsheets: false,  // SPREADSHEET
 };
@@ -65,6 +66,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 // Filtrar generators baseado nas feature flags
 const GENERATORS = ALL_GENERATORS.filter(gen => {
+  if (gen.id === 'PODCAST' && !FEATURE_FLAGS.enablePodcast) return false;
   if (gen.id === 'SLIDE' && !FEATURE_FLAGS.enablePresentations) return false;
   if (gen.id === 'SPREADSHEET' && !FEATURE_FLAGS.enableSpreadsheets) return false;
   return true;

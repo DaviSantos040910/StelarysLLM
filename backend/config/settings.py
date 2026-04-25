@@ -35,6 +35,10 @@ EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("SENDGRID_SENDER")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini_api")
+USE_VERTEX_AI = os.getenv("USE_VERTEX_AI", "False").lower() in ("true", "1", "yes")
+VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "stellarys-lm")
+VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "us-central1")
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -43,12 +47,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # SECURITY
 # C1: Crash on missing SECRET_KEY in production (no insecure fallback)
 _secret_key = os.getenv("DJANGO_SECRET_KEY")
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"  # M2: Defaults to False
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+
 if not _secret_key and not DEBUG:
-    raise ValueError(
-        "DJANGO_SECRET_KEY environment variable is required in production. "
-        "Set DJANGO_DEBUG=True for development without it."
-    )
+    # During build or collectstatic, we might not have the secret key yet.
+    # We only raise the error if we are NOT in a build/collectstatic environment.
+    import sys
+    if 'collectstatic' not in sys.argv:
+        raise ValueError(
+            "DJANGO_SECRET_KEY environment variable is required in production. "
+            "Set DJANGO_DEBUG=True for development without it."
+        )
+
 SECRET_KEY = _secret_key or "dev-secret-only-for-local"
 
 # C2: ALLOWED_HOSTS from env var (comma-separated)
@@ -141,6 +151,7 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = "static/"
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -361,7 +372,7 @@ JAZZMIN_SETTINGS = {
     "site_title": "Stelarys Admin",
     "site_header": "Stelarys IA",
     "site_brand": "Stelarys Admin",
-    "site_logo": "assets/logo.png",  # Update path if logo exists
+    "site_logo": None,
     "login_logo": None,
     "login_logo_dark": None,
     "site_logo_classes": "img-circle",
@@ -417,7 +428,7 @@ JAZZMIN_UI_TWEAKS = {
     "sidebar_nav_legacy_style": False,
     "sidebar_nav_flat_style": False,
     "theme": "slate",
-    "dark_mode_theme": "darkly",
+    "default_theme_mode": "dark",
     "button_classes": {
         "primary": "btn-primary",
         "secondary": "btn-secondary",
@@ -430,5 +441,5 @@ JAZZMIN_UI_TWEAKS = {
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STORAGES["staticfiles"] = {
-    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
 }

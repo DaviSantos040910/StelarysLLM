@@ -53,18 +53,18 @@ export default function OnboardingScreen() {
     if (currentIndex < slides.length - 1) {
       scrollViewRef.current?.scrollTo({ x: (currentIndex + 1) * width, animated: true });
     } else {
-      handleFinishGuest();
+      handleFinishSignup();
     }
   };
 
-  const handleFinishGuest = async () => {
+  const handleFinishSignup = async () => {
     await setHasSeenOnboarding(true);
-    router.replace('/(tabs)');
+    router.replace('/(auth)/signup');
   };
 
   const handleLogin = async () => {
     await setHasSeenOnboarding(true);
-    router.push('/(auth)/login');
+    router.replace('/(auth)/login');
   };
 
   const isDark = colorScheme === 'dark';
@@ -156,7 +156,7 @@ export default function OnboardingScreen() {
             className="bg-indigo-600 py-4 rounded-full flex-row justify-center items-center shadow-lg shadow-indigo-500/30 active:opacity-90"
           >
             <Text className="text-white font-bold text-lg mr-2">
-              {currentIndex === slides.length - 1 ? 'Começar Agora (Guest)' : 'Próximo'}
+              {currentIndex === slides.length - 1 ? 'Criar Conta Grátis' : 'Próximo'}
             </Text>
             {currentIndex < slides.length - 1 && <ArrowRight size={20} color="white" />}
           </TouchableOpacity>

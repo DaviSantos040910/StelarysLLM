@@ -55,7 +55,7 @@ export default function ChatListScreen() {
       <View className={`flex-row justify-between items-center px-4 py-4 mb-2 bg-white/95 dark:bg-space-dark/95 backdrop-blur-md z-10 ${themeClasses.headerBorder}`}>
         <View>
           <Text className={`${themeClasses.textPrimary} text-lg font-medium`}>Olá,</Text>
-          <Text className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{user?.username || 'Viajante'}</Text>
+          <Text className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{user?.username || 'Estudante'}</Text>
         </View>
       </View>
 

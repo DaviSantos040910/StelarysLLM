@@ -1,0 +1,37 @@
+﻿[
+  {
+    "httpRequest": {
+      "latency": "11.755976475s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "45.173.226.81",
+      "requestMethod": "GET",
+      "requestSize": "957",
+      "requestUrl": "https://backend-api-140218503200.us-central1.run.app/admin/",
+      "responseSize": "464",
+      "serverIp": "34.143.75.2",
+      "status": 500,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+    },
+    "insertId": "69aee328000c2673e0ba6e1d",
+    "labels": {
+      "instanceId": "00da6cd2c413c8d86a7802ca6165f2ce9bad801a9b1f3b21336774465da7330ff92146526e7278c40e4a46841da7fe9489bfe1394ef110084dbb8db4d99f026d9134fcf2e3701af205070d357ab5"
+    },
+    "logName": "projects/stellarys-lm/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-03-09T15:11:36.804011986Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "backend-api",
+        "location": "us-central1",
+        "project_id": "stellarys-lm",
+        "revision_name": "backend-api-00028-ms7",
+        "service_name": "backend-api"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "7b329ce2bc8fdb9b",
+    "timestamp": "2026-03-09T15:11:25.029864Z",
+    "trace": "projects/stellarys-lm/traces/cb88bc45002662eb8c058f163f8e8db7",
+    "traceSampled": true
+  }
+]
