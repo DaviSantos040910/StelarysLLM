@@ -24,3 +24,30 @@ BASIC_SOURCE_LIMIT = "basic_source_limit"
 # Generic
 INVALID_REQUEST = "invalid_request"
 QUOTA_EXCEEDED = "quota_exceeded"
+
+# --- DEFAULT LIMIT DEFINITIONS ---
+TRIAL_LIMITS_DICT = {
+    'messages': 90,
+    'artifacts': 1, # Per type
+    'sources': 1,
+    'bot_tutor': 1,
+    'study_space': 1,
+    'memory_run': 1,
+    'tts_seconds': 0, # OFF
+    'web_search': False,
+    'rag_chunk_limit': 3
+}
+
+BASIC_LIMITS_DICT = {
+    'messages': 2000,
+    'messages_monthly': 2000,
+    'artifacts': 50,
+    'artifacts_monthly': 50,
+    'sources': 50,
+    'sources_total': 50,
+    'tts_seconds': 10800,
+    'tts_seconds_monthly': 10800, # 3h
+    'memory_optimized': True,
+    'web_search_allowed': True,
+    'rag_chunk_limit': 6
+}

@@ -7,17 +7,16 @@ import uuid
 
 class LenientJWTAuthentication(JWTAuthentication):
     """
-    Extends JWTAuthentication to allow fallback to GuestAuthentication
-    if the JWT is invalid but a Guest ID is present.
+    Standard JWT Authentication.
+    Previously suppressed errors to allow GuestAuthentication fallback,
+    but with guest mode disabled, invalid tokens now raise errors as expected.
     """
     def authenticate(self, request):
         try:
             return super().authenticate(request)
         except (InvalidToken, AuthenticationFailed) as e:
-            # If X-Guest-Id is present, suppress the error so GuestAuthentication can run.
-            if request.headers.get('X-Guest-Id'):
-                return None
-            # Otherwise, raise the error as usual (blocked).
+            # Guest mode disabled: no longer suppress JWT errors for X-Guest-Id fallback.
+            # Invalid tokens are rejected with 401.
             raise e
 
 class GuestAuthentication(BaseAuthentication):

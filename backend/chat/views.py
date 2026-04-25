@@ -10,6 +10,7 @@ import json
 import uuid
 import mimetypes
 import logging
+import filetype
 from pathlib import Path
 
 from django.conf import settings
@@ -361,19 +362,18 @@ class StreamChatMessageView(View):
                 # But maybe mixed mode? Let's just return None for now if token present but invalid.
                 return None
 
-        # 2. Guest ID Check
-        guest_id = request.headers.get('X-Guest-Id')
-        if guest_id:
-            try:
-                uuid_obj = uuid.UUID(guest_id)
-                session = GuestSession.objects.get(id=uuid_obj)
-                if session.is_active:
-                    # Optionally check expiry
-                    if session.trial_expires_at and session.trial_expires_at < timezone.now():
-                        return ('expired', None)
-                    return ('guest', session)
-            except (ValueError, GuestSession.DoesNotExist):
-                pass
+        # Guest mode disabled for launch
+        # guest_id = request.headers.get('X-Guest-Id')
+        # if guest_id:
+        #     try:
+        #         uuid_obj = uuid.UUID(guest_id)
+        #         session = GuestSession.objects.get(id=uuid_obj)
+        #         if session.is_active:
+        #             if session.trial_expires_at and session.trial_expires_at < timezone.now():
+        #                 return ('expired', None)
+        #             return ('guest', session)
+        #     except (ValueError, GuestSession.DoesNotExist):
+        #         pass
 
         return None
 
@@ -492,10 +492,20 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                     {"detail": f"Arquivo '{f.name}' excede o limite de {max_size // (1024*1024)}MB."},
                     status=400
                 )
-            mime, _ = mimetypes.guess_type(f.name)
+            
+            # Read first 2048 bytes for magic numbers
+            header = f.read(2048)
+            f.seek(0)
+            kind = filetype.guess(header)
+            
+            mime = kind.mime if kind else None
+            if not mime:
+                # Fallback for text/plain (filetype doesn't detect raw text cleanly)
+                mime, _ = mimetypes.guess_type(f.name)
+                
             if allowed_types and mime and mime not in allowed_types:
                 return Response(
-                    {"detail": f"Tipo de arquivo não permitido: {mime}"},
+                    {"detail": f"Tipo de arquivo não permitido ou assinatura inválida: {mime or 'desconhecido'}"},
                     status=400
                 )
 
@@ -503,7 +513,12 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
         try:
             with transaction.atomic():
                 for f in files:
-                    mime, _ = mimetypes.guess_type(f.name)
+                    header = f.read(2048)
+                    f.seek(0)
+                    kind = filetype.guess(header)
+                    mime = kind.mime if kind else None
+                    if not mime:
+                        mime, _ = mimetypes.guess_type(f.name)
 
                     # Salvar arquivo
                     m = self.get_serializer(data={'attachment': f, 'content': ''})
@@ -789,15 +804,16 @@ class RegenerateMessageView(View):
             except (InvalidToken, TokenError):
                 pass
 
-        guest_id = request.headers.get('X-Guest-Id')
-        if guest_id:
-            try:
-                uuid_obj = uuid.UUID(guest_id)
-                session = GuestSession.objects.get(id=uuid_obj)
-                if session.is_active:
-                    return ('guest', session)
-            except (ValueError, GuestSession.DoesNotExist):
-                pass
+        # Guest mode disabled for launch
+        # guest_id = request.headers.get('X-Guest-Id')
+        # if guest_id:
+        #     try:
+        #         uuid_obj = uuid.UUID(guest_id)
+        #         session = GuestSession.objects.get(id=uuid_obj)
+        #         if session.is_active:
+        #             return ('guest', session)
+        #     except (ValueError, GuestSession.DoesNotExist):
+        #         pass
         return None
 
     def post(self, request, chat_pk):

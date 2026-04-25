@@ -66,7 +66,8 @@ class ChatMessageAttachmentSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'chat', 'role', 'created_at')
 
     def validate_attachment(self, value):
-        MAX_UPLOAD_SIZE = 50 * 1024 * 1024 # Aumentado para 50MB para consistência com frontend
+        from django.conf import settings as django_settings
+        MAX_UPLOAD_SIZE = getattr(django_settings, 'MAX_UPLOAD_SIZE', 25 * 1024 * 1024)  # Sync with settings.py
         if value.size > MAX_UPLOAD_SIZE:
             raise serializers.ValidationError(f"File size cannot exceed {MAX_UPLOAD_SIZE // (1024*1024)}MB.")
         return value

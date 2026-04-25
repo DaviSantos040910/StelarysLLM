@@ -26,14 +26,10 @@ export const authService = {
     return response.data;
   },
 
-  claimGuest: async (guestId: string): Promise<void> => {
-    // Client interceptor now handles injection of X-Guest-Id automatically if present in store.
-    // We pass it explicitly here as a safeguard, but the interceptor logic respects caller headers.
-    await client.post('/api/v1/accounts/claim_guest/', {}, {
-      headers: {
-        'X-Guest-Id': guestId
-      }
-    });
+  // Guest mode disabled for launch — claimGuest is a no-op
+  claimGuest: async (_guestId: string): Promise<void> => {
+    // Previously migrated guest session data to authenticated user.
+    // Disabled: GuestAuthentication is off, no sessions to claim.
   },
 
   logout: async () => {

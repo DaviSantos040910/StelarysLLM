@@ -229,7 +229,6 @@ export default function StudioGalleryScreen() {
     const filteredData = activeFilter === 'ALL'
         ? artifacts
         : artifacts.filter(item => {
-            if (activeFilter === 'PODCAST') return item.type === 'PODCAST';
             if (activeFilter === 'DOCS') return ['FLASHCARD', 'SLIDE', 'SPREADSHEET', 'WORKBOOK'].includes(item.type);
             if (activeFilter === 'QUIZ') return item.type === 'QUIZ';
             return true;

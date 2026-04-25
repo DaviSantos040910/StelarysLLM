@@ -731,5 +731,18 @@ class VectorService:
             logger.error(f"Erro ao migrar vetores: {e}", exc_info=True)
             return 0
 
+    def delete_by_user(self, user_id: int) -> bool:
+        """Exclui todos os vetores vinculados a um usuário (LGPD)."""
+        if not self.backend:
+            return False
+            
+        try:
+            self.backend.delete_documents(where={"user_id": str(user_id)})
+            logger.info(f"[Vector Deletion] Cleared all vectors for user {user_id}")
+            return True
+        except Exception as e:
+            logger.error(f"[Vector Deletion] Failed to delete vectors for user {user_id}: {e}", exc_info=True)
+            return False
+
 # Instância global singleton exportada
 vector_service = VectorService()

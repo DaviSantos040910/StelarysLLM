@@ -3,7 +3,7 @@ import { getInstallationId } from '../utils/installationId';
 import { isLikelyJwt } from './client';
 
 export const getAuthHeaders = async (): Promise<Record<string, string>> => {
-  const { token, guestId } = useAuthStore.getState();
+  const { token } = useAuthStore.getState();
   const installationId = await getInstallationId();
 
   const headers: Record<string, string> = {
@@ -14,9 +14,7 @@ export const getAuthHeaders = async (): Promise<Record<string, string>> => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (guestId) {
-    headers['X-Guest-Id'] = guestId;
-  }
+  // X-Guest-Id injection removed (guest mode disabled for launch)
 
   return headers;
 };

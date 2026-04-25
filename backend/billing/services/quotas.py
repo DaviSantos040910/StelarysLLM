@@ -12,27 +12,13 @@ from ..constants import (
     TRIAL_MESSAGE_LIMIT, TRIAL_ARTIFACT_LIMIT, TRIAL_SOURCE_LIMIT,
     TRIAL_TUTOR_LIMIT, TRIAL_SPACE_LIMIT, TRIAL_MEMORY_LIMIT, TRIAL_TTS_BLOCKED,
     BASIC_ARTIFACT_LIMIT, BASIC_MESSAGE_LIMIT, BASIC_TTS_LIMIT, BASIC_SOURCE_LIMIT,
-    INVALID_REQUEST
+    INVALID_REQUEST,
+    TRIAL_LIMITS_DICT as TRIAL_LIMITS, BASIC_LIMITS_DICT as BASIC_LIMITS
 )
 
 User = get_user_model()
 
-# --- QUOTA DEFINITIONS ---
-BASIC_LIMITS = {
-    'messages': 2000,
-    'artifacts': 50,
-    'tts_seconds': 10800,
-    'sources': 50,
-}
 
-TRIAL_LIMITS = {
-    'messages': 90,
-    'sources': 1,
-    'bot_tutor': 1,
-    'study_space': 1,
-    'memory_run': 1,
-    # Artifacts per type 1 handled below
-}
 
 def check_and_consume(user=None, guest_session=None, resource=None, quantity=1, **kwargs):
     """
@@ -63,7 +49,7 @@ def check_and_consume(user=None, guest_session=None, resource=None, quantity=1, 
 
 def _check_consume_basic(user, resource, quantity, **kwargs):
     if not user:
-        raise QuotaExceededException("Basic plan requires a user account.")
+        raise ValueError("Basic plan requires a user account.")
 
     # Get Dynamic Limits
     plan_limits = {}

@@ -7,19 +7,20 @@ Suporta múltiplos documentos com citação de fonte e formatação estrita de s
 from typing import List, Tuple, Optional
 from datetime import datetime
 from ..models import ChatMessage
+import mimetypes
 import logging
+from google.genai import types
 from .persona_guard import PersonaGuard
 
 logger = logging.getLogger(__name__)
-
 
 def build_conversation_history(
     chat_id: int,
     limit: int = 15,
     exclude_message_id: Optional[int] = None
-) -> Tuple[List[dict], List[str]]:
+) -> Tuple[List[types.Content], List[str]]:
     """
-    Constrói histórico LINEAR das últimas N mensagens.
+    Constrói histórico LINEAR das últimas N mensagens, incluindo anexos.
     """
     queryset = ChatMessage.objects.filter(chat_id=chat_id)
 
@@ -29,22 +30,38 @@ def build_conversation_history(
     messages = queryset.order_by('-created_at')[:limit]
     messages = list(reversed(messages))  # Ordem cronológica
 
-    gemini_history: List[dict] = []
+    gemini_history: List[types.Content] = []
     recent_texts: List[str] = []
 
     for msg in messages:
-        if not msg.content:
-            continue
-        if "unexpected error" in msg.content.lower():
+        # Pular mensagens de erro
+        if msg.content and "unexpected error" in msg.content.lower():
             continue
 
         role = 'user' if msg.role == 'user' else 'model'
+        parts = []
 
-        gemini_history.append({
-            "role": role,
-            "parts": [{"text": msg.content}]
-        })
-        recent_texts.append(msg.content)
+        # 1. Adicionar Anexo se existir
+        if msg.attachment:
+            try:
+                # Use .open() for storage-agnostic access (Local or GCS)
+                mime_type, _ = mimetypes.guess_type(msg.original_filename or "file")
+                if not mime_type and msg.attachment_type == 'image': 
+                    mime_type = 'image/jpeg'
+                
+                if mime_type and (mime_type.startswith('image/') or mime_type == 'application/pdf'):
+                    with msg.attachment.open('rb') as f:
+                        parts.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
+            except Exception as e:
+                logger.warning(f"Failed to include attachment for msg {msg.id} in history: {e}")
+
+        # 2. Adicionar Texto se existir
+        if msg.content:
+            parts.append(types.Part.from_text(text=msg.content))
+            recent_texts.append(msg.content)
+
+        if parts:
+            gemini_history.append(types.Content(role=role, parts=parts))
 
     return gemini_history, recent_texts
 

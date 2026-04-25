@@ -163,7 +163,7 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "accounts.authentication.LenientJWTAuthentication",
-        "accounts.authentication.GuestAuthentication",
+        # "accounts.authentication.GuestAuthentication",  # Disabled for launch (guest mode off)
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -188,7 +188,9 @@ else:
     ]
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all in development
 
-# Email backend for development (console)
+# Email settings (Brevo integration)
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-replay@stellarysapp.com')
 
 # Optional basic rate-limiting config (requires django-ratelimit if used)
 RATELIMIT_ENABLE = True

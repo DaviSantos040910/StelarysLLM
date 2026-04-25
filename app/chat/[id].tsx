@@ -160,6 +160,15 @@ export default function ChatScreen() {
     const handleSend = async (text: string = inputText) => {
         if (!text.trim() && stagedAttachments.length === 0) return;
 
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam) para enviar mensagens."
+            );
+            return;
+        }
+
         // Clear UI immediately to prevent double sends or sticking text
         setInputText('');
         setStagedAttachments([]);
@@ -182,6 +191,15 @@ export default function ChatScreen() {
     };
 
     const handleAudioRecorded = async (uri: string, duration: number) => {
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam)."
+            );
+            return;
+        }
+
         const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
         await uploadFile(chatId, file);
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -189,6 +207,16 @@ export default function ChatScreen() {
 
     const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
         setIsAttachmentSheetVisible(false);
+
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam)."
+            );
+            return;
+        }
+
         // Show immediate feedback
         Alert.alert("Adicionando Fonte", "A fonte está sendo processada em segundo plano. Você pode continuar conversando.");
         try {

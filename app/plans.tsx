@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { useBillingStore } from '../src/stores/billingStore';
 import { iapService } from '../src/services/iapService';
 import { themeClasses } from '../src/theme/classes';
@@ -165,13 +165,16 @@ export default function PlansScreen() {
                   </>
                 )}
 
-                <UsageBar
-                  label="TTS (Áudio)"
-                  used={status.usage?.tts_seconds_count || 0}
-                  limit={status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0}
-                  unit="s"
-                  icon={Mic}
-                />
+                {/* Hide TTS bar on trial (limit=0) to avoid NaN in progress bar */}
+                {(status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0) > 0 && (
+                  <UsageBar
+                    label="TTS (Áudio)"
+                    used={status.usage?.tts_seconds_count || 0}
+                    limit={status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0}
+                    unit="s"
+                    icon={Mic}
+                  />
+                )}
               </View>
             )}
           </View>
@@ -216,7 +219,7 @@ export default function PlansScreen() {
                 className={`bg-white py-4 rounded-xl items-center active:bg-gray-100 flex-row justify-center ${unavailableReason ? 'opacity-50' : ''}`}
               >
                 {isPurchasing ? (
-                  <Loader2 size={20} color="#312e81" className="animate-spin mr-2" />
+                  <ActivityIndicator size="small" color="#312e81" style={{ marginRight: 8 }} />
                 ) : null}
                 <Text className="text-indigo-900 font-bold text-lg">
                   {unavailableReason === 'expo_go'
@@ -236,7 +239,11 @@ export default function PlansScreen() {
           {isBasic && (
              <View className="p-4 rounded-xl bg-gray-50 dark:bg-white/5 mb-10 items-center">
                 <Text className={`${themeClasses.textSecondary} mb-2`}>Gerenciamento</Text>
-                <Pressable onPress={() => {/* Open Play Store Subs */}}>
+                <Pressable onPress={() => {
+                    if (Platform.OS === 'android') {
+                        Linking.openURL('https://play.google.com/store/account/subscriptions');
+                    }
+                }}>
                     <Text className="text-cosmic-purple font-bold">Gerenciar Assinatura na Play Store</Text>
                 </Pressable>
              </View>
