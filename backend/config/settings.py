@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 import logging
+import sys
 from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
@@ -62,7 +63,18 @@ if not _secret_key and not DEBUG:
 SECRET_KEY = _secret_key or "dev-secret-only-for-local"
 
 # C2: ALLOWED_HOSTS from env var (comma-separated)
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,*").split(",")
+
+# C5: CSRF Trusted Origins (Required for Django 4.0+ over HTTPS)
+_csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if _csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+else:
+    # Fallback to a wider set if not specified, or use the Cloud Run domain
+    CSRF_TRUSTED_ORIGINS = [
+        "https://*.run.app",
+        "https://*.stellarysapp.com",
+    ]
 
 # Application definition
 INSTALLED_APPS = [
@@ -366,6 +378,43 @@ if SENTRY_DSN and SENTRY_DSN.startswith("https://") and not DEBUG:
         )
     except ImportError:
         pass  # sentry-sdk not installed, skip
+
+# ================================
+# Logging Configuration
+# ================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.security.DisallowedHost': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
 
 # ================================
 # Jazzmin Customization (Slate Theme)
