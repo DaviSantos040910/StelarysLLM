@@ -1,0 +1,32 @@
+.git
+.gitignore
+.gcloudignore
+.venv
+venv
+ENV
+env
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.env.prod
+db.sqlite3
+media/
+staticfiles/
+node_modules/
+# DO NOT ignore Dockerfile or requirements.txt
+# Dockerfile
+# requirements.txt
+# Only ignore local test/log files
+current_build_log.txt
+latest_fail_log.txt
+latest_fail_log_3.txt
+live_build_log.txt
+total_log.txt
+build_fix_log.txt
+build_tail.txt
+build_error_tail.txt
+debug_logs.txt
+stderr29_utf8.txt
+temp_logs_utf8.txt
+logs_500_utf8.json

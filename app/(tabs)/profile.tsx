@@ -127,22 +127,6 @@ export default function ProfileScreen() {
             )}
         </SettingsSection>
 
-        {/* Guest Mode Actions */}
-        {!isAuthenticated && (
-            <SettingsSection title="Modo Convidado">
-                <SettingsItem
-                    icon={User}
-                    label="Criar conta agora"
-                    onPress={() => router.push('/(auth)/signup')}
-                    color="#6366f1"
-                />
-                <SettingsItem
-                    icon={LogOut}
-                    label="Já tenho conta (Entrar)"
-                    onPress={() => router.push('/(auth)/login')}
-                />
-            </SettingsSection>
-        )}
 
         {/* Authenticated User Actions */}
         {isAuthenticated && (
@@ -197,21 +181,19 @@ export default function ProfileScreen() {
             )}
         </SettingsSection>
 
-        <SettingsSection title={isAuthenticated ? "Zona de Perigo" : "Sessão"}>
+        <SettingsSection title="Zona de Perigo">
             <SettingsItem
                 icon={LogOut}
-                label={isAuthenticated ? "Sair" : "Encerrar Sessão Convidado"}
+                label="Sair"
                 onPress={handleLogout}
-                danger={isAuthenticated}
+                danger
             />
-            {isAuthenticated && (
-                <SettingsItem
-                    icon={Trash2}
-                    label="Excluir Conta"
-                    onPress={handleDeleteAccount}
-                    danger
-                />
-            )}
+            <SettingsItem
+                icon={Trash2}
+                label="Excluir Conta"
+                onPress={handleDeleteAccount}
+                danger
+            />
         </SettingsSection>
 
       </ScrollView>

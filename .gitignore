@@ -46,3 +46,13 @@ myproject/
 __pycache__/
 *.sqlite3
 *.pyc
+
+# Backend
+backend/.venv/
+backend/.env
+backend/.env.secrets
+backend/staticfiles/
+backend/media/
+backend/chroma_db_data/
+backend/venv/
+backend/db.sqlite3

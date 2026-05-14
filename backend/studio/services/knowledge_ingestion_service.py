@@ -64,25 +64,13 @@ class KnowledgeIngestionService:
             if text:
                 chunks = FileProcessor.chunk_text(text)
                 if chunks:
-                    # Determine owner_id
-                    owner_id = None
-                    if source.user:
-                        owner_id = source.user.id
-                    elif source.guest_session:
-                        owner_id = str(source.guest_session.id)
-                    else:
-                        logger.error(f"Cannot ingest source {source.id}: No user or guest_session owner.")
-                        return False
-
                     vector_service.add_document_chunks(
-                        user_id=owner_id,
+                        user_id=source.user.id,
                         chunks=chunks,
                         source_name=source.title,
                         source_id=str(source.id),
                         bot_id=bot_id,
-                        study_space_id=study_space_id,
-                        source_type=source.source_type,
-                        source_url=source.url
+                        study_space_id=study_space_id
                     )
                     return True
             

@@ -32,11 +32,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . /app/
 
 # Collect static files
-# Note: This might require valid storage credentials if using GCS for static files during build.
-# For Cloud Run, usually we run this via a separate job or use whitenoise if simple.
-# Here we assume collectstatic is run or handled by storage provider.
-# RUN python manage.py collectstatic --noinput
-
+# We set dummy variables so collectstatic doesn't crash during build
+RUN DJANGO_SECRET_KEY=build-time-only-key DJANGO_DEBUG=True python manage.py collectstatic --noinput
 # Run the application
 # CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 config.wsgi:application
 CMD exec gunicorn --bind :$PORT --workers 2 --threads 8 --timeout 120 config.wsgi:application

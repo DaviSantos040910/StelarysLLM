@@ -14,10 +14,10 @@ interface PaywallModalProps {
 }
 
 const UsageProgress = ({ label, used, limit, icon: Icon }: any) => {
+  if (!limit || limit <= 0) return null; // Don't show if unlimited, unknown, or zero
+
   const percentage = Math.min(100, Math.max(0, (used / limit) * 100));
   const isFull = used >= limit;
-
-  if (!limit) return null; // Don't show if unlimited or unknown
 
   return (
     <View className="mb-3">

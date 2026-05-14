@@ -212,12 +212,10 @@ export default function CreateBotScreen() {
             }
 
         } catch (error: any) {
-            console.error(error);
             const parsed = parseApiError(error);
             if (parsed.isHandled) return;
 
-            const msg = parsed.message || "Falha ao salvar o tutor.";
-            Alert.alert("Erro", msg);
+            Alert.alert("Erro", parsed.message || "Falha ao salvar o tutor.");
         } finally {
             setIsSubmitting(false);
         }

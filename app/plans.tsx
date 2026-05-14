@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { useBillingStore } from '../src/stores/billingStore';
 import { iapService } from '../src/services/iapService';
 import { themeClasses } from '../src/theme/classes';
-import { useRouter } from 'expo-router';
-import { X, Check, Zap, Clock, FileText, MessageSquare, Mic, Crown, AlertTriangle, Loader2 } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { X, Check, Zap, Clock, FileText, MessageSquare, Mic, Crown, AlertTriangle, Loader2, Layers } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const UsageBar = ({ label, used, limit, icon: Icon, unit = '' }: any) => {
-  const percentage = Math.min(100, Math.max(0, (used / limit) * 100));
+  const percentage = (limit > 0) ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
   const isFull = used >= limit;
 
   return (
@@ -34,6 +34,7 @@ const UsageBar = ({ label, used, limit, icon: Icon, unit = '' }: any) => {
 
 export default function PlansScreen() {
   const router = useRouter();
+  const { reason, message } = useLocalSearchParams<{ reason: string; message: string }>();
   const { status, fetchStatus, isLoading } = useBillingStore();
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [unavailableReason, setUnavailableReason] = useState<string | null>(
@@ -90,6 +91,15 @@ export default function PlansScreen() {
 
         <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
 
+          {reason === 'trial_limit' && (
+            <View className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl mb-6 flex-row items-center">
+               <AlertTriangle size={24} color="#fbbf24" className="mr-3" />
+               <Text className="text-amber-500 dark:text-amber-400 font-bold flex-1">
+                 {message || 'Limite atingido. Faça upgrade para continuar.'}
+               </Text>
+            </View>
+          )}
+
           {/* Current Status Card */}
           <View className={`p-5 rounded-2xl mb-8 border ${isLocked ? 'bg-red-500/10 border-red-500/30' : (isBasic ? 'bg-cosmic-purple/10 border-cosmic-purple/30' : 'bg-gray-100 dark:bg-white/5 border-transparent')}`}>
             <View className="flex-row items-center mb-4">
@@ -116,36 +126,62 @@ export default function PlansScreen() {
               <View className="mt-2">
                 <UsageBar
                   label="Mensagens"
-                  used={status.usage.messages_count || 0}
-                  limit={isBasic ? status.limits.messages_monthly : (status.limits['messages_total'] || 90)}
+                  used={status.usage?.messages_count || 0}
+                  limit={isBasic ? status.limits?.messages_monthly : (status.limits?.messages_total || 0)}
                   icon={MessageSquare}
                 />
                 <UsageBar
                   label="Fontes (Docs)"
-                  used={status.usage.sources_count || 0}
-                  limit={isBasic ? status.limits.sources_total : (status.limits['sources_total'] || 1)}
+                  used={status.usage?.sources_count || 0}
+                  limit={status.limits?.sources_total || 0}
                   icon={FileText}
                 />
                 <UsageBar
                   label="Artefatos"
-                  used={status.usage.artifacts_count || 0}
-                  limit={isBasic ? status.limits.artifacts_monthly : (status.limits['artifacts_per_type'] || 1)}
+                  used={isTrial
+                    ? Object.values(status.usage?.artifacts_breakdown || {})
+                        .reduce((a: number, b: any) => a + Number(b || 0), 0)
+                    : status.usage?.artifacts_count || 0}
+                  limit={isTrial
+                    ? status.limits?.artifacts_per_type || 0
+                    : status.limits?.artifacts_total || status.limits?.artifacts_monthly || 0}
                   icon={Zap}
                 />
-                <UsageBar
-                  label="TTS (Áudio)"
-                  used={status.usage.tts_seconds_count || 0}
-                  limit={status.limits.tts_seconds_monthly || 0}
-                  unit="s"
-                  icon={Mic}
-                />
+
+                {isTrial && (
+                  <>
+                    <UsageBar
+                      label="Tutores IA"
+                      used={status.usage?.bot_tutor_count || 0}
+                      limit={status.limits?.bot_tutor_total || 0}
+                      icon={Crown}
+                    />
+                    <UsageBar
+                      label="Espaços de Estudo"
+                      used={status.usage?.study_space_count || 0}
+                      limit={status.limits?.study_space_total || 0}
+                      icon={Layers}
+                    />
+                  </>
+                )}
+
+                {/* Hide TTS bar on trial (limit=0) to avoid NaN in progress bar */}
+                {(status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0) > 0 && (
+                  <UsageBar
+                    label="TTS (Áudio)"
+                    used={status.usage?.tts_seconds_count || 0}
+                    limit={status.limits?.tts_seconds_total || status.limits?.tts_seconds_monthly || 0}
+                    unit="s"
+                    icon={Mic}
+                  />
+                )}
               </View>
             )}
           </View>
 
           {/* Basic Plan Offer */}
           {!isBasic && (
-            <View className={`p-6 rounded-3xl mb-10 border border-cosmic-purple/50 bg-gradient-to-br from-indigo-900/40 to-purple-900/40`}>
+            <View className={`p-6 rounded-3xl mb-10 border border-cosmic-purple/50 bg-indigo-900 dark:bg-gradient-to-br dark:from-indigo-900/40 dark:to-purple-900/40`}>
               <View className="flex-row justify-between items-start mb-2">
                 <View>
                   <Text className="text-white text-2xl font-bold">Basic</Text>
@@ -183,7 +219,7 @@ export default function PlansScreen() {
                 className={`bg-white py-4 rounded-xl items-center active:bg-gray-100 flex-row justify-center ${unavailableReason ? 'opacity-50' : ''}`}
               >
                 {isPurchasing ? (
-                  <Loader2 size={20} color="#312e81" className="animate-spin mr-2" />
+                  <ActivityIndicator size="small" color="#312e81" style={{ marginRight: 8 }} />
                 ) : null}
                 <Text className="text-indigo-900 font-bold text-lg">
                   {unavailableReason === 'expo_go'
@@ -203,7 +239,11 @@ export default function PlansScreen() {
           {isBasic && (
              <View className="p-4 rounded-xl bg-gray-50 dark:bg-white/5 mb-10 items-center">
                 <Text className={`${themeClasses.textSecondary} mb-2`}>Gerenciamento</Text>
-                <Pressable onPress={() => {/* Open Play Store Subs */}}>
+                <Pressable onPress={() => {
+                    if (Platform.OS === 'android') {
+                        Linking.openURL('https://play.google.com/store/account/subscriptions');
+                    }
+                }}>
                     <Text className="text-cosmic-purple font-bold">Gerenciar Assinatura na Play Store</Text>
                 </Pressable>
              </View>

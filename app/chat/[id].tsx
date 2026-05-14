@@ -18,6 +18,7 @@ import { useMiniPlayerHeight } from '../../src/hooks/useMiniPlayerHeight';
 import { botService } from '../../src/services/botService';
 import { chatService } from '../../src/services/chatService';
 import { useAudioPlayerStore } from '../../src/stores/audioPlayerStore';
+import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { themeClasses } from '../../src/theme/classes';
 import { ChatListItem, Message, SourceRef } from '../../src/types/chat';
@@ -32,6 +33,7 @@ export default function ChatScreen() {
 
     const { messages, loadMessages, sendMessage, isLoading, isStreaming, currentChat, loadMoreMessages, uploadFile, setCurrentChat, updateMessage, regenerateMessage } = useChatStore();
     const { play } = useAudioPlayerStore();
+    const { isLoading: isAuthLoading, token, guestId } = useAuthStore();
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
 
@@ -114,6 +116,10 @@ export default function ChatScreen() {
             };
             if (setCurrentChat) setCurrentChat(minimalChat);
         }
+
+        if (isAuthLoading) return;
+        if (!token && !guestId) return;
+
         loadMessages(chatId);
         if (botId) {
             botService.getChatBootstrap(botId as string).then(data => {
@@ -137,7 +143,7 @@ export default function ChatScreen() {
                 }
             }).catch(console.error);
         }
-    }, [chatId, botId]);
+    }, [chatId, botId, isAuthLoading, token, guestId]);
 
     // Smart Auto-Scroll: Only scroll to bottom if a NEW message arrives (user or bot).
     // Ignores updates to existing messages (streaming, status changes) to prevent UX jumping.
@@ -153,6 +159,15 @@ export default function ChatScreen() {
 
     const handleSend = async (text: string = inputText) => {
         if (!text.trim() && stagedAttachments.length === 0) return;
+
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam) para enviar mensagens."
+            );
+            return;
+        }
 
         // Clear UI immediately to prevent double sends or sticking text
         setInputText('');
@@ -176,6 +191,15 @@ export default function ChatScreen() {
     };
 
     const handleAudioRecorded = async (uri: string, duration: number) => {
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam)."
+            );
+            return;
+        }
+
         const file = { uri, name: `audio_${Date.now()}.m4a`, mimeType: 'audio/m4a', duration };
         await uploadFile(chatId, file);
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -183,6 +207,16 @@ export default function ChatScreen() {
 
     const handleAddSource = async (file: any, type: 'file' | 'url' | 'youtube' | 'image' | 'camera') => {
         setIsAttachmentSheetVisible(false);
+
+        const user = useAuthStore.getState().user;
+        if (user && user.is_email_verified === false) {
+            Alert.alert(
+                "E-mail não verificado", 
+                "Por favor, ative sua conta pelo e-mail que enviamos (verifique também a caixa de spam)."
+            );
+            return;
+        }
+
         // Show immediate feedback
         Alert.alert("Adicionando Fonte", "A fonte está sendo processada em segundo plano. Você pode continuar conversando.");
         try {
@@ -370,7 +404,7 @@ export default function ChatScreen() {
                             keyExtractor={keyExtractor}
                             renderItem={renderItem as any}
                             inverted
-                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 160 }}
+                            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 120, paddingBottom: 160, flexGrow: 1 }}
                             onScroll={scrollHandler}
                             scrollEventThrottle={16}
                             onEndReached={() => loadMoreMessages(chatId)}

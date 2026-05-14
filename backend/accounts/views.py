@@ -110,7 +110,8 @@ class LoginView(APIView):
         return Response({
             "token": access,
             "refresh": str(refresh),
-            "user": UserSerializer(user, context={'request': request}).data
+            "user": UserSerializer(user, context={'request': request}).data,
+            "email_verified": user.is_email_verified,
         })
 
 
@@ -132,7 +133,60 @@ class MeView(APIView):
 
     def delete(self, request):
         user = request.user
+
+        # 1. Deletar Vetores do ChromaDB
+        try:
+            from chat.vector_service import vector_service
+            vector_service.delete_by_user(user.id)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to delete chroma vectors for {user.id}: {e}")
+
+        # 2. Deletar Arquivos de Armazenamento na Nuvem (ou GCS Cloud)
+        if user.avatar:
+            user.avatar.delete(save=False)
+
+        try:
+            from bots.models import Bot
+            for bot in Bot.objects.filter(owner=user):
+                if bot.avatar_url:
+                    bot.avatar_url.delete(save=False)
+        except Exception:
+            pass
+
+        try:
+            from chat.models import ChatMessage
+            for msg in ChatMessage.objects.filter(chat__user=user):
+                if msg.attachment:
+                    msg.attachment.delete(save=False)
+        except Exception:
+            pass
+
+        try:
+            from studio.models import KnowledgeSource, StudySpace
+            for src in KnowledgeSource.objects.filter(user=user):
+                if src.file:
+                    src.file.delete(save=False)
+            
+            for space in StudySpace.objects.filter(user=user):
+                if space.cover_image:
+                    space.cover_image.delete(save=False)
+        except Exception:
+            pass
+
+        # 3. Marcar assinatura ativa como cancelada administrativamente (se existir)
+        try:
+            from billing.models import Subscription
+            Subscription.objects.filter(user=user, is_active=True).update(
+                is_active=False, 
+                current_period_end=None
+            )
+        except Exception:
+            pass
+
+        # 4. Deletar o usuário do banco e executar CASCADE natural nas Entity Tables
         user.delete()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -10,6 +10,7 @@ import json
 import uuid
 import mimetypes
 import logging
+import filetype
 from pathlib import Path
 
 from django.conf import settings
@@ -361,19 +362,18 @@ class StreamChatMessageView(View):
                 # But maybe mixed mode? Let's just return None for now if token present but invalid.
                 return None
 
-        # 2. Guest ID Check
-        guest_id = request.headers.get('X-Guest-Id')
-        if guest_id:
-            try:
-                uuid_obj = uuid.UUID(guest_id)
-                session = GuestSession.objects.get(id=uuid_obj)
-                if session.is_active:
-                    # Optionally check expiry
-                    if session.trial_expires_at and session.trial_expires_at < timezone.now():
-                        return ('expired', None)
-                    return ('guest', session)
-            except (ValueError, GuestSession.DoesNotExist):
-                pass
+        # Guest mode disabled for launch
+        # guest_id = request.headers.get('X-Guest-Id')
+        # if guest_id:
+        #     try:
+        #         uuid_obj = uuid.UUID(guest_id)
+        #         session = GuestSession.objects.get(id=uuid_obj)
+        #         if session.is_active:
+        #             if session.trial_expires_at and session.trial_expires_at < timezone.now():
+        #                 return ('expired', None)
+        #             return ('guest', session)
+        #     except (ValueError, GuestSession.DoesNotExist):
+        #         pass
 
         return None
 
@@ -492,10 +492,20 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
                     {"detail": f"Arquivo '{f.name}' excede o limite de {max_size // (1024*1024)}MB."},
                     status=400
                 )
-            mime, _ = mimetypes.guess_type(f.name)
+            
+            # Read first 2048 bytes for magic numbers
+            header = f.read(2048)
+            f.seek(0)
+            kind = filetype.guess(header)
+            
+            mime = kind.mime if kind else None
+            if not mime:
+                # Fallback for text/plain (filetype doesn't detect raw text cleanly)
+                mime, _ = mimetypes.guess_type(f.name)
+                
             if allowed_types and mime and mime not in allowed_types:
                 return Response(
-                    {"detail": f"Tipo de arquivo não permitido: {mime}"},
+                    {"detail": f"Tipo de arquivo não permitido ou assinatura inválida: {mime or 'desconhecido'}"},
                     status=400
                 )
 
@@ -503,7 +513,12 @@ class ChatMessageAttachmentView(generics.CreateAPIView):
         try:
             with transaction.atomic():
                 for f in files:
-                    mime, _ = mimetypes.guess_type(f.name)
+                    header = f.read(2048)
+                    f.seek(0)
+                    kind = filetype.guess(header)
+                    mime = kind.mime if kind else None
+                    if not mime:
+                        mime, _ = mimetypes.guess_type(f.name)
 
                     # Salvar arquivo
                     m = self.get_serializer(data={'attachment': f, 'content': ''})
@@ -789,15 +804,16 @@ class RegenerateMessageView(View):
             except (InvalidToken, TokenError):
                 pass
 
-        guest_id = request.headers.get('X-Guest-Id')
-        if guest_id:
-            try:
-                uuid_obj = uuid.UUID(guest_id)
-                session = GuestSession.objects.get(id=uuid_obj)
-                if session.is_active:
-                    return ('guest', session)
-            except (ValueError, GuestSession.DoesNotExist):
-                pass
+        # Guest mode disabled for launch
+        # guest_id = request.headers.get('X-Guest-Id')
+        # if guest_id:
+        #     try:
+        #         uuid_obj = uuid.UUID(guest_id)
+        #         session = GuestSession.objects.get(id=uuid_obj)
+        #         if session.is_active:
+        #             return ('guest', session)
+        #     except (ValueError, GuestSession.DoesNotExist):
+        #         pass
         return None
 
     def post(self, request, chat_pk):
@@ -872,28 +888,34 @@ class MessageTTSView(APIView):
     permission_classes = [IsUserOrGuest]
 
     def get(self, request, chat_pk, message_id):
+        # --- OWNERSHIP CHECK (IDOR Prevention) ---
+        actor_type, actor = get_actor(request)
+        if actor_type == 'user':
+            chat = get_object_or_404(Chat, id=chat_pk, user=actor)
+        elif actor_type == 'guest':
+            chat = get_object_or_404(Chat, id=chat_pk, guest_session=actor)
+        else:
+            return Response({"detail": "Unauthorized"}, status=401)
+
         m = get_object_or_404(
             ChatMessage,
             id=message_id,
-            chat_id=chat_pk,
+            chat=chat,
             role=ChatMessage.Role.ASSISTANT
         )
 
         if not m.content:
             return Response({"detail": "No content"}, status=400)
 
-        # We don't define a path here, we let the service manage cache paths
-        # Passed user for rate limiting
-        actor_type, actor = get_actor(request)
-        # Using actor as user for rate limiting (might need adapter if guest)
         res = generate_tts_audio(m.content, voice_name="Kore", user=actor)
 
         if res.get('success'):
             file_path = res['file_path']
             if os.path.exists(file_path):
-                return FileResponse(
+                return CleanupFileResponse(
                     open(file_path, 'rb'),
-                    content_type='audio/wav'
+                    content_type='audio/wav',
+                    cleanup_path=file_path
                 )
 
         error_msg = res.get('error', 'Unknown Error')
@@ -991,14 +1013,6 @@ class ContextSourcesView(APIView):
         sources_list = []
         seen_ids = set()
 
-        def safe_file_url(fieldfile):
-            if not fieldfile:
-                return None
-            try:
-                return fieldfile.url
-            except Exception:
-                return None
-
         # Helper para formatar
         def add_source(s, origin_type, prefix):
             if s.id in seen_ids: return
@@ -1008,7 +1022,7 @@ class ContextSourcesView(APIView):
                 'title': s.title,
                 'type': origin_type, # 'chat_source' ou 'space_source'
                 'source_type': s.source_type,
-                'url': s.url or safe_file_url(s.file),
+                'url': s.url or (s.file.url if s.file else None),
                 'created_at': s.created_at,
                 'selected': True
             })

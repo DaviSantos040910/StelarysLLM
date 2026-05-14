@@ -6,28 +6,7 @@ PLAN_TRIAL = 'trial'
 PLAN_BASIC = 'basic'
 PLAN_FREE_LOCKED = 'free_locked'
 
-# --- LIMIT DEFINITIONS (Sync with requirements) ---
-TRIAL_LIMITS = {
-    'messages': 90,
-    'artifacts': 1, # Per type
-    'sources': 1,
-    'bot_tutor': 1,
-    'study_space': 1,
-    'memory_run': 1,
-    'tts_seconds': 0, # OFF
-    'web_search': False,
-    'rag_chunk_limit': 3
-}
-
-BASIC_LIMITS = {
-    'messages_monthly': 2000,
-    'artifacts_monthly': 50,
-    'sources_total': 50,
-    'tts_seconds_monthly': 10800, # 3h
-    'memory_optimized': True,
-    'web_search_allowed': True,
-    'rag_chunk_limit': 6
-}
+from ..constants import TRIAL_LIMITS_DICT as TRIAL_LIMITS, BASIC_LIMITS_DICT as BASIC_LIMITS
 
 def get_current_plan(user=None, guest_session=None):
     """

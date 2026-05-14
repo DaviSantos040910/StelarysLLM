@@ -9,6 +9,10 @@ import { userService } from '../services/userService';
 import { User } from '../types';
 import { extractApiError } from '../utils/errorHandling';
 
+// Feature flag: Guest mode is disabled for launch.
+// Set to true to re-enable guest sessions.
+const GUEST_MODE_ENABLED = false;
+
 // Helper to handle storage across platforms
 const storage = {
   getItem: async (key: string) => {
@@ -73,26 +77,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false
       });
 
-      // Automatic Guest Claim
-      const { guestId } = get();
-      if (guestId) {
-        try {
-          if (__DEV__) console.log('[Auth] Attempting to claim guest session:', guestId);
-          await authService.claimGuest(guestId);
-          if (__DEV__) console.log('[Auth] Guest session claimed successfully');
+      // Automatic Guest Claim (disabled — guest mode off)
+      if (GUEST_MODE_ENABLED) {
+        const { guestId } = get();
+        if (guestId) {
+          try {
+            if (__DEV__) console.log('[Auth] Attempting to claim guest session:', guestId);
+            await authService.claimGuest(guestId);
+            if (__DEV__) console.log('[Auth] Guest session claimed successfully');
 
-          // Clear guestId from store/storage as it's merged
-          set({ guestId: null });
-          await storage.deleteItem('guest_id');
-        } catch (claimError: any) {
-          // If 409 (Already Claimed) or 204 (No Content), treat as success
-          if (claimError.response?.status === 409 || claimError.response?.status === 204) {
+            // Clear guestId from store/storage as it's merged
             set({ guestId: null });
             await storage.deleteItem('guest_id');
-          } else {
-            console.error('[Auth] Failed to claim guest session', claimError);
+          } catch (claimError: any) {
+            // If 409 (Already Claimed) or 204 (No Content), treat as success
+            if (claimError.response?.status === 409 || claimError.response?.status === 204) {
+              set({ guestId: null });
+              await storage.deleteItem('guest_id');
+            } else {
+              console.error('[Auth] Failed to claim guest session', claimError);
+            }
+            // Do not block login
           }
-          // Do not block login
         }
       }
 
@@ -135,13 +141,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Only set loading if it's not already loading (though it starts as true)
     set({ isLoading: true });
     try {
-      // 1. Handle Guest ID
-      let guestId = await storage.getItem('guest_id');
-      if (!guestId) {
-        guestId = Crypto.randomUUID();
-        await storage.setItem('guest_id', guestId);
+      // 1. Handle Guest ID (disabled — guest mode off)
+      if (GUEST_MODE_ENABLED) {
+        let guestId = await storage.getItem('guest_id');
+        if (!guestId) {
+          guestId = Crypto.randomUUID();
+          await storage.setItem('guest_id', guestId);
+        }
+        set({ guestId });
       }
-      set({ guestId });
 
       // 2. Handle User Token
       let token = await storage.getItem('token');

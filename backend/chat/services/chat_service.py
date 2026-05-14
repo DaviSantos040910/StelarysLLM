@@ -295,7 +295,7 @@ def get_ai_response(
         
         # --- Format Contexts with Citations ---
         formatted_doc_contexts = []
-        source_map = {} # source_id -> {index: 1, title: 'Title', 'type': ..., 'url': ...}
+        source_map = {} # source_id -> {index: 1, title: 'Title'}
         used_source_indices = []
 
         if doc_contexts:
@@ -303,16 +303,9 @@ def get_ai_response(
                 # chunk is now a Dict: {content, source, source_id, ...}
                 s_id = chunk.get('source_id') or chunk.get('source') # Fallback to title if ID missing
                 s_title = chunk.get('source', 'Documento')
-                s_type = chunk.get('source_type', 'file')
-                s_url = chunk.get('source_url', None)
-
+                
                 if s_id not in source_map:
-                    source_map[s_id] = {
-                        'index': len(source_map) + 1,
-                        'title': s_title,
-                        'type': s_type,
-                        'url': s_url
-                    }
+                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
                 
                 s_idx = source_map[s_id]['index']
                 used_source_indices.append(s_idx)
@@ -369,120 +362,122 @@ def get_ai_response(
                     generation_config.tools = [types.Tool(google_search=types.GoogleSearch())]
 
             input_parts = []
-        if user_message_obj and user_message_obj.attachment:
-            try:
-                if hasattr(user_message_obj.attachment, 'path') and user_message_obj.attachment.path:
-                    file_path = user_message_obj.attachment.path
+            if user_message_obj and user_message_obj.attachment:
+                try:
+                    # Use .open() for storage-agnostic access (Local or GCS)
                     mime_type, _ = mimetypes.guess_type(user_message_obj.original_filename or "file")
-                    if not mime_type and user_message_obj.attachment_type == 'image': mime_type = 'image/jpeg'
+                    if not mime_type and user_message_obj.attachment_type == 'image': 
+                        mime_type = 'image/jpeg'
+                    
                     if mime_type and (mime_type.startswith('image/') or mime_type == 'application/pdf'):
-                        with open(file_path, 'rb') as f:
+                        with user_message_obj.attachment.open('rb') as f:
                             input_parts.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
-            except Exception: pass
+                except Exception as e:
+                    logger.warning(f"Failed to load user attachment: {e}")
 
-        final_user_prompt = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
+            final_user_prompt = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
 
-        # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
-        warning_msg = None
-        if not strict_context and not doc_contexts and allow_web_search:
-            warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
-            final_user_prompt = (
-                f"{user_message_text}\n\n"
-                "Responda normalmente com base em conhecimento geral.\n"
-                "Não mencione que não encontrou fontes no texto da resposta, pois isso será mostrado separadamente na interface.\n\n"
-                "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
+            # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
+            warning_msg = None
+            if not strict_context and not doc_contexts and allow_web_search:
+                warning_msg = "Nota: Não encontrei informações sobre isso nas suas fontes. A resposta foi gerada com base em conhecimento geral."
+                final_user_prompt = (
+                    f"{user_message_text}\n\n"
+                    "Responda normalmente com base em conhecimento geral.\n"
+                    "Não mencione que não encontrou fontes no texto da resposta, pois isso será mostrado separadamente na interface.\n\n"
+                    "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
+                )
+            input_parts.append(types.Part.from_text(text=final_user_prompt))
+            contents = gemini_history + [types.Content(role="user", parts=input_parts)]
+
+            response = client.models.generate_content(
+                model=GENAI_MODEL_TEXT,
+                contents=contents,
+                config=generation_config
             )
 
-        input_parts.append({"text": final_user_prompt})
-        contents = gemini_history + [{"role": "user", "parts": input_parts}]
+            raw_text = response.text if response.text else ""
 
-        response = client.models.generate_content(
-            model=GENAI_MODEL_TEXT,
-            contents=contents,
-            config=generation_config
-        )
+            # 1. Sync Sanitization (Remove AI Identity Leaks)
+            sanitized_text = PersonaGuard.sanitize_identity_leaks(raw_text, bot.name)
 
-        raw_text = response.text if response.text else ""
+            result_data = _parse_ai_response(sanitized_text)
 
-        # 1. Sync Sanitization (Remove AI Identity Leaks)
-        sanitized_text = PersonaGuard.sanitize_identity_leaks(raw_text, bot.name)
+            # --- POST-GENERATION GUARDRAIL (STRICT MODE) ---
+            # If strict_context is ON, but response has NO citations, assume hallucination/failure.
+            if strict_context and result_data['content']:
+                has_citation = bool(re.search(r'\[\d+\]', result_data['content']))
+                if not has_citation:
+                    logger.warning(f"[Guardrail] Chat {chat_id}: Strict Mode enabled but NO citations found. Triggering refusal.")
+                    refusal_text = strict_boundary.build_strict_refusal(bot.name, user_message_text, has_any_sources=bool(available_doc_names))
+                    result_data = _parse_ai_response(refusal_text)
+                    # Clear citations legend logic triggers below since content changed
+                    source_map = {} 
 
-        result_data = _parse_ai_response(sanitized_text)
+            # Build Sources list for frontend
+            sources_list = []
+            if source_map:
+                # Extract citations actually used in the FINAL text
+                used_indices = set(re.findall(r'\[(\d+)\]', result_data['content']))
+                
+                # Map back to source details
+                unique_sources = {}
+                for s_id, s_info in source_map.items():
+                    if str(s_info['index']) in used_indices:
+                        if s_id not in unique_sources:
+                            unique_sources[s_id] = {
+                                'id': s_id,
+                                'title': s_info['title'],
+                                'type': 'file', # Default, could be refined if source_map had type
+                                'index': s_info['index']
+                            }
+                
+                # Safely create the list
+                try:
+                    sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
+                except Exception as e:
+                    logger.error(f"[Sources Error] Failed to process sources list: {e}")
+                    sources_list = []
 
-        # --- POST-GENERATION GUARDRAIL (STRICT MODE) ---
-        # If strict_context is ON, but response has NO citations, assume hallucination/failure.
-        if strict_context and result_data['content']:
-            has_citation = bool(re.search(r'\[\d+\]', result_data['content']))
-            if not has_citation:
-                logger.warning(f"[Guardrail] Chat {chat_id}: Strict Mode enabled but NO citations found. Triggering refusal.")
-                refusal_text = strict_boundary.build_strict_refusal(bot.name, user_message_text, has_any_sources=bool(available_doc_names))
-                result_data = _parse_ai_response(refusal_text)
-                # Clear citations legend logic triggers below since content changed
-                source_map = {} 
+                result_data['sources'] = sources_list
 
-        # Build Sources list for frontend
-        sources_list = []
-        if source_map:
-            # Extract citations actually used in the FINAL text
-            used_indices = set(re.findall(r'\[(\d+)\]', result_data['content']))
-            
-            # Map back to source details
-            unique_sources = {}
-            for s_id, s_info in source_map.items():
-                if str(s_info['index']) in used_indices:
-                    if s_id not in unique_sources:
-                        unique_sources[s_id] = {
-                            'id': s_id,
-                            'title': s_info['title'],
-                            'type': s_info.get('type', 'file'),
-                            'url': s_info.get('url'),
-                            'index': s_info['index']
-                        }
-            
-            # Safely create the list
-            try:
-                sources_list = sorted(unique_sources.values(), key=lambda x: x['index'])
-            except Exception as e:
-                logger.error(f"[Sources Error] Failed to process sources list: {e}")
-                sources_list = []
+            # Metrics Logic
+            metrics = _calculate_metrics(result_data['content'], available_doc_names)
+            logger.info(f"[Metrics] Msg Response: {metrics}")
 
-            result_data['sources'] = sources_list
+            # Save metrics requires a Message object.
+            # Since get_ai_response returns dict (and caller creates message later or earlier?),
+            # we can't easily link to message ID here unless passed.
+            # But handle_voice_message DOES create AI message.
+            # Wait, get_ai_response is usually called by a view which then saves the message.
+            # Ideally, we should return metrics in the result_data so the caller can save them.
 
-        # Metrics Logic
-        metrics = _calculate_metrics(result_data['content'], available_doc_names)
-        logger.info(f"[Metrics] Msg Response: {metrics}")
+            result_data['metrics'] = metrics # Pass metrics up
+            if warning_msg:
+                result_data['warning'] = warning_msg
 
-        # Save metrics requires a Message object.
-        # Since get_ai_response returns dict (and caller creates message later or earlier?),
-        # we can't easily link to message ID here unless passed.
-        # But handle_voice_message DOES create AI message.
-        # Wait, get_ai_response is usually called by a view which then saves the message.
-        # Ideally, we should return metrics in the result_data so the caller can save them.
+            if result_data['content'] and len(user_message_text) > 10:
+                t = threading.Thread(
+                    target=process_memory_background,
+                    args=(effective_user_id, bot.id, user_message_text, result_data['content'])
+                )
+                t.daemon = True
+                t.start()
 
-        result_data['metrics'] = metrics # Pass metrics up
-        if warning_msg:
-            result_data['warning'] = warning_msg
+            # Trigger Summary Update
+            _trigger_summary_if_needed(chat_id)
 
-        if result_data['content'] and len(user_message_text) > 10:
-            threading.Thread(
-                target=process_memory_background,
-                args=(effective_user_id, bot.id, user_message_text, result_data['content'])
-            ).start()
+            if reply_with_audio and result_data['content']:
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
+                        tts = generate_tts_audio(result_data['content'], temp_audio.name)
+                        if tts['success']:
+                            result_data['audio_path'] = tts['file_path']
+                            result_data['duration_ms'] = tts.get('duration_ms', 0)
+                except Exception as e:
+                    logger.error(f"[TTS Error] {e}")
 
-        # Trigger Summary Update
-        _trigger_summary_if_needed(chat_id)
-
-        if reply_with_audio and result_data['content']:
-            try:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
-                    tts = generate_tts_audio(result_data['content'], temp_audio.name)
-                    if tts['success']:
-                        result_data['audio_path'] = tts['file_path']
-                        result_data['duration_ms'] = tts.get('duration_ms', 0)
-            except Exception as e:
-                logger.error(f"[TTS Error] {e}")
-
-        return result_data
+            return result_data
 
     except Exception as e:
         logger.error(f"Erro AI Service: {e}")
@@ -652,16 +647,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             for chunk in doc_contexts:
                 s_id = chunk.get('source_id') or chunk.get('source')
                 s_title = chunk.get('source', 'Documento')
-                s_type = chunk.get('source_type', 'file')
-                s_url = chunk.get('source_url', None)
-
                 if s_id not in source_map:
-                    source_map[s_id] = {
-                        'index': len(source_map) + 1,
-                        'title': s_title,
-                        'type': s_type,
-                        'url': s_url
-                    }
+                    source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
                 s_idx = source_map[s_id]['index']
                 formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
@@ -691,8 +678,26 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 system_instruction=system_instruction
             )
 
+            # Find exact user message to see if it has attachments
+            user_message_obj = chat.messages.filter(role=ChatMessage.Role.USER).order_by('-created_at').first()
+
+            input_parts = []
+            if user_message_obj and user_message_obj.attachment:
+                try:
+                    # Use .open() for storage-agnostic access (Local or GCS)
+                    mime_type, _ = mimetypes.guess_type(user_message_obj.original_filename or "file")
+                    if not mime_type and user_message_obj.attachment_type == 'image': 
+                        mime_type = 'image/jpeg'
+                    
+                    if mime_type and (mime_type.startswith('image/') or mime_type == 'application/pdf'):
+                        with user_message_obj.attachment.open('rb') as f:
+                            input_parts.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
+                except Exception as e:
+                    logger.warning(f"Failed to include attachment in strict stream for chat {chat_id}: {e}")
+
             prompt_text = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
-            contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
+            input_parts.append(types.Part.from_text(text=prompt_text))
+            contents = gemini_history + [types.Content(role="user", parts=input_parts)]
 
             # Sync Call
             client = get_ai_client()
@@ -740,8 +745,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                             unique_sources[s_id] = {
                                 'id': s_id,
                                 'title': s_info['title'],
-                                'type': s_info.get('type', 'file'),
-                                'url': s_info.get('url'),
+                                'type': 'file',
                                 'index': s_info['index']
                             }
                 try:
@@ -811,15 +815,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                 for chunk in doc_contexts:
                     s_id = chunk.get('source_id') or chunk.get('source')
                     s_title = chunk.get('source', 'Documento')
-                    s_type = chunk.get('source_type', 'file')
-                    s_url = chunk.get('source_url', None)
                     if s_id not in source_map:
-                        source_map[s_id] = {
-                            'index': len(source_map) + 1,
-                            'title': s_title,
-                            'type': s_type,
-                            'url': s_url
-                        }
+                        source_map[s_id] = {'index': len(source_map) + 1, 'title': s_title}
                     s_idx = source_map[s_id]['index']
                     formatted_doc_contexts.append(f"[{s_idx}] {s_title}\n{chunk['content']}")
 
@@ -853,6 +850,23 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
             if use_search:
                  config.tools = [types.Tool(google_search=types.GoogleSearch())]
 
+            # Find exact user message to see if it has attachments
+            user_message_obj = chat.messages.filter(role=ChatMessage.Role.USER).order_by('-created_at').first()
+
+            input_parts = []
+            if user_message_obj and user_message_obj.attachment:
+                try:
+                    # Use .open() for storage-agnostic access (Local or GCS)
+                    mime_type, _ = mimetypes.guess_type(user_message_obj.original_filename or "file")
+                    if not mime_type and user_message_obj.attachment_type == 'image': 
+                        mime_type = 'image/jpeg'
+                    
+                    if mime_type and (mime_type.startswith('image/') or mime_type == 'application/pdf'):
+                        with user_message_obj.attachment.open('rb') as f:
+                            input_parts.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
+                except Exception as e:
+                    logger.warning(f"Failed to include attachment in stream for chat {chat_id}: {e}")
+
             prompt_text = f"""{user_message_text}\n\n---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."""
 
             # --- MIXED MODE PROMPT (Strict OFF + Web ON + No Context) ---
@@ -864,7 +878,8 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                     "---\nSe possível, forneça sugestões de continuação usando o formato |||SUGGESTIONS||| definido no system prompt."
                 )
 
-            contents = gemini_history + [{"role": "user", "parts": [{"text": prompt_text}]}]
+            input_parts.append(types.Part.from_text(text=prompt_text))
+            contents = gemini_history + [types.Content(role="user", parts=input_parts)]
 
             # STREAM CALL
             stream = generate_content_stream(contents, config, use_google_search=use_search)
@@ -980,8 +995,7 @@ def process_message_stream(chat_id: int, user_message_text: str, user_id: int = 
                             unique_sources[s_id] = {
                                 'id': s_id,
                                 'title': s_info['title'],
-                                'type': s_info.get('type', 'file'),
-                                'url': s_info.get('url'),
+                                'type': 'file',
                                 'index': s_info['index']
                             }
                 try:
@@ -1173,7 +1187,9 @@ def _trigger_summary_if_needed(chat_id):
         if plan == PLAN_BASIC:
             count = ChatMessage.objects.filter(chat_id=chat_id, role='user').count()
             if count > 0 and count % 15 == 0:
-                threading.Thread(target=_summarize_chat_history_background, args=(chat_id,)).start()
+                t = threading.Thread(target=_summarize_chat_history_background, args=(chat_id,))
+                t.daemon = True
+                t.start()
     except Exception as e:
         logger.error(f"Error triggering summary: {e}")
 

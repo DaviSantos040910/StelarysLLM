@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 import logging
+import sys
 from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
@@ -35,6 +36,10 @@ EMAIL_HOST_PASSWORD = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("SENDGRID_SENDER")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini_api")
+USE_VERTEX_AI = os.getenv("USE_VERTEX_AI", "False").lower() in ("true", "1", "yes")
+VERTEX_PROJECT_ID = os.getenv("VERTEX_PROJECT_ID", "stellarys-lm")
+VERTEX_LOCATION = os.getenv("VERTEX_LOCATION", "us-central1")
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -43,25 +48,44 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # SECURITY
 # C1: Crash on missing SECRET_KEY in production (no insecure fallback)
 _secret_key = os.getenv("DJANGO_SECRET_KEY")
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"  # M2: Defaults to False
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+
 if not _secret_key and not DEBUG:
-    raise ValueError(
-        "DJANGO_SECRET_KEY environment variable is required in production. "
-        "Set DJANGO_DEBUG=True for development without it."
-    )
+    # During build or collectstatic, we might not have the secret key yet.
+    # We only raise the error if we are NOT in a build/collectstatic environment.
+    import sys
+    if 'collectstatic' not in sys.argv:
+        raise ValueError(
+            "DJANGO_SECRET_KEY environment variable is required in production. "
+            "Set DJANGO_DEBUG=True for development without it."
+        )
+
 SECRET_KEY = _secret_key or "dev-secret-only-for-local"
 
 # C2: ALLOWED_HOSTS from env var (comma-separated)
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,*").split(",")
+
+# C5: CSRF Trusted Origins (Required for Django 4.0+ over HTTPS)
+_csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if _csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+else:
+    # Fallback to a wider set if not specified, or use the Cloud Run domain
+    CSRF_TRUSTED_ORIGINS = [
+        "https://*.run.app",
+        "https://*.stellarysapp.com",
+    ]
 
 # Application definition
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "whitenoise.runserver_nostatic",
 
     "rest_framework",
     "corsheaders",
@@ -78,6 +102,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # CORS for mobile apps
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -138,6 +163,7 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = "static/"
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -149,7 +175,7 @@ AUTH_USER_MODEL = "accounts.User"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "accounts.authentication.LenientJWTAuthentication",
-        "accounts.authentication.GuestAuthentication",
+        # "accounts.authentication.GuestAuthentication",  # Disabled for launch (guest mode off)
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
@@ -174,7 +200,9 @@ else:
     ]
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all in development
 
-# Email backend for development (console)
+# Email settings (Brevo integration)
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@stellarysapp.com')
 
 # Optional basic rate-limiting config (requires django-ratelimit if used)
 RATELIMIT_ENABLE = True
@@ -259,7 +287,6 @@ QUEUE_BACKEND = os.getenv('QUEUE_BACKEND', 'thread')
 GCP_PROJECT = os.getenv('GCP_PROJECT', '')
 GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
 GCP_QUEUE = os.getenv('GCP_QUEUE', 'artifact-generation')
-GCP_SERVICE_URL = os.getenv('GCP_SERVICE_URL', '')
 
 # --- Storage Configuration ---
 # 'local' = Local Filesystem (default)
@@ -351,3 +378,119 @@ if SENTRY_DSN and SENTRY_DSN.startswith("https://") and not DEBUG:
         )
     except ImportError:
         pass  # sentry-sdk not installed, skip
+
+# ================================
+# Logging Configuration
+# ================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.security.DisallowedHost': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
+
+# ================================
+# Jazzmin Customization (Slate Theme)
+# ================================
+JAZZMIN_SETTINGS = {
+    "site_title": "Stelarys Admin",
+    "site_header": "Stelarys IA",
+    "site_brand": "Stelarys Admin",
+    "site_logo": None,
+    "login_logo": None,
+    "login_logo_dark": None,
+    "site_logo_classes": "img-circle",
+    "site_icon": None,
+    "welcome_sign": "Bem-vindo ao Stelarys IA Admin",
+    "copyright": "Stelarys LLM Ltd",
+    "search_model": ["accounts.User", "bots.Bot"],
+    "user_avatar": "avatar",
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"model": "accounts.User"},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": ["accounts", "bots", "chat", "billing"],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "accounts.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "bots.bot": "fas fa-robot",
+        "chat.message": "fas fa-comments",
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": False,
+    "custom_css": "admin/css/custom_admin.css",
+    "custom_js": None,
+    "show_ui_builder": False,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {"auth.user": "collapsible_list", "auth.group": "vertical_tabs"},
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark",
+    "no_navbar_border": False,
+    "navbar_fixed": False,
+    "layout_fixed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": False,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "slate",
+    "default_theme_mode": "dark",
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
+}
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STORAGES["staticfiles"] = {
+    "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+}

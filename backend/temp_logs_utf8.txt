@@ -1,0 +1,100 @@
+﻿Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+
+
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+
+
+
+
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+
+[2026-03-09 18:39:01 +0000] [4] [INFO] Booting worker with pid: 4
+[2026-03-09 18:39:00 +0000] [1] [INFO] Control socket listening at /app/gunicorn.ctl
+[2026-03-09 18:39:00 +0000] [3] [INFO] Booting worker with pid: 3
+
+Default STARTUP TCP probe succeeded after 1 attempt for container "backend-api-1" on port 8080.
+[2026-03-09 18:39:00 +0000] [1] [INFO] Using worker: gthread
+[2026-03-09 18:39:00 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)
+[2026-03-09 18:39:00 +0000] [1] [INFO] Starting gunicorn 25.1.0
+Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.
+
+
+[2026-03-09 18:16:09 +0000] [1] [INFO] Shutting down: Master
+[2026-03-09 18:16:07 +0000] [3] [INFO] Worker exiting (pid: 3)
+[2026-03-09 18:16:07 +0000] [4] [INFO] Worker exiting (pid: 4)
+[2026-03-09 18:16:07 +0000] [1] [INFO] Handling signal: term
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+
+
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+[2026-03-09 18:00:13 +0000] [4] [INFO] Booting worker with pid: 4
+[2026-03-09 18:00:13 +0000] [3] [INFO] Booting worker with pid: 3
+[2026-03-09 18:00:13 +0000] [1] [INFO] Control socket listening at /app/gunicorn.ctl
+Default STARTUP TCP probe succeeded after 1 attempt for container "backend-api-1" on port 8080.
+[2026-03-09 18:00:13 +0000] [1] [INFO] Using worker: gthread
+[2026-03-09 18:00:13 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)
+[2026-03-09 18:00:13 +0000] [1] [INFO] Starting gunicorn 25.1.0
+Starting new instance. Reason: AUTOSCALING - Instance started due to configured scaling factors (e.g. CPU utilization, request throughput, etc.) or no existing capacity for current traffic.
+
+[2026-03-09 17:35:20 +0000] [1] [INFO] Shutting down: Master
+[2026-03-09 17:35:17 +0000] [3] [INFO] Worker exiting (pid: 3)
+[2026-03-09 17:35:17 +0000] [4] [INFO] Worker exiting (pid: 4)
+[2026-03-09 17:35:17 +0000] [1] [INFO] Handling signal: term
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+  mw_instance = middleware(adapted_handler)
+/usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+
+
+[2026-03-09 17:15:59 +0000] [4] [INFO] Booting worker with pid: 4
+[2026-03-09 17:15:59 +0000] [1] [INFO] Control socket listening at /app/gunicorn.ctl
+[2026-03-09 17:15:59 +0000] [3] [INFO] Booting worker with pid: 3
+
+Default STARTUP TCP probe succeeded after 1 attempt for container "backend-api-1" on port 8080.
+[2026-03-09 17:15:58 +0000] [1] [INFO] Using worker: gthread
+[2026-03-09 17:15:58 +0000] [1] [INFO] Listening at: http://0.0.0.0:8080 (1)
+[2026-03-09 17:15:58 +0000] [1] [INFO] Starting gunicorn 25.1.0
+Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.
+
+
+[2026-03-09 15:26:47 +0000] [1] [INFO] Shutting down: Master
+[2026-03-09 15:26:45 +0000] [3] [INFO] Worker exiting (pid: 3)
+[2026-03-09 15:26:45 +0000] [4] [INFO] Worker exiting (pid: 4)
+[2026-03-09 15:26:45 +0000] [1] [INFO] Handling signal: term
+JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. Use default_theme_mode='auto' (or 'light'/'dark') instead. All themes now support light/dark via data-bs-theme.
+Invalid JSON in GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
+

@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { Text, View } from 'react-native';
+import { themeClasses } from '../../theme/classes';
 import { UserAvatar } from '../UserAvatar';
 import { SuggestionChip } from './SuggestionChip';
-import { themeClasses } from '../../theme/classes';
 
 interface ChatWelcomeProps {
   botAvatar?: string | null;
@@ -22,7 +22,7 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({
   showSuggestions = true,
 }) => {
   return (
-    <View className="flex-1 px-4 pt-10 pb-8">
+    <View className="px-4 pt-10 pb-8 overflow-hidden">
       {/* Hero Section */}
       <View className="items-center mb-8">
         <View className={`p-4 rounded-full shadow-lg shadow-black/20 mb-4 ${themeClasses.softSurface}`}>

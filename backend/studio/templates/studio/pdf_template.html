@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ artifact.title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "Stelarys AI - {{ artifact.type }}";
+                font-family: Helvetica, sans-serif;
+                font-size: 10px;
+                color: #888;
+            }
+            @bottom-center {
+                content: counter(page);
+                font-family: Helvetica, sans-serif;
+                font-size: 10px;
+                color: #888;
+            }
+        }
+        body {
+            font-family: Helvetica, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #6d28d9; /* Cosmic Purple */
+            padding-bottom: 1cm;
+        }
+        .header h1 {
+            color: #6d28d9;
+            font-size: 24px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .header p {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 1.5cm;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 18px;
+            color: #4c1d95;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+
+        /* Quiz Specific */
+        .question-block {
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .option {
+            margin-left: 20px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .correct-answer {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #059669; /* Green */
+            font-style: italic;
+            border-top: 1px dashed #ccc;
+            padding-top: 5px;
+        }
+
+        /* Flashcard Specific */
+        .flashcard {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            page-break-inside: avoid;
+        }
+        .flashcard-front {
+            font-weight: bold;
+            color: #6d28d9;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        /* Summary/Workbook Specific */
+        .content-text {
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ artifact.title }}</h1>
+        <p>Gerado por Stelarys AI em {{ artifact.created_at|date:"d/m/Y" }}</p>
+    </div>
+
+    {% load studio_extras %}
+    {% if artifact.type == 'QUIZ' %}
+        {% for item in content %}
+        <div class="section question-block">
+            <span class="question-text">{{ forloop.counter }}. {{ item.question }}</span>
+            {% for opt in item.options %}
+                <span class="option">
+                    {% if forloop.counter0 == item.correctAnswerIndex %}
+                        <strong>(X) {{ opt }}</strong>
+                    {% else %}
+                        ( ) {{ opt }}
+                    {% endif %}
+                </span>
+            {% endfor %}
+
+            <div class="correct-answer">
+                Resposta Correta: {{ item.options|get_item:item.correctAnswerIndex }}
+            </div>
+        </div>
+        {% endfor %}
+
+    {% elif artifact.type == 'FLASHCARD' %}
+        {% for item in content %}
+        <div class="flashcard">
+            <div class="flashcard-front">FRENTE: {{ item.front }}</div>
+            <div class="flashcard-back">VERSO: {{ item.back }}</div>
+        </div>
+        {% endfor %}
+
+    {% elif artifact.type == 'SLIDE' %}
+        <!-- Fallback for PDF view of slides if needed -->
+        {% for item in content %}
+        <div class="section">
+            <div class="section-title">Slide {{ forloop.counter }}: {{ item.title }}</div>
+            <ul>
+            {% for bullet in item.bullets %}
+                <li>{{ bullet }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+
+    {% else %}
+        <!-- Summary, Workbook, etc. (Text based) -->
+        <div class="content-text">
+            {{ content|linebreaks }}
+        </div>
+    {% endif %}
+
+</body>
+</html>

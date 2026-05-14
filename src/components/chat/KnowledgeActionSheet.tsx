@@ -37,15 +37,15 @@ interface KnowledgeActionSheetProps {
   chatId?: string;
 }
 
-// Feature Flags - Desabilita features que ainda não estão prontas no backend
+// Feature Flags - Desabilita features que ainda não estão prontas para lançamento
 const FEATURE_FLAGS = {
+  enablePodcast: false,       // PODCAST — TTS complexo, feature futura
   enablePresentations: false, // SLIDE
   enableSpreadsheets: false,  // SPREADSHEET
 };
 
 // Updated Generators
 const ALL_GENERATORS: { id: ArtifactType; label: string; icon: any; color: string; bg: string; border: string }[] = [
-  { id: 'PODCAST', label: 'Podcast', icon: Headphones, color: '#818cf8', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
   { id: 'SLIDE', label: 'Apresentações', icon: Monitor, color: '#fbbf24', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
   { id: 'QUIZ', label: 'Quiz', icon: FileQuestion, color: '#2dd4bf', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
   { id: 'FLASHCARD', label: 'Flashcards', icon: BookOpen, color: '#f472b6', bg: 'bg-pink-500/10', border: 'border-pink-500/20' },
@@ -65,6 +65,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 // Filtrar generators baseado nas feature flags
 const GENERATORS = ALL_GENERATORS.filter(gen => {
+  if (gen.id === 'PODCAST' && !FEATURE_FLAGS.enablePodcast) return false;
   if (gen.id === 'SLIDE' && !FEATURE_FLAGS.enablePresentations) return false;
   if (gen.id === 'SPREADSHEET' && !FEATURE_FLAGS.enableSpreadsheets) return false;
   return true;

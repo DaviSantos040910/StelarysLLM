@@ -38,16 +38,3 @@ class AdminCategoryDetailView(generics.DestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminUser]
-
-class AdminSetUserPremiumView(APIView):
-    """Admin view to toggle a user's premium status."""
-    permission_classes = [IsAdminUser]
-
-    def post(self, request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-            user.is_premium = not user.is_premium
-            user.save()
-            return Response({'status': 'success', 'is_premium': user.is_premium}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)

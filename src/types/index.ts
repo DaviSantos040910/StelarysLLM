@@ -6,6 +6,7 @@ export interface User {
   last_name?: string;
   avatar_url?: string;
   avatar?: string; // Some components access .avatar instead of .avatar_url
+  is_email_verified?: boolean;
 }
 
 export interface Workspace { // Antigo "Bot"

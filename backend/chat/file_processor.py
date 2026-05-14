@@ -33,16 +33,9 @@ class FileProcessor:
                     return ""
             else:
                 # É um objeto File (FieldFile)
-                use_local_path = False
-                try:
-                    if hasattr(file_source, 'path') and os.path.exists(file_source.path):
-                        file_path = file_source.path
-                        use_local_path = True
-                except Exception:
-                    # Se acessar .path falhar (ex: GCS), ignoramos e usamos tempfile
-                    pass
-
-                if not use_local_path:
+                if hasattr(file_source, 'path') and os.path.exists(file_source.path):
+                    file_path = file_source.path
+                else:
                     # Arquivo remoto (GCS) ou em memória -> baixar para temp
                     with tempfile.NamedTemporaryFile(delete=False) as tmp:
                         file_source.open('rb')

@@ -75,11 +75,10 @@ export default function RootLayout() {
         if (isAuthenticated && inAuthGroup) {
             // Logged in user trying to access auth pages -> redirect to home
             router.replace('/(tabs)');
+        } else if (!isAuthenticated && !inAuthGroup && !inOnboarding) {
+            // Not authenticated -> force login
+            router.replace('/(auth)/login');
         }
-        // Guest mode support:
-        // If !isAuthenticated, we do NOT force login anymore.
-        // We allow access to (tabs) or other routes.
-        // If user explicitly navigates to (auth), we allow it (handled by UI).
     }
 
   }, [isAuthenticated, segments, isAuthLoading, isAppLoading, isNavigationReady, hasSeenOnboarding]);

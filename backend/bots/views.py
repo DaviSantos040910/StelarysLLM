@@ -62,6 +62,8 @@ class SubscribedBotListView(generics.ListAPIView):
 class BotDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     API view for retrieving, updating, and deleting a bot.
+    GET: Allows viewing own bots, public bots, or official bots.
+    PUT/PATCH/DELETE: Restricted to bots owned by the requesting user.
     """
     queryset = Bot.objects.all()
     serializer_class = BotDetailSerializer
@@ -69,7 +71,28 @@ class BotDetailView(generics.RetrieveUpdateDestroyAPIView):
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
-        return Bot.objects.all()
+        actor_type, actor = get_actor(self.request)
+
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            # Write operations: only own bots
+            if actor_type == 'user':
+                return Bot.objects.filter(owner=actor)
+            elif actor_type == 'guest':
+                return Bot.objects.filter(guest_session=actor)
+            return Bot.objects.none()
+
+        # Read operations: own bots + public/official
+        if actor_type == 'user':
+            from django.db.models import Q
+            return Bot.objects.filter(
+                Q(owner=actor) | Q(publicity='Public') | Q(is_official=True) | Q(subscribers=actor)
+            ).distinct()
+        elif actor_type == 'guest':
+            from django.db.models import Q
+            return Bot.objects.filter(
+                Q(guest_session=actor) | Q(publicity='Public') | Q(is_official=True)
+            ).distinct()
+        return Bot.objects.none()
 
     def get_serializer_class(self):
         # Use BotSerializer for write operations (update/create) to support all fields

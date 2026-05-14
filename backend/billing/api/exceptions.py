@@ -21,8 +21,9 @@ def custom_exception_handler(exc, context):
     # to get the standard error response.
     response = exception_handler(exc, context)
 
-    # Report non-quota exceptions to Sentry
-    if not isinstance(exc, QuotaExceededException):
+    # Report server errors (5xx) or unhandled exceptions to Sentry. Ignore client noise (4xx).
+    status_code = response.status_code if response else 500
+    if status_code >= 500 and not isinstance(exc, QuotaExceededException):
         try:
             import sentry_sdk
             sentry_sdk.capture_exception(exc)

@@ -20,7 +20,6 @@ openpyxl==3.1.5
 trafilatura==2.0.0
 pymupdf4llm==0.2.9
 yt-dlp==2025.12.8
-sendgrid
 django-ratelimit
 pydub==0.25.1
 audioop-lts; python_version >= '3.13'
@@ -37,3 +36,7 @@ dj-database-url
 google-auth
 google-api-python-client
 sentry-sdk[django]>=2.0.0,<3.0.0
+sib-api-v3-sdk
+django-jazzmin
+whitenoise
+filetype

@@ -23,10 +23,15 @@ class BotAdmin(admin.ModelAdmin):
 
     search_fields = ('name', 'owner__username')
     # O campo 'language' foi removido
-    fields = ('name', 'prompt', 'owner', 'categories', 'publicity', 'is_official', 'avatar_url', 'voice')
+    fields = (
+        'name', 'description', 'prompt', 'owner', 'categories', 'study_spaces',
+        'publicity', 'is_official', 'avatar_url', 'voice',
+        'allow_web_search', 'strict_context',
+        'suggestion1', 'suggestion2', 'suggestion3'
+    )
     raw_id_fields = ('owner',)
     # Use filter_horizontal for a much better user experience with ManyToManyFields
-    filter_horizontal = ('categories',)
+    filter_horizontal = ('categories', 'study_spaces')
 
     def display_categories(self, obj):
         """
